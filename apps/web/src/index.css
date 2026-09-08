@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens — referenced via hsl(var(--token)) in tailwind.preset.js. Edit here to re-theme the
+   whole app. Palette: deep maroon primary against a clean off-white main surface, with a persistent
+   dark navy sidebar for visual weight/contrast. */
+@layer base {
+  :root {
+    color-scheme: light;
+    --background: 40 20% 98%;
+    --foreground: 222 35% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 35% 11%;
+    --primary: 350 65% 32%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 16% 95%;
+    --secondary-foreground: 222 35% 11%;
+    --muted: 220 16% 95%;
+    --muted-foreground: 220 10% 45%;
+    --accent: 220 16% 93%;
+    --accent-foreground: 222 35% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 60% 32%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 35% 11%;
+    --info: 199 89% 42%;
+    --info-foreground: 0 0% 100%;
+    --border: 220 16% 88%;
+    --input: 220 16% 88%;
+    --ring: 350 65% 32%;
+    --radius: 0.6rem;
+
+    /* Sidebar chrome — deep navy, deliberately the same in light and dark mode */
+    --sidebar-background: 222 38% 13%;
+    --sidebar-foreground: 210 24% 90%;
+    --sidebar-muted: 217 18% 60%;
+    --sidebar-accent: 222 32% 20%;
+    --sidebar-border: 222 32% 22%;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --background: 222 32% 9%;
+    --foreground: 210 22% 92%;
+    --card: 222 30% 12%;
+    --card-foreground: 210 22% 92%;
+    --primary: 350 70% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 25% 16%;
+    --secondary-foreground: 210 22% 92%;
+    --muted: 222 25% 16%;
+    --muted-foreground: 215 15% 62%;
+    --accent: 222 25% 18%;
+    --accent-foreground: 210 22% 92%;
+    --destructive: 0 72% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 55% 45%;
+    --success-foreground: 222 35% 11%;
+    --warning: 38 92% 58%;
+    --warning-foreground: 222 35% 11%;
+    --info: 199 85% 58%;
+    --info-foreground: 222 35% 11%;
+    --border: 222 25% 20%;
+    --input: 222 25% 20%;
+    --ring: 350 70% 48%;
+
+    /* Sidebar stays visually identical in dark mode — it's the one constant surface */
+    --sidebar-background: 222 40% 10%;
+    --sidebar-foreground: 210 24% 90%;
+    --sidebar-muted: 217 18% 58%;
+    --sidebar-accent: 222 34% 17%;
+    --sidebar-border: 222 34% 19%;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01", "tnum";
+  }
+  /* Headings use the display face everywhere automatically — no per-component font classes needed */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+  /* Explicit fallback for any native form control not going through the shared Input/Select/Textarea
+     components — without this, raw <input>/<select> elements render with the browser's default native
+     control colors (often stark white, ignoring the page's dark theme) instead of the app's tokens. */
+  input, textarea, select {
+    @apply bg-background text-foreground border-input;
+  }
+}
