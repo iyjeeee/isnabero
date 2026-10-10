@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, Skeleton, TrendBadge } from "
 import { supabase } from "@/lib/supabase";
 import { getReportsRepository } from "@/lib/repositories/get-reports-repository";
 import { CHART_COLORS, METHOD_COLORS } from "@/lib/chart-colors";
-import { ExportCsvButton } from "@/components/ExportCsvButton";
+import { ExportButton } from "@/components/ExportButton";
 import { salesReportRows } from "@/lib/export-rows";
 import { computePercentChange } from "@/lib/percent-change";
 
@@ -29,7 +29,7 @@ export function SalesReportSection({ businessId }: SalesReportSectionProps) {
           Sales Report
           <span className="text-sm font-normal text-muted-foreground">— last 14 days</span>
         </CardTitle>
-        <ExportCsvButton filenamePrefix="sales-report" disabled={!data} buildRows={() => salesReportRows(data?.dailyRevenue ?? [])} />
+        <ExportButton title="Sales Report (last 14 days)" filenamePrefix="sales-report" moneyColumns={["Revenue"]} disabled={!data} buildRows={() => salesReportRows(data?.dailyRevenue ?? [])} />
       </CardHeader>
       <CardContent className="space-y-6">
         {isLoading && <Skeleton className="h-64 w-full" />}

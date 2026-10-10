@@ -4,7 +4,7 @@ import { useBookings } from "@isnabero/module-booking";
 import { Card, CardContent, PageHeader, EmptyState, Skeleton, StatCard, FilterBar, Input } from "@isnabero/ui";
 import { supabase } from "@/lib/supabase";
 import { useBusinessStore } from "@/stores/business-store";
-import { ExportCsvButton } from "@/components/ExportCsvButton";
+import { ExportButton } from "@/components/ExportButton";
 import { bookingRows } from "@/lib/export-rows";
 import { NewBookingModal } from "@/components/booking/NewBookingModal";
 
@@ -50,7 +50,7 @@ export default function BookingPage() {
       <PageHeader icon={CalendarClock} title="Booking" description="Today and the next 30 days."
         action={
           <div className="flex items-center gap-2">
-            <ExportCsvButton filenamePrefix="bookings" withDateRange hint="Covers the bookings listed on this page (today and the next 30 days)." disabled={filteredBookings.length === 0} buildRows={(range) => bookingRows(filteredBookings, range)} />
+            <ExportButton title="Bookings" filenamePrefix="bookings" withDateRange hint="Covers the bookings listed on this page (today and the next 30 days)." disabled={filteredBookings.length === 0} buildRows={(range) => bookingRows(filteredBookings, range)} />
             <NewBookingModal businessId={businessId} />
           </div>
         }

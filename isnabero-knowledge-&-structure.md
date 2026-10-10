@@ -1231,7 +1231,7 @@ Exports respect each page's current filters/search/"Show voided".
   Booking export was only checked for the button's presence, not its content
   (covered by the unit test).
 
-### Round 19: Audit trail — CURRENT
+### Round 19: Audit trail
 First item of batch 3 (agreed order: Audit trail → PDF export → Inventory →
 Receipts (printable sales receipt with TIN/address fields, NOT claimed as
 BIR-compliant) → Staff scheduling → Language toggle (English + Filipino) →
@@ -1271,6 +1271,36 @@ search, CSV, no mobile overflow.
 Known limits: the mock log resets on reload (in-memory, like all mock data);
 the last-owner rule is still app-level only (not a DB constraint); Supabase mode
 overall is NOT yet run through the Supabase CLI.
+
+### Round 20: PDF export — CURRENT
+Batch 3 item 2. `components/ExportCsvButton.tsx` was **replaced** by
+`components/ExportButton.tsx` (every page's "Export" now opens one dialog:
+optional From/To where relevant, live row count, then **Download PDF** or
+**Download CSV**). Props: `title`, `filenamePrefix`, `buildRows(range)`,
+`withDateRange?`, `moneyColumns?` (PDF only), `hint?`, `disabled?`. Used by
+Payments, Expenses, Booking, Catalog, Employees, Audit Log, Sales Report card.
+- `lib/export-pdf.ts` — `buildPdf` (business name + title + range + generated
+  time header, striped table, page numbers, landscape when > 6 columns, money
+  columns right-aligned) and `formatPdfCell`. **Money is written "PHP 1,234.00"
+  because PDF base fonts have no ₱ glyph.** jsPDF is imported on demand (its
+  ~390 kB chunk isn't in the main bundle). Same rows as the CSV, so both stay
+  in sync (`lib/export-rows.ts`).
+- Dependencies added to `apps/web`: `jspdf` ^4.2.1, `jspdf-autotable` ^5.0.8
+  (run `pnpm install`; `pnpm-lock.yaml` shipped). `pnpm-workspace.yaml` now
+  has `allowBuilds: core-js: false` (its postinstall only prints a banner), which
+  stops pnpm's "ignored build scripts" error.
+- **Delete `apps/web/src/components/ExportCsvButton.tsx` by hand** after
+  extracting (a ZIP can't delete files); nothing imports it any more.
+- Fixed a Round 18 slip: the Catalog empty state wrongly got a (disabled)
+  export button; it's back to just the Add offering button.
+- Tests: `export-pdf.test.ts` (4: formatting, real multi-page %PDF output,
+  orientation). Total **97** tests (catalog 5, pos 4, booking 7, expenses 17,
+  web 64).
+- Playwright: Catalog/Employees (no date inputs; CSV + PDF download), Expenses
+  with date range (count, filename with range, dialog closes, empty range
+  disables both buttons). One generated PDF was rendered and inspected visually.
+  Not separately re-tested in the browser: PDF from Payments, Booking, Audit Log
+  and Sales Report (same component and row builders, covered by unit tests).
 
 ### Never Include in Prompts
 - `node_modules/` (any level) — build artifacts, never source.

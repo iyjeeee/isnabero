@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { useBusinessStore } from "@/stores/business-store";
 import { usePermission } from "@/hooks/use-permission";
 import { usePagination } from "@/hooks/use-pagination";
-import { ExportCsvButton } from "@/components/ExportCsvButton";
+import { ExportButton } from "@/components/ExportButton";
 import { expenseRows } from "@/lib/export-rows";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
 import { VoidExpenseButton } from "@/components/expenses/VoidExpenseButton";
@@ -53,7 +53,7 @@ export default function ExpensesPage() {
     <div className="space-y-6">
       <PageHeader icon={Receipt} title="Expenses" description="Money your business spends — rent, utilities, supplies and more." action={
           <div className="flex items-center gap-2">
-            <ExportCsvButton filenamePrefix="expenses" withDateRange hint="Uses the category filter, search and “Show voided” setting currently applied." disabled={filtered.length === 0} buildRows={(range) => expenseRows(filtered, range)} />
+            <ExportButton title="Expenses" filenamePrefix="expenses" moneyColumns={["Amount"]} withDateRange hint="Uses the category filter, search and “Show voided” setting currently applied." disabled={filtered.length === 0} buildRows={(range) => expenseRows(filtered, range)} />
             {canManage && <AddExpenseModal businessId={businessId} />}
           </div>
         }

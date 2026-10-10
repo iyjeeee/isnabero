@@ -8,7 +8,7 @@ import { useBusinessStore } from "@/stores/business-store";
 import { getCoreRepository } from "@/lib/repositories/get-repository";
 import { usePagination } from "@/hooks/use-pagination";
 import { auditLogRows } from "@/lib/export-rows";
-import { ExportCsvButton } from "@/components/ExportCsvButton";
+import { ExportButton } from "@/components/ExportButton";
 
 const ENTITY_TABS: { value: "all" | AuditEntity; label: string }[] = [
   { value: "all", label: "All" },
@@ -61,7 +61,7 @@ export default function AuditLogPage() {
         icon={ScrollText}
         title="Audit Log"
         description="Who did what, and when. Entries can't be edited or deleted."
-        action={<ExportCsvButton filenamePrefix="audit-log" withDateRange hint="Uses the filter and search currently applied." disabled={filtered.length === 0} buildRows={(range) => auditLogRows(filtered, range)} />}
+        action={<ExportButton title="Audit Log" filenamePrefix="audit-log" withDateRange hint="Uses the filter and search currently applied." disabled={filtered.length === 0} buildRows={(range) => auditLogRows(filtered, range)} />}
       />
 
       <FilterBar>

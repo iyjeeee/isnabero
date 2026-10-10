@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useBusinessStore } from "@/stores/business-store";
 import { usePagination } from "@/hooks/use-pagination";
-import { ExportCsvButton } from "@/components/ExportCsvButton";
+import { ExportButton } from "@/components/ExportButton";
 import { offeringRows } from "@/lib/export-rows";
 import { CreateOfferingModal } from "@/components/catalog/CreateOfferingModal";
 
@@ -60,7 +60,7 @@ export default function CatalogPage() {
         description="Items, bundles, and add-ons shared across POS and Booking."
         action={
           <div className="flex items-center gap-2">
-            <ExportCsvButton filenamePrefix="catalog" hint="" disabled={filteredOfferings.length === 0} buildRows={() => offeringRows(filteredOfferings)} />
+            <ExportButton title="Catalog" filenamePrefix="catalog" moneyColumns={["Price"]} disabled={filteredOfferings.length === 0} buildRows={() => offeringRows(filteredOfferings)} />
             <CreateOfferingModal businessId={businessId} />
           </div>
         }
@@ -108,12 +108,7 @@ export default function CatalogPage() {
           icon={PackageOpen}
           title="No offerings yet"
           description="Add your first item, bundle, or add-on — it'll be available to POS and Booking right away."
-          action={
-          <div className="flex items-center gap-2">
-            <ExportCsvButton filenamePrefix="catalog" hint="" disabled={filteredOfferings.length === 0} buildRows={() => offeringRows(filteredOfferings)} />
-            <CreateOfferingModal businessId={businessId} />
-          </div>
-        }
+          action={<CreateOfferingModal businessId={businessId} />}
         />
       )}
 

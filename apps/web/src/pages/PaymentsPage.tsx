@@ -8,7 +8,7 @@ import { usePermission } from "@/hooks/use-permission";
 import { usePagination } from "@/hooks/use-pagination";
 import { paymentRows } from "@/lib/export-rows";
 import { Card, CardContent, Badge, PageHeader, EmptyState, Skeleton, StatCard, FilterBar, Input, Pagination, cn } from "@isnabero/ui";
-import { ExportCsvButton } from "@/components/ExportCsvButton";
+import { ExportButton } from "@/components/ExportButton";
 import { VoidPaymentRecordButton } from "@/components/payments/VoidPaymentRecordButton";
 
 const METHOD_BADGE_VARIANT = { cash: "success", gcash: "info", bank_transfer: "default", other: "secondary" } as const;
@@ -62,7 +62,7 @@ export default function PaymentsPage() {
         title="Payment Records"
         description="Every transaction, regardless of which module created it."
         action={
-          <ExportCsvButton filenamePrefix="payment-records" withDateRange hint="Uses the method filter and search currently applied." disabled={filteredRecords.length === 0} buildRows={(range) => paymentRows(filteredRecords, range)} />
+          <ExportButton title="Payment Records" filenamePrefix="payment-records" moneyColumns={["Amount"]} withDateRange hint="Uses the method filter and search currently applied." disabled={filteredRecords.length === 0} buildRows={(range) => paymentRows(filteredRecords, range)} />
         }
       />
 

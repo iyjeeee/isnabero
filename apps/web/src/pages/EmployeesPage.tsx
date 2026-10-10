@@ -8,7 +8,7 @@ import { usePermission } from "@/hooks/use-permission";
 import { useAuth } from "@/providers/AuthProvider";
 import { usePagination } from "@/hooks/use-pagination";
 import { Card, CardContent, Badge, PageHeader, EmptyState, Skeleton, StatCard, FilterBar, Input, Pagination, cn } from "@isnabero/ui";
-import { ExportCsvButton } from "@/components/ExportCsvButton";
+import { ExportButton } from "@/components/ExportButton";
 import { employeeRows } from "@/lib/export-rows";
 import { AddEmployeeModal } from "@/components/employees/AddEmployeeModal";
 import { EditEmployeeModal } from "@/components/employees/EditEmployeeModal";
@@ -62,7 +62,7 @@ export default function EmployeesPage() {
         action={
           canManage ? (
             <div className="flex items-center gap-2">
-              <ExportCsvButton filenamePrefix="employees" disabled={filteredEmployees.length === 0} buildRows={() => employeeRows(filteredEmployees)} />
+              <ExportButton title="Employees" filenamePrefix="employees" disabled={filteredEmployees.length === 0} buildRows={() => employeeRows(filteredEmployees)} />
               <AddEmployeeModal businessId={businessId} />
             </div>
           ) : undefined
