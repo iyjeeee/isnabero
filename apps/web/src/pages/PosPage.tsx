@@ -1,23 +1,34 @@
 import { useMemo, useState } from "react";
-import { ShoppingCart, X, Search } from "lucide-react";
+import { ShoppingCart, X, Search, Box, Layers, PlusCircle, Receipt } from "lucide-react";
 import { useOfferings } from "@isnabero/module-catalog";
 import { useCartStore, useCheckout } from "@isnabero/module-pos";
-import { Card, CardContent, PageHeader, EmptyState, Skeleton, Input, FilterBar } from "@isnabero/ui";
+import { Card, CardContent, PageHeader, EmptyState, Skeleton, Input, FilterBar, QuantityStepper, Badge, cn } from "@isnabero/ui";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useBusinessStore } from "@/stores/business-store";
+import { useAuth } from "@/providers/AuthProvider";
 import { CheckoutModal } from "@/components/pos/CheckoutModal";
+
+// TYPE_ICON/TYPE_TILE_TINT: same type-accent mapping as Catalog, so an item keeps the same visual
+// identity whether you're editing it there or tapping it here to ring up a sale.
+const TYPE_ICON = { item: Box, bundle: Layers, addon: PlusCircle } as const;
+const TYPE_TILE_TINT = {
+  item: "bg-primary/10 text-primary",
+  bundle: "bg-info/10 text-info",
+  addon: "bg-secondary text-secondary-foreground",
+} as const;
 
 export default function PosPage() {
   const businessId = useBusinessStore((state) => state.businessId) ?? "";
   const { data: offerings = [], isLoading } = useOfferings(supabase, businessId);
   const { lines, addOffering, updateQuantity, removeLine, clear, total } = useCartStore();
+  const { employee } = useAuth(); // cashier recorded on the order; null until the employee row resolves
   const checkout = useCheckout(supabase);
   const [search, setSearch] = useState("");
 
   const handleCheckout = (method: "cash" | "gcash" | "bank_transfer" | "other", referenceCode?: string) => {
     checkout.mutate(
-      { businessId, employeeId: null, lines, method, referenceCode },
+      { businessId, employeeId: employee?.id ?? null, lines, method, referenceCode },
       {
         onSuccess: () => {
           toast.success(`Sale completed — ₱${total().toFixed(2)}`);
@@ -60,57 +71,69 @@ export default function PosPage() {
           )}
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {availableOfferings.map((offering) => (
-              <button
-                key={offering.id}
-                onClick={() => addOffering(offering)}
-                className="rounded-lg border bg-card p-4 text-left shadow-card transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-elevated active:scale-[0.98]"
-              >
-                <p className="font-medium">{offering.name}</p>
-                <p className="text-sm text-muted-foreground">₱{Number(offering.price).toFixed(2)}</p>
-              </button>
-            ))}
+            {availableOfferings.map((offering) => {
+              const TypeIcon = TYPE_ICON[offering.type];
+              return (
+                <button
+                  key={offering.id}
+                  onClick={() => addOffering(offering)}
+                  className="group flex flex-col items-start gap-2.5 rounded-lg border bg-card p-4 text-left shadow-card transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-elevated active:scale-[0.98]"
+                >
+                  <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg transition-transform duration-150 group-hover:scale-105", TYPE_TILE_TINT[offering.type])}>
+                    <TypeIcon className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium leading-tight">{offering.name}</p>
+                    <p className="mt-0.5 text-sm font-semibold text-primary">₱{Number(offering.price).toFixed(2)}</p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        <Card className="h-fit">
+        <Card className="sticky top-6 h-fit">
           <CardContent className="space-y-4 p-5">
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-              <p className="font-semibold">Current Sale</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                <p className="font-semibold">Current Sale</p>
+              </div>
+              {lines.length > 0 && <Badge variant="secondary">{lines.length} {lines.length === 1 ? "item" : "items"}</Badge>}
             </div>
 
-            {lines.length === 0 && <p className="text-sm text-muted-foreground">Cart is empty — tap an item to add it.</p>}
+            {lines.length === 0 && (
+              <EmptyState icon={Receipt} title="Cart is empty" description="Tap an item on the left to add it." className="border-0 py-8" />
+            )}
 
-            {lines.map((line) => (
-              <div key={line.offering.id} className="flex items-center justify-between gap-2 text-sm">
-                <div className="min-w-0">
-                  <p className="truncate">{line.offering.name}</p>
-                  <p className="text-muted-foreground">₱{Number(line.offering.price).toFixed(2)} each</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <Input
-                    type="number"
-                    min={0}
-                    value={line.quantity}
-                    onChange={(event) => updateQuantity(line.offering.id, Number(event.target.value))}
-                    className="h-9 w-14 px-2 text-center"
-                  />
-                  <button
-                    onClick={() => removeLine(line.offering.id)}
-                    className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                    aria-label={`Remove ${line.offering.name}`}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+            {lines.length > 0 && (
+              <div className="max-h-80 space-y-1 overflow-y-auto pr-1">
+                {lines.map((line) => (
+                  <div key={line.offering.id} className="flex items-center justify-between gap-2 rounded-md py-2 text-sm">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{line.offering.name}</p>
+                      <p className="text-xs text-muted-foreground">₱{Number(line.offering.price).toFixed(2)} each</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {/* min=1: clearing the box to retype must not drop the line — removal is the X button */}
+                      <QuantityStepper min={1} value={line.quantity} onChange={(next) => updateQuantity(line.offering.id, next)} />
+                      <button
+                        onClick={() => removeLine(line.offering.id)}
+                        className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        aria-label={`Remove ${line.offering.name}`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
 
-            <div className="border-t pt-3">
-              <div className="flex items-center justify-between font-semibold">
+            <div className="space-y-1 border-t pt-3">
+              <div className="flex items-center justify-between text-lg font-bold">
                 <span>Total</span>
-                <span>₱{total().toFixed(2)}</span>
+                <span className="font-display text-primary">₱{total().toFixed(2)}</span>
               </div>
             </div>
             <CheckoutModal lines={lines} total={total()} isPending={checkout.isPending} onConfirm={handleCheckout} />

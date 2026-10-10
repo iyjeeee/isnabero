@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { LAST_OWNER_MESSAGE, normalizeBusinessName } from "./repository";
 import type {
+  BusinessView,
+  SaveBusinessSetupInput,
   CoreRepository,
   CreateEmployeeInput,
   UpdateEmployeeInput,
@@ -7,11 +10,59 @@ import type {
   EmployeeView,
   PaymentRecordView,
   ListPaymentRecordsOptions,
+  AuditLogEntry,
+  ListAuditLogOptions,
 } from "./repository";
-import type { ModuleKey } from "@/lib/module-registry";
+import { MODULE_REGISTRY, normalizeModules, type ModuleKey } from "@/lib/module-registry";
 
 export function createSupabaseCoreRepository(supabase: SupabaseClient): CoreRepository {
+  // assertNotLastOwner: throws if `employeeId` is currently the business's only owner
+  async function assertNotLastOwner(businessId: string, employeeId: string) {
+    const { data, error } = await supabase.from("employees").select("id").eq("business_id", businessId).eq("role", "owner");
+    if (error) throw error;
+    if ((data ?? []).length === 1 && data?.[0]?.id === employeeId) throw new Error(LAST_OWNER_MESSAGE);
+  }
+
+  const mapBusinessRow = (row: any): BusinessView => ({
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    setupCompletedAt: row.setup_completed_at ? new Date(row.setup_completed_at) : null,
+  });
+
   return {
+    async getBusiness(businessId): Promise<BusinessView> {
+      const { data, error } = await supabase.from("businesses").select("id, name, slug, setup_completed_at").eq("id", businessId).single();
+      if (error) throw error;
+      return mapBusinessRow(data);
+    },
+
+    async saveBusinessSetup(businessId, input: SaveBusinessSetupInput): Promise<BusinessView> {
+      const name = normalizeBusinessName(input.name);
+      const enabled = new Set(normalizeModules(input.enabledModules));
+
+      const { data: current, error: currentError } = await supabase.from("businesses").select("setup_completed_at").eq("id", businessId).single();
+      if (currentError) throw currentError;
+
+      // Modules first, the business row (which stamps completion) last: a partial failure leaves setup unfinished, so the wizard reappears
+      const { error: modulesError } = await supabase
+        .from("business_modules")
+        .upsert(
+          MODULE_REGISTRY.map((definition) => ({ business_id: businessId, module_key: definition.key, enabled: enabled.has(definition.key) })),
+          { onConflict: "business_id,module_key" },
+        );
+      if (modulesError) throw modulesError;
+
+      const { data, error } = await supabase
+        .from("businesses")
+        .update({ name, setup_completed_at: current?.setup_completed_at ?? new Date().toISOString() })
+        .eq("id", businessId)
+        .select("id, name, slug, setup_completed_at")
+        .single();
+      if (error) throw error;
+      return mapBusinessRow(data);
+    },
+
     async listEnabledModules(businessId): Promise<ModuleKey[]> {
       const { data, error } = await supabase
         .from("business_modules")
@@ -73,6 +124,7 @@ export function createSupabaseCoreRepository(supabase: SupabaseClient): CoreRepo
     },
 
     async updateEmployee(businessId, employeeId, input: UpdateEmployeeInput): Promise<EmployeeView> {
+      if (input.role !== "owner") await assertNotLastOwner(businessId, employeeId);
       const { data, error } = await supabase
         .from("employees")
         .update({ full_name: input.fullName, role: input.role })
@@ -85,8 +137,29 @@ export function createSupabaseCoreRepository(supabase: SupabaseClient): CoreRepo
     },
 
     async deleteEmployee(businessId, employeeId): Promise<void> {
+      await assertNotLastOwner(businessId, employeeId);
       const { error } = await supabase.from("employees").delete().eq("id", employeeId).eq("business_id", businessId);
       if (error) throw error;
+    },
+
+    async listAuditLog(businessId, options?: ListAuditLogOptions): Promise<AuditLogEntry[]> {
+      const { data, error } = await supabase
+        .from("audit_log")
+        .select("*")
+        .eq("business_id", businessId)
+        .order("created_at", { ascending: false })
+        .limit(options?.limit ?? 500);
+      if (error) throw error;
+      return (data ?? []).map((row) => ({
+        id: row.id,
+        actorId: row.actor_id,
+        actorName: row.actor_name,
+        action: row.action,
+        entityType: row.entity_type,
+        entityId: row.entity_id,
+        summary: row.summary,
+        createdAt: new Date(row.created_at),
+      }));
     },
 
     async getCurrentEmployee(businessId, userId): Promise<EmployeeView | null> {

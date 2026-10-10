@@ -37,6 +37,15 @@ function cutoffDate(days: number): Date {
   return cutoff;
 }
 
+// previousPeriodRange: the window immediately before the current one, same length — e.g. if the
+// current period is "last 14 days", this returns the 14 days before that, with no overlap.
+function previousPeriodRange(days: number): { start: Date; end: Date } {
+  const currentStart = cutoffDate(days);
+  const start = new Date(currentStart);
+  start.setDate(start.getDate() - days);
+  return { start, end: currentStart };
+}
+
 export const mockReportsRepository: ReportsRepository = {
   async getSalesReport(businessId, days = 14): Promise<SalesReportData> {
     await delay();
@@ -54,10 +63,16 @@ export const mockReportsRepository: ReportsRepository = {
 
     const totalRevenue = active.reduce((sum, record) => sum + Number(record.amount), 0);
 
+    const { start: prevStart, end: prevEnd } = previousPeriodRange(days);
+    const previousPeriodRevenue = mockDb.paymentRecords
+      .filter((record) => record.businessId === businessId && !record.voidedAt && record.createdAt >= prevStart && record.createdAt < prevEnd)
+      .reduce((sum, record) => sum + Number(record.amount), 0);
+
     return {
       dailyRevenue: buildDailySeries(days, revenueByDate),
       methodBreakdown: Array.from(revenueByMethod.entries()).map(([label, value]) => ({ label, value })),
       totalRevenue,
+      previousPeriodRevenue,
       transactionCount: active.length,
       averageSale: active.length > 0 ? totalRevenue / active.length : 0,
       voidedCount: inRange.length - active.length,
@@ -76,6 +91,9 @@ export const mockReportsRepository: ReportsRepository = {
       countByDate.set(key, (countByDate.get(key) ?? 0) + 1);
     }
 
+    const { start: prevStart, end: prevEnd } = previousPeriodRange(days);
+    const previousPeriodCount = businessBookings.filter((b) => b.startTime >= prevStart && b.startTime < prevEnd).length;
+
     const now = new Date();
     const upcomingCount = businessBookings.filter((b) => b.startTime >= now && (b.status === "pending" || b.status === "confirmed")).length;
     const completedCount = businessBookings.filter((b) => b.status === "completed").length;
@@ -92,6 +110,7 @@ export const mockReportsRepository: ReportsRepository = {
         { label: "Cancelled", value: cancelledCount },
       ],
       totalBookings: businessBookings.length,
+      previousPeriodCount,
       upcomingCount,
       completedCount,
       cancelledCount,

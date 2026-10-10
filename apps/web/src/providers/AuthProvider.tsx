@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { getDataSource, DEMO_OWNER_USER_ID } from "@isnabero/db";
+import { getDataSource, setAuditActor, DEMO_OWNER_USER_ID, DEMO_ADMIN_USER_ID, DEMO_STAFF_USER_ID } from "@isnabero/db";
 import { supabase } from "@/lib/supabase";
 import { getCoreRepository } from "@/lib/repositories/get-repository";
 import type { EmployeeView } from "@/lib/repositories/repository";
@@ -13,12 +13,25 @@ interface AuthUser {
 interface AuthContextValue {
   user: AuthUser | null;
   employee: EmployeeView | null;
-  loading: boolean;
+  loading: boolean; // auth session still resolving
+  employeeLoading: boolean; // employee row (role) still resolving for the current user + business
   isAuthenticated: boolean;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+// MOCK_SESSIONS: who the mock-mode session acts as; pick with VITE_MOCK_ROLE (default owner) to try role-gated UI locally
+const MOCK_SESSIONS = {
+  owner: { id: DEMO_OWNER_USER_ID, email: "owner@sample-business.test" },
+  admin: { id: DEMO_ADMIN_USER_ID, email: "admin@sample-business.test" },
+  staff: { id: DEMO_STAFF_USER_ID, email: "staff@sample-business.test" },
+} as const;
+
+function getMockSession(): AuthUser {
+  const role = import.meta.env.VITE_MOCK_ROLE;
+  return role === "admin" || role === "staff" ? MOCK_SESSIONS[role] : MOCK_SESSIONS.owner;
+}
 
 // AuthProvider: the single source of truth for "who is logged in" and "what's their role for this
 // business". In mock mode (default while building the frontend) it synthesizes a session for the
@@ -29,11 +42,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [employee, setEmployee] = useState<EmployeeView | null>(null);
   const [loading, setLoading] = useState(true);
+  // resolvedKey: which user+business the current `employee` value belongs to — employeeLoading is derived from it
+  // (not a separate flag) so there's no render where a signed-in user briefly looks like "no role"
+  const [resolvedKey, setResolvedKey] = useState<string | null>(null);
+  const employeeKey = user && businessId ? `${businessId}:${user.id}` : null;
+  const employeeLoading = employeeKey !== null && resolvedKey !== employeeKey;
 
   useEffect(() => {
     if (getDataSource() === "mock") {
-      // No real backend to check — always "logged in" as the seeded demo owner.
-      setUser({ id: DEMO_OWNER_USER_ID, email: "owner@sample-business.test" });
+      // No real backend to check — "logged in" as a seeded demo employee (owner unless VITE_MOCK_ROLE says otherwise).
+      setUser(getMockSession());
       setLoading(false);
       return;
     }
@@ -58,10 +76,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user || !businessId) {
       setEmployee(null);
+      setResolvedKey(null);
+      setAuditActor(null);
       return;
     }
-    const repository = getCoreRepository(supabase);
-    repository.getCurrentEmployee(businessId, user.id).then(setEmployee).catch(() => setEmployee(null));
+    let isCurrent = true; // ignore a stale response if user/business changed mid-request
+    const key = `${businessId}:${user.id}`;
+    const settle = (value: EmployeeView | null) => {
+      if (!isCurrent) return;
+      setEmployee(value);
+      setResolvedKey(key);
+      setAuditActor(value ? { id: value.id, name: value.fullName } : null); // mock-mode audit rows; Supabase triggers use auth.uid()
+    };
+    getCoreRepository(supabase).getCurrentEmployee(businessId, user.id).then(settle).catch(() => settle(null));
+    return () => {
+      isCurrent = false;
+    };
   }, [user, businessId]);
 
   const signOut = async () => {
@@ -72,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, employee, loading, isAuthenticated: Boolean(user), signOut }}>
+    <AuthContext.Provider value={{ user, employee, loading, employeeLoading, isAuthenticated: Boolean(user), signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -4,9 +4,12 @@ import { Users, ShieldCheck, UserCog, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useBusinessStore } from "@/stores/business-store";
 import { getCoreRepository } from "@/lib/repositories/get-repository";
-import { useHasRole } from "@/hooks/use-has-role";
+import { usePermission } from "@/hooks/use-permission";
+import { useAuth } from "@/providers/AuthProvider";
 import { usePagination } from "@/hooks/use-pagination";
 import { Card, CardContent, Badge, PageHeader, EmptyState, Skeleton, StatCard, FilterBar, Input, Pagination, cn } from "@isnabero/ui";
+import { ExportCsvButton } from "@/components/ExportCsvButton";
+import { employeeRows } from "@/lib/export-rows";
 import { AddEmployeeModal } from "@/components/employees/AddEmployeeModal";
 import { EditEmployeeModal } from "@/components/employees/EditEmployeeModal";
 import { DeleteEmployeeButton } from "@/components/employees/DeleteEmployeeButton";
@@ -25,7 +28,8 @@ export default function EmployeesPage() {
   const repository = getCoreRepository(supabase);
   // Managing staff (adding/editing/removing) is restricted to owner/admin — staff can view the list
   // but shouldn't be able to change who has access or what role they have.
-  const canManage = useHasRole(["owner", "admin"]);
+  const canManage = usePermission("employees.manage");
+  const { employee: currentEmployee } = useAuth(); // used to hide "delete" on your own row
 
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees", businessId],
@@ -55,7 +59,14 @@ export default function EmployeesPage() {
         icon={Users}
         title="Employees"
         description="Staff accounts and roles for this business."
-        action={canManage ? <AddEmployeeModal businessId={businessId} /> : undefined}
+        action={
+          canManage ? (
+            <div className="flex items-center gap-2">
+              <ExportCsvButton filenamePrefix="employees" disabled={filteredEmployees.length === 0} buildRows={() => employeeRows(filteredEmployees)} />
+              <AddEmployeeModal businessId={businessId} />
+            </div>
+          ) : undefined
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -134,7 +145,9 @@ export default function EmployeesPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
                           <EditEmployeeModal businessId={businessId} employee={employee} />
-                          <DeleteEmployeeButton businessId={businessId} employeeId={employee.id} employeeName={employee.fullName} />
+                          {employee.id !== currentEmployee?.id && (
+                            <DeleteEmployeeButton businessId={businessId} employeeId={employee.id} employeeName={employee.fullName} />
+                          )}
                         </div>
                       </td>
                     )}

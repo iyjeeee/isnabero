@@ -21,13 +21,15 @@ import { supabase } from "@/lib/supabase";
 import { useCreateEmployee } from "@/hooks/use-create-employee";
 import { useQueryClient } from "@tanstack/react-query";
 
-const employeeFormSchema = z.object({
-  fullName: z.string().min(1, "Name is required"),
-  email: z.string().email("Enter a valid email"),
+const baseEmployeeFields = {
+  fullName: z.string().trim().min(1, "Name is required"),
   role: z.enum(["owner", "admin", "staff"]),
-});
+};
+// Email is only used by the real invite flow (supabase mode); mock mode creates a local record without one
+const inviteFormSchema = z.object({ ...baseEmployeeFields, email: z.string().email("Enter a valid email") });
+const mockFormSchema = z.object({ ...baseEmployeeFields, email: z.string().optional() });
 
-type EmployeeFormValues = z.infer<typeof employeeFormSchema>;
+type EmployeeFormValues = z.infer<typeof inviteFormSchema>;
 
 interface AddEmployeeModalProps {
   businessId: string;
@@ -39,12 +41,12 @@ export function AddEmployeeModal({ businessId }: AddEmployeeModalProps) {
   const createEmployee = useCreateEmployee(businessId);
   const queryClient = useQueryClient();
 
+  const isSupabaseMode = getDataSource() === "supabase";
+
   const form = useForm<EmployeeFormValues>({
-    resolver: zodResolver(employeeFormSchema),
+    resolver: zodResolver(isSupabaseMode ? inviteFormSchema : mockFormSchema),
     defaultValues: { fullName: "", email: "", role: "staff" },
   });
-
-  const isSupabaseMode = getDataSource() === "supabase";
 
   const onSubmit = form.handleSubmit(async (values) => {
     if (isSupabaseMode) {
@@ -108,13 +110,15 @@ export function AddEmployeeModal({ businessId }: AddEmployeeModalProps) {
             )}
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="maria@example.com" {...form.register("email")} />
-            {form.formState.errors.email && (
-              <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
-            )}
-          </div>
+          {isSupabaseMode && (
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" placeholder="maria@example.com" {...form.register("email")} />
+              {form.formState.errors.email && (
+                <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
+              )}
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="role">Role</Label>

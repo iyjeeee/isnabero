@@ -34,6 +34,14 @@ function cutoffDate(days: number): Date {
   return cutoff;
 }
 
+// previousPeriodRange: the window immediately before the current one, same length — no overlap.
+function previousPeriodRange(days: number): { start: Date; end: Date } {
+  const currentStart = cutoffDate(days);
+  const start = new Date(currentStart);
+  start.setDate(start.getDate() - days);
+  return { start, end: currentStart };
+}
+
 export function createSupabaseReportsRepository(supabase: SupabaseClient): ReportsRepository {
   return {
     async getSalesReport(businessId, days = 14): Promise<SalesReportData> {
@@ -57,10 +65,23 @@ export function createSupabaseReportsRepository(supabase: SupabaseClient): Repor
       }
       const totalRevenue = active.reduce((sum: number, row: any) => sum + Number(row.amount), 0);
 
+      const { start: prevStart, end: prevEnd } = previousPeriodRange(days);
+      const { data: prevData, error: prevError } = await supabase
+        .from("payment_records")
+        .select("amount, voided_at")
+        .eq("business_id", businessId)
+        .gte("created_at", prevStart.toISOString())
+        .lt("created_at", prevEnd.toISOString());
+      if (prevError) throw prevError;
+      const previousPeriodRevenue = (prevData ?? [])
+        .filter((row: any) => !row.voided_at)
+        .reduce((sum: number, row: any) => sum + Number(row.amount), 0);
+
       return {
         dailyRevenue: buildDailySeries(days, revenueByDate),
         methodBreakdown: Array.from(revenueByMethod.entries()).map(([label, value]) => ({ label, value })),
         totalRevenue,
+        previousPeriodRevenue,
         transactionCount: active.length,
         averageSale: active.length > 0 ? totalRevenue / active.length : 0,
         voidedCount: rows.length - active.length,
@@ -84,6 +105,12 @@ export function createSupabaseReportsRepository(supabase: SupabaseClient): Repor
         countByDate.set(key, (countByDate.get(key) ?? 0) + 1);
       }
 
+      const { start: prevStart, end: prevEnd } = previousPeriodRange(days);
+      const previousPeriodCount = rows.filter((r: any) => {
+        const startTime = new Date(r.start_time);
+        return startTime >= prevStart && startTime < prevEnd;
+      }).length;
+
       const now = new Date();
       const upcomingCount = rows.filter((r: any) => new Date(r.start_time) >= now && (r.status === "pending" || r.status === "confirmed")).length;
       const completedCount = rows.filter((r: any) => r.status === "completed").length;
@@ -100,6 +127,7 @@ export function createSupabaseReportsRepository(supabase: SupabaseClient): Repor
           { label: "Cancelled", value: cancelledCount },
         ],
         totalBookings: rows.length,
+        previousPeriodCount,
         upcomingCount,
         completedCount,
         cancelledCount,

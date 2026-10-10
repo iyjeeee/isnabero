@@ -14,4 +14,7 @@ export * from "./components/confirm-dialog";
 export * from "./components/filter-bar";
 export * from "./components/action-icon-button";
 export * from "./components/pagination";
+export * from "./components/quantity-stepper";
+export * from "./components/trend-badge";
+export * from "./components/switch";
 export * from "./lib/utils";

@@ -1,5 +1,6 @@
-import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Wallet, Users, BarChart3, Store, ChevronsLeft, ChevronsRight, LogOut } from "lucide-react";
+import { useEffect } from "react";
+import { NavLink, useLocation } from "react-router-dom";
+import { LayoutDashboard, Wallet, Users, BarChart3, Settings, ScrollText, Store, ChevronsLeft, ChevronsRight, LogOut, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@isnabero/ui";
 import { getDataSource } from "@isnabero/db";
@@ -7,15 +8,21 @@ import { MODULE_REGISTRY } from "@/lib/module-registry";
 import { useBusinessModules } from "@/hooks/use-business-modules";
 import { useBusinessStore } from "@/stores/business-store";
 import { useSidebarStore } from "@/stores/sidebar-store";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { useAuth } from "@/providers/AuthProvider";
+import { useCan } from "@/hooks/use-permission";
+import type { Permission } from "@/lib/permissions";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-// CORE_NAV: never toggleable — every business gets these regardless of which modules are active
-const CORE_NAV = [
+// CORE_NAV: never toggleable — every business gets these regardless of which modules are active.
+// `permission` hides an entry from roles that lack it (see lib/permissions.ts).
+const CORE_NAV: Array<{ label: string; path: string; icon: React.ComponentType<{ className?: string }>; permission?: Permission }> = [
   { label: "Dashboard", path: "/app", icon: LayoutDashboard },
   { label: "Payment Records", path: "/app/payments", icon: Wallet },
   { label: "Employees", path: "/app/employees", icon: Users },
   { label: "Reports", path: "/app/reports", icon: BarChart3 },
+  { label: "Audit Log", path: "/app/audit", icon: ScrollText, permission: "audit.view" },
+  { label: "Business Setup", path: "/app/setup", icon: Settings, permission: "business.configure" },
 ];
 
 function NavItem({
@@ -23,17 +30,20 @@ function NavItem({
   path,
   icon: Icon,
   collapsed,
+  onNavigate,
 }: {
   label: string;
   path: string;
   icon: React.ComponentType<{ className?: string }>;
   collapsed: boolean;
+  onNavigate: () => void;
 }) {
   return (
     <NavLink
       to={path}
       end={path === "/app"}
       title={collapsed ? label : undefined}
+      onClick={onNavigate}
       className={({ isActive }) =>
         cn(
           "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
@@ -57,7 +67,24 @@ export function Sidebar() {
   const { data: enabledModules = [] } = useBusinessModules(businessId);
   const collapsed = useSidebarStore((state) => state.collapsed);
   const toggleCollapsed = useSidebarStore((state) => state.toggleCollapsed);
+  const mobileOpen = useSidebarStore((state) => state.mobileOpen);
+  const setMobileOpen = useSidebarStore((state) => state.setMobileOpen);
   const { signOut } = useAuth();
+  const can = useCan();
+  const location = useLocation();
+
+  // Desktop = persistent, collapsible panel. Mobile = off-canvas drawer, either fully open or fully
+  // closed — "collapsed" (icon-only) is a desktop-only concept, so it's ignored entirely on mobile even
+  // if the preference is persisted from a previous desktop session.
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const effectiveCollapsed = collapsed && isDesktop;
+
+  // Auto-close the mobile drawer on every navigation — standard drawer UX, otherwise it stays open
+  // covering the page after tapping a link.
+  useEffect(() => {
+    setMobileOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   const handleSignOut = async () => {
     if (getDataSource() !== "supabase") {
@@ -67,69 +94,104 @@ export function Sidebar() {
     await signOut();
   };
 
-  // Only show modules that are BOTH registered in code AND toggled on for this business
-  const activeModules = MODULE_REGISTRY.filter((module) => enabledModules.includes(module.key));
+  // Only show modules that are registered in code, toggled on for this business, AND allowed for the current role
+  const activeModules = MODULE_REGISTRY.filter((module) => enabledModules.includes(module.key) && (!module.permission || can(module.permission)));
+  const visibleCoreNav = CORE_NAV.filter((item) => !item.permission || can(item.permission));
 
   return (
-    <aside
-      className={cn(
-        "flex h-full shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200",
-        collapsed ? "w-16" : "w-64",
-      )}
-    >
-      <div className={cn("flex items-center gap-3 border-b border-sidebar-border px-4 py-5", collapsed && "justify-center px-2")}>
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-card">
-          <Store className="h-4 w-4" />
-        </div>
-        {!collapsed && (
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-sidebar-muted">Isnabero</p>
-            <p className="truncate font-display text-sm font-semibold">{businessName ?? "Select a business"}</p>
-          </div>
+    <>
+      {/* Backdrop — mobile only, closes the drawer on tap. Always in the DOM (simpler than conditional
+          mounting) but invisible/non-interactive unless the drawer is open, and never shown on desktop. */}
+      <div
+        onClick={() => setMobileOpen(false)}
+        aria-hidden="true"
+        className={cn(
+          "fixed inset-0 z-40 bg-black/50 transition-opacity duration-200 md:hidden",
+          mobileOpen ? "opacity-100" : "pointer-events-none opacity-0",
         )}
-      </div>
+      />
 
-      <nav className={cn("flex-1 space-y-6 overflow-y-auto p-3", collapsed && "px-2")}>
-        <div className="space-y-1">
-          {!collapsed && <p className="px-3 text-xs font-semibold uppercase tracking-wide text-sidebar-muted">Core</p>}
-          {CORE_NAV.map((item) => (
-            <NavItem key={item.path} {...item} collapsed={collapsed} />
-          ))}
-        </div>
-
-        <div className="space-y-1">
-          {!collapsed && <p className="px-3 text-xs font-semibold uppercase tracking-wide text-sidebar-muted">Modules</p>}
-          {!collapsed && activeModules.length === 0 && (
-            <p className="px-3 text-sm text-sidebar-muted">No modules enabled yet.</p>
+      <aside
+        className={cn(
+          "flex flex-col bg-sidebar text-sidebar-foreground transition-[transform,width] duration-200",
+          // Mobile: fixed off-canvas drawer, slides in/out
+          "fixed inset-y-0 left-0 z-50 w-72",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+          // Desktop: back in normal flow, always visible, width driven by `collapsed`
+          "md:static md:z-auto md:h-full md:shrink-0 md:translate-x-0",
+          effectiveCollapsed ? "md:w-16" : "md:w-64",
+        )}
+      >
+        <div className={cn("flex items-center gap-3 border-b border-sidebar-border px-4 py-5", effectiveCollapsed && "justify-center px-2")}>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-card">
+            <Store className="h-4 w-4" />
+          </div>
+          {!effectiveCollapsed && (
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-sidebar-muted">Isnabero</p>
+              <p className="truncate font-display text-sm font-semibold">{businessName ?? "Select a business"}</p>
+            </div>
           )}
-          {activeModules.map((item) => (
-            <NavItem key={item.path} label={item.label} path={item.path} icon={item.icon} collapsed={collapsed} />
-          ))}
-        </div>
-      </nav>
-
-      <div className={cn("flex items-center border-t border-sidebar-border px-4 py-3", collapsed ? "flex-col gap-2 px-2" : "justify-between")}>
-        {!collapsed && <span className="text-xs text-sidebar-muted">Theme</span>}
-        <div className="flex items-center gap-1">
-          <ThemeToggle />
+          {/* Close button — mobile drawer only */}
           <button
-            onClick={handleSignOut}
-            title="Sign out"
-            className="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close menu"
+            className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground md:hidden"
           >
-            <LogOut className="h-4 w-4" />
+            <X className="h-4 w-4" />
           </button>
         </div>
-      </div>
 
-      <button
-        onClick={toggleCollapsed}
-        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="flex items-center justify-center gap-2 border-t border-sidebar-border py-2.5 text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-      >
-        {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
-        {!collapsed && <span className="text-xs font-medium">Collapse</span>}
-      </button>
-    </aside>
+        <nav className={cn("flex-1 space-y-6 overflow-y-auto p-3", effectiveCollapsed && "px-2")}>
+          <div className="space-y-1">
+            {!effectiveCollapsed && <p className="px-3 text-xs font-semibold uppercase tracking-wide text-sidebar-muted">Core</p>}
+            {visibleCoreNav.map((item) => (
+              <NavItem key={item.path} {...item} collapsed={effectiveCollapsed} onNavigate={() => setMobileOpen(false)} />
+            ))}
+          </div>
+
+          <div className="space-y-1">
+            {!effectiveCollapsed && <p className="px-3 text-xs font-semibold uppercase tracking-wide text-sidebar-muted">Modules</p>}
+            {!effectiveCollapsed && activeModules.length === 0 && (
+              <p className="px-3 text-sm text-sidebar-muted">No modules enabled yet.</p>
+            )}
+            {activeModules.map((item) => (
+              <NavItem
+                key={item.path}
+                label={item.label}
+                path={item.path}
+                icon={item.icon}
+                collapsed={effectiveCollapsed}
+                onNavigate={() => setMobileOpen(false)}
+              />
+            ))}
+          </div>
+        </nav>
+
+        <div className={cn("flex items-center border-t border-sidebar-border px-4 py-3", effectiveCollapsed ? "flex-col gap-2 px-2" : "justify-between")}>
+          {!effectiveCollapsed && <span className="text-xs text-sidebar-muted">Theme</span>}
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <button
+              onClick={handleSignOut}
+              title="Sign out"
+              className="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Collapse toggle — desktop only; collapsing to icon-only doesn't apply to the mobile drawer */}
+        <button
+          onClick={toggleCollapsed}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="hidden items-center justify-center gap-2 border-t border-sidebar-border py-2.5 text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground md:flex"
+        >
+          {effectiveCollapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+          {!effectiveCollapsed && <span className="text-xs font-medium">Collapse</span>}
+        </button>
+      </aside>
+    </>
   );
 }

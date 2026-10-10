@@ -9,6 +9,7 @@ import type {
   posOrders,
   posOrderItems,
   bookings,
+  expenses,
 } from "../schema";
 
 // DEMO_BUSINESS_ID matches supabase/seed.sql exactly, so switching VITE_DATA_SOURCE between
@@ -17,6 +18,9 @@ export const DEMO_BUSINESS_ID = "00000000-0000-0000-0000-000000000001";
 // DEMO_OWNER_USER_ID: stable (not random) so AuthProvider's mock-mode session can reference the same
 // "logged in as" identity across reloads — matches the seeded owner employee's userId below.
 export const DEMO_OWNER_USER_ID = "00000000-0000-0000-0000-00000000000e";
+// Stable ids for the seeded admin/staff employees (same values as supabase/seed.sql) so the mock session can act as them
+export const DEMO_ADMIN_USER_ID = "00000000-0000-0000-0000-000000000210";
+export const DEMO_STAFF_USER_ID = "00000000-0000-0000-0000-000000000211";
 
 type Business = InferSelectModel<typeof businesses>;
 type BusinessModule = InferSelectModel<typeof businessModules>;
@@ -27,6 +31,7 @@ type OfferingInclusion = InferSelectModel<typeof offeringInclusions>;
 type PosOrder = InferSelectModel<typeof posOrders>;
 type PosOrderItem = InferSelectModel<typeof posOrderItems>;
 type Booking = InferSelectModel<typeof bookings>;
+type Expense = InferSelectModel<typeof expenses>;
 
 // genId: lightweight id generator — crypto.randomUUID is available in both browser and Node 20+
 function genId(): string {
@@ -59,21 +64,22 @@ const intBetween = (min: number, max: number) => Math.floor(rng() * (max - min +
 // --- Core rows -------------------------------------------------------------------------------
 
 const businessesSeed: Business[] = [
-  { id: DEMO_BUSINESS_ID, name: "Sample Business", slug: "sample-business", createdAt: new Date() },
+  { id: DEMO_BUSINESS_ID, name: "Sample Business", slug: "sample-business", createdAt: new Date(), setupCompletedAt: new Date("2026-01-15") }, // demo counts as already set up
 ];
 
 const businessModulesSeed: BusinessModule[] = [
   { id: genId(), businessId: DEMO_BUSINESS_ID, moduleKey: "catalog", enabled: true, createdAt: new Date() },
   { id: genId(), businessId: DEMO_BUSINESS_ID, moduleKey: "pos", enabled: true, createdAt: new Date() },
   { id: genId(), businessId: DEMO_BUSINESS_ID, moduleKey: "booking", enabled: true, createdAt: new Date() },
+  { id: genId(), businessId: DEMO_BUSINESS_ID, moduleKey: "expenses", enabled: true, createdAt: new Date() },
 ];
 
 // Four employees across all three roles, so role-based UI (badges, gated actions) has real variety
 // to render instead of a single owner row.
 const employeesSeed: Employee[] = [
   { id: genId(), businessId: DEMO_BUSINESS_ID, userId: DEMO_OWNER_USER_ID, fullName: "Juan Dela Cruz", role: "owner", createdAt: new Date("2026-01-15") },
-  { id: genId(), businessId: DEMO_BUSINESS_ID, userId: genId(), fullName: "Maria Santos", role: "admin", createdAt: new Date("2026-02-03") },
-  { id: genId(), businessId: DEMO_BUSINESS_ID, userId: genId(), fullName: "Pedro Reyes", role: "staff", createdAt: new Date("2026-03-10") },
+  { id: genId(), businessId: DEMO_BUSINESS_ID, userId: DEMO_ADMIN_USER_ID, fullName: "Maria Santos", role: "admin", createdAt: new Date("2026-02-03") },
+  { id: genId(), businessId: DEMO_BUSINESS_ID, userId: DEMO_STAFF_USER_ID, fullName: "Pedro Reyes", role: "staff", createdAt: new Date("2026-03-10") },
   { id: genId(), businessId: DEMO_BUSINESS_ID, userId: genId(), fullName: "Ana Lopez", role: "staff", createdAt: new Date("2026-04-22") },
 ];
 
@@ -222,6 +228,43 @@ for (let daysAhead = 1; daysAhead <= 5; daysAhead++) {
   }
 }
 
+// --- Expenses, generated AFTER everything above so the earlier seeded sales/bookings stay identical ---------
+// Recurring monthly bills for the last 3 months + weekly supplies, plus one voided duplicate so "Show voided" has something to show.
+const expensesSeed: Expense[] = [];
+const ymd = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const addExpense = (date: Date, category: Expense["category"], description: string, amount: number, method: Expense["method"], voided = false) => {
+  if (date > today) return; // never seed a future-dated expense
+  expensesSeed.push({
+    id: genId(),
+    businessId: DEMO_BUSINESS_ID,
+    category,
+    description,
+    amount: amount.toFixed(2),
+    expenseDate: ymd(date),
+    method,
+    notes: null,
+    recordedBy: employeesSeed[0]!.id,
+    voidedAt: voided ? new Date(date) : null,
+    createdAt: new Date(date),
+  });
+};
+for (let monthOffset = 0; monthOffset >= -2; monthOffset--) {
+  const monthDay = (day: number) => new Date(today.getFullYear(), today.getMonth() + monthOffset, day);
+  addExpense(monthDay(1), "rent", "Monthly rent", 15000, "bank_transfer");
+  addExpense(monthDay(5), "utilities", "Electricity bill", intBetween(2800, 4800), "gcash");
+  addExpense(monthDay(8), "utilities", "Water bill", intBetween(400, 900), "cash");
+  addExpense(monthDay(15), "salaries", "Staff salaries", 18000, "bank_transfer");
+}
+for (let weeksAgo = 0; weeksAgo < 8; weeksAgo++) {
+  const day = new Date(today);
+  day.setDate(day.getDate() - 1 - weeksAgo * 7);
+  addExpense(day, "supplies", pick(["Ingredients restock", "Packaging and cups", "Cleaning supplies", "Printer paper and ink"]), intBetween(1200, 3800), pick(["cash", "gcash"] as const));
+}
+const permitDay = new Date(today);
+permitDay.setDate(permitDay.getDate() - 3);
+addExpense(permitDay, "other", "Permit renewal fee", 1500, "cash");
+addExpense(permitDay, "other", "Permit renewal fee (duplicate entry)", 1500, "cash", true);
+
 // mockDb: plain mutable in-memory tables. Fine for dev-only mock data — components stay reactive via
 // React Query cache invalidation in each repository's mutations, not via any reactivity in this store.
 export const mockDb = {
@@ -234,6 +277,7 @@ export const mockDb = {
   posOrders: posOrdersSeed,
   posOrderItems: posOrderItemsSeed,
   bookings: bookingsSeed,
+  expenses: expensesSeed,
 };
 
 export { genId };

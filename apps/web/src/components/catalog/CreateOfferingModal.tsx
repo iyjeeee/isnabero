@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -19,19 +18,7 @@ import {
 } from "@isnabero/ui";
 import { useCreateOfferingWithInclusions } from "@isnabero/module-catalog";
 import { supabase } from "@/lib/supabase";
-
-// offeringFormSchema: validates the Add Offering form — inclusions are only meaningful for bundles,
-// so they're always optional at the schema level and just hidden in the UI for item/addon types.
-const offeringFormSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
-  type: z.enum(["item", "bundle", "addon"]),
-  price: z.coerce.number().min(0, "Price must be 0 or more"),
-  durationMinutes: z.coerce.number().int().min(0).optional(),
-  inclusions: z.array(z.object({ label: z.string().min(1, "Inclusion label is required"), quantity: z.coerce.number().int().min(0).optional() })),
-});
-
-type OfferingFormValues = z.infer<typeof offeringFormSchema>;
+import { offeringFormSchema, type OfferingFormValues } from "./offering-form-schema";
 
 interface CreateOfferingModalProps {
   businessId: string;

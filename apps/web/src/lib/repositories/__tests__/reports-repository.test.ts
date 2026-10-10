@@ -37,6 +37,31 @@ describe("mockReportsRepository.getSalesReport", () => {
     const report = await mockReportsRepository.getSalesReport(DEMO_BUSINESS_ID, 7);
     expect(report.dailyRevenue).toHaveLength(7);
   });
+
+  it("computes previousPeriodRevenue from the window immediately before the current one, without it leaking into totalRevenue", async () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(12, 0, 0, 0);
+
+    const before = await mockReportsRepository.getSalesReport(DEMO_BUSINESS_ID, 1);
+
+    mockDb.paymentRecords.push({
+      id: "report-test-previous-period",
+      businessId: DEMO_BUSINESS_ID,
+      sourceModule: "pos",
+      method: "cash",
+      referenceCode: null,
+      amount: "321.00",
+      createdAt: yesterday,
+      voidedAt: null,
+    });
+
+    // days=1 means "today only" — the record we just added (yesterday) should land in the previous
+    // period's total, and NOT affect today's totalRevenue at all.
+    const after = await mockReportsRepository.getSalesReport(DEMO_BUSINESS_ID, 1);
+    expect(after.previousPeriodRevenue).toBe(before.previousPeriodRevenue + 321);
+    expect(after.totalRevenue).toBe(before.totalRevenue);
+  });
 });
 
 describe("mockReportsRepository.getBookingReport", () => {
@@ -45,6 +70,32 @@ describe("mockReportsRepository.getBookingReport", () => {
     const totalFromBreakdown = report.statusBreakdown.reduce((sum, slice) => sum + slice.value, 0);
     expect(totalFromBreakdown).toBeGreaterThan(0);
     expect(report.statusBreakdown.map((s) => s.label)).toEqual(["Pending", "Confirmed", "Completed", "Cancelled"]);
+  });
+
+  it("computes previousPeriodCount from bookings in the window immediately before the current one", async () => {
+    const bundleOffering = mockDb.offerings.find((o) => o.businessId === DEMO_BUSINESS_ID && o.durationMinutes)!;
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    twoDaysAgo.setHours(12, 0, 0, 0);
+
+    const before = await mockReportsRepository.getBookingReport(DEMO_BUSINESS_ID, 2);
+
+    mockDb.bookings.push({
+      id: "report-test-prev-booking",
+      businessId: DEMO_BUSINESS_ID,
+      offeringId: bundleOffering.id,
+      mode: "appointment",
+      customerName: "Previous Period Test",
+      customerContact: null,
+      startTime: twoDaysAgo,
+      endTime: new Date(twoDaysAgo.getTime() + 30 * 60000),
+      status: "completed",
+      paymentRecordId: null,
+      createdAt: twoDaysAgo,
+    });
+
+    const after = await mockReportsRepository.getBookingReport(DEMO_BUSINESS_ID, 2);
+    expect(after.previousPeriodCount).toBe(before.previousPeriodCount + 1);
   });
 });
 

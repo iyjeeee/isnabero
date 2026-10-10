@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Wallet, Receipt, TrendingUp, Search, Download } from "lucide-react";
+import { Wallet, Receipt, TrendingUp, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useBusinessStore } from "@/stores/business-store";
 import { getCoreRepository } from "@/lib/repositories/get-repository";
-import { useHasRole } from "@/hooks/use-has-role";
+import { usePermission } from "@/hooks/use-permission";
 import { usePagination } from "@/hooks/use-pagination";
-import { exportToCsv } from "@/lib/export-csv";
-import { Card, CardContent, Badge, PageHeader, EmptyState, Skeleton, StatCard, FilterBar, Input, Button, Pagination, cn } from "@isnabero/ui";
+import { paymentRows } from "@/lib/export-rows";
+import { Card, CardContent, Badge, PageHeader, EmptyState, Skeleton, StatCard, FilterBar, Input, Pagination, cn } from "@isnabero/ui";
+import { ExportCsvButton } from "@/components/ExportCsvButton";
 import { VoidPaymentRecordButton } from "@/components/payments/VoidPaymentRecordButton";
 
 const METHOD_BADGE_VARIANT = { cash: "success", gcash: "info", bank_transfer: "default", other: "secondary" } as const;
@@ -23,7 +24,7 @@ const PAGE_SIZE = 10;
 export default function PaymentsPage() {
   const businessId = useBusinessStore((state) => state.businessId) ?? "";
   const repository = getCoreRepository(supabase);
-  const canManage = useHasRole(["owner", "admin"]);
+  const canManage = usePermission("payments.void");
 
   const [showVoided, setShowVoided] = useState(false);
 
@@ -54,20 +55,6 @@ export default function PaymentsPage() {
   const totalAmount = activeRecords.reduce((sum, record) => sum + record.amount, 0);
   const averageAmount = activeRecords.length > 0 ? totalAmount / activeRecords.length : 0;
 
-  const handleExport = () => {
-    exportToCsv(
-      `payment-records-${new Date().toISOString().slice(0, 10)}.csv`,
-      filteredRecords.map((record) => ({
-        Date: record.createdAt.toISOString(),
-        Source: record.sourceModule,
-        Method: record.method,
-        Reference: record.referenceCode ?? "",
-        Amount: record.amount,
-        Status: record.voidedAt ? "Voided" : "Active",
-      })),
-    );
-  };
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -75,10 +62,7 @@ export default function PaymentsPage() {
         title="Payment Records"
         description="Every transaction, regardless of which module created it."
         action={
-          <Button variant="outline" onClick={handleExport} disabled={filteredRecords.length === 0}>
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button>
+          <ExportCsvButton filenamePrefix="payment-records" withDateRange hint="Uses the method filter and search currently applied." disabled={filteredRecords.length === 0} buildRows={(range) => paymentRows(filteredRecords, range)} />
         }
       />
 
@@ -88,34 +72,34 @@ export default function PaymentsPage() {
         <StatCard label="Average Transaction" value={`₱${averageAmount.toFixed(2)}`} icon={TrendingUp} accent="info" isLoading={isLoading} />
       </div>
 
-      {records.length > 0 && (
+      {/* Always rendered: the "Show voided" toggle lives here, so hiding the bar when every record is voided
+          would leave no way to bring them back. */}
         <FilterBar>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex gap-1 overflow-x-auto rounded-lg border bg-background p-1">
-              {METHOD_TABS.map((tab) => (
-                <button
-                  key={tab.value}
-                  onClick={() => setMethodFilter(tab.value)}
-                  className={cn(
-                    "shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                    methodFilter === tab.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
-                  )}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <input type="checkbox" checked={showVoided} onChange={(event) => setShowVoided(event.target.checked)} className="h-4 w-4 rounded border-input" />
-              Show voided
-            </label>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex gap-1 overflow-x-auto rounded-lg border bg-background p-1">
+            {METHOD_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setMethodFilter(tab.value)}
+                className={cn(
+                  "shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  methodFilter === tab.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
-          <div className="relative w-full sm:w-64">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search reference or source…" value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
-          </div>
-        </FilterBar>
-      )}
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input type="checkbox" checked={showVoided} onChange={(event) => setShowVoided(event.target.checked)} className="h-4 w-4 rounded border-input" />
+            Show voided
+          </label>
+        </div>
+        <div className="relative w-full sm:w-64">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Search reference or source…" value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
+        </div>
+      </FilterBar>
 
       <Card>
         <CardContent className="p-0">

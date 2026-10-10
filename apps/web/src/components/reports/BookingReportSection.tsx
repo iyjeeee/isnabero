@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { CalendarClock, CalendarCheck2, CalendarX2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, Skeleton } from "@isnabero/ui";
+import { CalendarClock, CalendarCheck2, CalendarX2, CalendarDays } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, Skeleton, TrendBadge } from "@isnabero/ui";
 import { supabase } from "@/lib/supabase";
 import { getReportsRepository } from "@/lib/repositories/get-reports-repository";
 import { CHART_COLORS, STATUS_COLORS } from "@/lib/chart-colors";
+import { computePercentChange } from "@/lib/percent-change";
 
 interface BookingReportSectionProps {
   businessId: string;
@@ -31,7 +32,21 @@ export function BookingReportSection({ businessId }: BookingReportSectionProps) 
         {isLoading && <Skeleton className="h-64 w-full" />}
         {!isLoading && data && (
           <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="flex items-center gap-3 rounded-lg border p-3">
+                <CalendarDays className="h-4 w-4 text-primary" />
+                <div>
+                  <p className="text-xs text-muted-foreground">This Period</p>
+                  <p className="font-semibold">{data.dailyBookings.reduce((sum, point) => sum + point.value, 0)}</p>
+                  <TrendBadge
+                    percentChange={computePercentChange(
+                      data.dailyBookings.reduce((sum, point) => sum + point.value, 0),
+                      data.previousPeriodCount,
+                    )}
+                    className="mt-0.5"
+                  />
+                </div>
+              </div>
               <div className="flex items-center gap-3 rounded-lg border p-3">
                 <CalendarClock className="h-4 w-4 text-info" />
                 <div>

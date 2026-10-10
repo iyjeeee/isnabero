@@ -1,4 +1,4 @@
-import { mockDb, delay, genId } from "@isnabero/db";
+import { mockDb, delay, genId, recordAudit, auditPeso } from "@isnabero/db";
 import type { CatalogRepository, CreateOfferingInput } from "./repository";
 import type { OfferingWithInclusions } from "./types";
 
@@ -38,12 +38,16 @@ export const mockCatalogRepository: CatalogRepository = {
     }));
     mockDb.offeringInclusions.push(...inclusions);
 
+    recordAudit({ businessId, action: "offering.created", entityId: offering.id, summary: `Added ${offering.type} "${offering.name}" at ${auditPeso(offering.price)}` });
     return { ...offering, inclusions } as OfferingWithInclusions;
   },
 
   async toggleAvailability(offeringId, isAvailable) {
     await delay(150);
     const offering = mockDb.offerings.find((item) => item.id === offeringId);
-    if (offering) offering.isAvailable = isAvailable;
+    if (offering && offering.isAvailable !== isAvailable) {
+      offering.isAvailable = isAvailable;
+      recordAudit({ businessId: offering.businessId, action: "offering.availability_changed", entityId: offering.id, summary: `Marked "${offering.name}" ${isAvailable ? "available" : "sold out"}` });
+    }
   },
 };

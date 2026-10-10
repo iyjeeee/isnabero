@@ -1,10 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { TrendingUp, Wallet, Receipt, Ban } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, Skeleton } from "@isnabero/ui";
+import { Card, CardContent, CardHeader, CardTitle, Skeleton, TrendBadge } from "@isnabero/ui";
 import { supabase } from "@/lib/supabase";
 import { getReportsRepository } from "@/lib/repositories/get-reports-repository";
 import { CHART_COLORS, METHOD_COLORS } from "@/lib/chart-colors";
+import { ExportCsvButton } from "@/components/ExportCsvButton";
+import { salesReportRows } from "@/lib/export-rows";
+import { computePercentChange } from "@/lib/percent-change";
 
 interface SalesReportSectionProps {
   businessId: string;
@@ -20,12 +23,13 @@ export function SalesReportSection({ businessId }: SalesReportSectionProps) {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2 text-base">
           <TrendingUp className="h-4 w-4 text-primary" />
           Sales Report
           <span className="text-sm font-normal text-muted-foreground">— last 14 days</span>
         </CardTitle>
+        <ExportCsvButton filenamePrefix="sales-report" disabled={!data} buildRows={() => salesReportRows(data?.dailyRevenue ?? [])} />
       </CardHeader>
       <CardContent className="space-y-6">
         {isLoading && <Skeleton className="h-64 w-full" />}
@@ -37,6 +41,7 @@ export function SalesReportSection({ businessId }: SalesReportSectionProps) {
                 <div>
                   <p className="text-xs text-muted-foreground">Total Revenue</p>
                   <p className="font-semibold">₱{data.totalRevenue.toFixed(2)}</p>
+                  <TrendBadge percentChange={computePercentChange(data.totalRevenue, data.previousPeriodRevenue)} className="mt-0.5" />
                 </div>
               </div>
               <div className="flex items-center gap-3 rounded-lg border p-3">

@@ -1,6 +1,7 @@
-import { mockDb, delay, genId } from "@isnabero/db";
+import { mockDb, delay, genId, recordAudit } from "@isnabero/db";
 import type { BookingRepository, CreateBookingInput } from "./repository";
 import type { BookingWithOffering } from "./types";
+import { BookingConflictError, assertValidRange, blocksSlot, rangesOverlap } from "./overlap";
 
 function withOffering(booking: (typeof mockDb.bookings)[number]): BookingWithOffering {
   const offering = mockDb.offerings.find((item) => item.id === booking.offeringId);
@@ -22,6 +23,12 @@ export const mockBookingRepository: BookingRepository = {
 
   async createBooking(businessId, input: CreateBookingInput) {
     await delay(400);
+    const range = { startTime: new Date(input.startTime as unknown as string | Date), endTime: new Date(input.endTime as unknown as string | Date) };
+    assertValidRange(range);
+    const conflict = mockDb.bookings.find(
+      (existing) => existing.businessId === businessId && blocksSlot(existing.status) && rangesOverlap(existing, range),
+    );
+    if (conflict) throw new BookingConflictError(conflict);
     const booking = {
       id: genId(),
       businessId,
@@ -29,13 +36,15 @@ export const mockBookingRepository: BookingRepository = {
       mode: input.mode ?? "appointment",
       customerName: input.customerName,
       customerContact: input.customerContact ?? null,
-      startTime: new Date(input.startTime as unknown as string | Date),
-      endTime: new Date(input.endTime as unknown as string | Date),
+      startTime: range.startTime,
+      endTime: range.endTime,
       status: "pending" as const,
       paymentRecordId: input.paymentRecordId ?? null,
       createdAt: new Date(),
     };
     mockDb.bookings.push(booking);
-    return withOffering(booking);
+    const created = withOffering(booking);
+    recordAudit({ businessId, action: "booking.created", entityId: booking.id, summary: `Booked ${created.offering.name} for ${booking.customerName}` });
+    return created;
   },
 };

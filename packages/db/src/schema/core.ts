@@ -22,6 +22,7 @@ export const businesses = pgTable("businesses", {
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(), // used for tenant lookup / future public storefront URLs
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  setupCompletedAt: timestamp("setup_completed_at", { withTimezone: true }), // null = first-run setup wizard not finished yet
 });
 
 // business_modules: which sidebar modules are enabled per business — this table drives the dynamic sidebar

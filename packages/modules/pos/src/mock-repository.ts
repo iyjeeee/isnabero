@@ -1,4 +1,4 @@
-import { mockDb, delay, genId } from "@isnabero/db";
+import { mockDb, delay, genId, recordAudit, auditPeso } from "@isnabero/db";
 import type { CheckoutInput, CheckoutResult, PosRepository } from "./repository";
 
 export const mockPosRepository: PosRepository = {
@@ -39,6 +39,7 @@ export const mockPosRepository: PosRepository = {
       })),
     );
 
+    recordAudit({ businessId, action: "sale.completed", entityId: order.id, summary: `Sale of ${auditPeso(total)} paid by ${method}` });
     return { orderId: order.id, total };
   },
 };

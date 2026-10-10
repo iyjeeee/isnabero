@@ -1,5 +1,6 @@
 export * from "./schema";
 export * from "./data-source";
+export * from "./audit";
 export * from "./mock";
 // NOTE: createDb/Database (packages/db/src/client.ts) is intentionally NOT re-exported here.
 // It wraps the "postgres" npm package, which uses Node builtins (fs, net, perf_hooks, etc.) that

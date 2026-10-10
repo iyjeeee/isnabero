@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { mockCatalogRepository } from "../mock-repository";
-import { DEMO_BUSINESS_ID } from "@isnabero/db";
+import { DEMO_BUSINESS_ID, auditRows } from "@isnabero/db";
 
 describe("mockCatalogRepository", () => {
   it("lists the seeded offerings for the demo business", async () => {
@@ -44,5 +44,20 @@ describe("mockCatalogRepository", () => {
     const afterToggle = await mockCatalogRepository.listOfferings(DEMO_BUSINESS_ID);
     const toggled = afterToggle.find((offering) => offering.id === created.id);
     expect(toggled?.isAvailable).toBe(false);
+  });
+});
+
+describe("catalog audit trail", () => {
+  it("logs a new offering and only real availability changes", async () => {
+    const created = await mockCatalogRepository.createOfferingWithInclusions(DEMO_BUSINESS_ID, {
+      offering: { name: "Audit Item", type: "item", price: "12.50", isAvailable: true } as never,
+      inclusions: [],
+    });
+    await mockCatalogRepository.toggleAvailability(created.id, true); // already available: no entry
+    await mockCatalogRepository.toggleAvailability(created.id, false);
+    const rows = auditRows.filter((row) => row.entityId === created.id);
+    expect(rows.map((row) => row.action)).toEqual(["offering.created", "offering.availability_changed"]);
+    expect(rows[0]?.summary).toBe('Added item "Audit Item" at ₱12.50');
+    expect(rows[1]?.summary).toBe('Marked "Audit Item" sold out');
   });
 });

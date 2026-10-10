@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { mockPosRepository } from "../mock-repository";
-import { mockDb, DEMO_BUSINESS_ID } from "@isnabero/db";
+import { mockDb, DEMO_BUSINESS_ID, auditRows } from "@isnabero/db";
 import type { CartLine } from "../types";
 
 function makeCartLine(overrides: Partial<CartLine["offering"]> = {}, quantity = 1): CartLine {
@@ -51,5 +51,13 @@ describe("mockPosRepository.checkout", () => {
     const items = mockDb.posOrderItems.filter((item) => item.orderId === result.orderId);
     expect(items).toHaveLength(2);
     expect(items.reduce((sum, item) => sum + item.quantity, 0)).toBe(5);
+  });
+});
+
+describe("mockPosRepository audit trail", () => {
+  it("logs a completed sale with its total and payment method", async () => {
+    const { orderId } = await mockPosRepository.checkout({ businessId: DEMO_BUSINESS_ID, employeeId: null, lines: [makeCartLine({ price: "25.00" }, 2)], method: "gcash" });
+    const entry = auditRows.find((row) => row.entityId === orderId);
+    expect(entry).toMatchObject({ action: "sale.completed", entityType: "sale", summary: "Sale of ₱50.00 paid by gcash" });
   });
 });

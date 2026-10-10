@@ -339,9 +339,10 @@ asking for a fresh upload if no recent upload exists in the sandbox at all.
   has no real backend to verify against. Mock-mode paths (which is
   everything reachable in local dev without live infra) were verified via
   Playwright.
-- **Role enforcement** (recommendation #2) — `useHasRole(['owner',
-  'admin'])` (`apps/web/src/hooks/use-has-role.ts`) gates management
-  actions. Employees page: Add/Edit/Delete only render for owner/admin
+- **Role enforcement** (recommendation #2) — originally `useHasRole`; since
+  Round 17 replaced by the central permission map (`lib/permissions.ts`) +
+  `useCan` / `usePermission` (`hooks/use-permission.ts`) — see Round 17.
+  Gates management actions. Employees page: Add/Edit/Delete only render for owner/admin
   (staff can view the list but not manage it). Payments page: the Actions
   column (void) only renders for owner/admin.
 - **Pagination** (recommendation #3) — new `Pagination` component
@@ -458,7 +459,7 @@ deliver a ready-to-extract ZIP with only changed/created files.
   this to decide which repository implementation to use.
 - `src/mock/store.ts` — `mockDb`: shared in-memory tables (businesses,
   businessModules, employees, paymentRecords, offerings, offeringInclusions,
-  posOrders, posOrderItems, bookings), seeded to match `supabase/seed.sql`.
+  posOrders, posOrderItems, bookings, expenses), seeded to match `supabase/seed.sql`.
   `DEMO_BUSINESS_ID` (exported here) is the one hardcoded UUID used
   everywhere a "current business" default is needed. Also exports `genId()`
   and `delay()` helpers used by every mock-repository.
@@ -478,6 +479,15 @@ deliver a ready-to-extract ZIP with only changed/created files.
   checkout/order-history work.
 - `src/schema/booking.ts` — `bookings` (slots against offerings),
   `bookingStatusEnum`, `bookingModeEnum`. Include for booking/calendar work.
+- `src/schema/expenses.ts` — `expenses` + `expenseCategoryEnum`. Include for
+  expense work.
+- `src/schema/audit.ts` — `auditLog` (append-only; actor name snapshot, action,
+  entityType, entityId without FK, summary).
+- `src/audit.ts` — `AUDIT_ACTIONS` (the closed list of audited events with
+  entity + label), `getAuditActionLabel`, `auditPeso`. Triggers (0005) and
+  mock repositories must use these exact action names/wording.
+- `src/mock/audit.ts` — mock-mode logging: `setAuditActor` (set by
+  AuthProvider), `recordAudit`, `auditRows` (kept out of `mockDb` on purpose).
 - `src/schema/index.ts` — barrel re-exporting all schema files.
 
 ### Supabase — `supabase/`
@@ -489,9 +499,12 @@ deliver a ready-to-extract ZIP with only changed/created files.
   their data" issues. NOTE: drizzle-kit will generate `0000_*.sql` (the
   actual `CREATE TABLE` statements) once `pnpm db:generate` is run against a
   live DB connection — that file does not exist yet in this scaffold.
-- `seed.sql` — demo business ("Demo Cafe") with catalog/pos/booking enabled
-  and two sample offerings, auto-applied on `supabase db reset`. Safe to
-  edit/clear.
+- `migrations/0002`–`0005` — void payment records; booking no-overlap;
+  roles + expenses RLS (Round 17, re-shipped in Round 19 with payment-void and
+  employee policies); audit log triggers (Round 19).
+- `seed.sql` — demo business ("Sample Business", already set up) with
+  catalog/pos/booking/expenses enabled, 7 offerings, 4 employees; auto-applied on `supabase db reset`. Does
+  NOT replicate the mock store's 21-day generated history. Safe to edit/clear.
 
 ### Shared UI — `packages/ui`
 - `package.json` — cva, clsx, tailwind-merge, lucide-react, radix-slot,
@@ -508,8 +521,6 @@ deliver a ready-to-extract ZIP with only changed/created files.
   of custom hover classes for any clickable tile.
 - `src/components/dialog.tsx` — Radix-based `Dialog`, `DialogContent`,
   `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`.
-  `DialogContent` has `max-h-[85vh] overflow-y-auto` so long dialogs
-  scroll internally instead of overflowing off-screen — don't remove this.
   Include when building any modal.
 - `src/components/input.tsx` — styled `Input`. Include for any form field.
 - `src/components/textarea.tsx` — styled `Textarea`.
@@ -538,7 +549,13 @@ deliver a ready-to-extract ZIP with only changed/created files.
 - `src/components/filter-bar.tsx` — `FilterBar`: bordered container for
   grouping search inputs + filter tabs above a list/table/grid. Use on any
   page with search/filter controls instead of a bare flex row.
+- `src/components/trend-badge.tsx` — `TrendBadge`: up/down % vs previous
+  period (null = neutral "No data" text). Used by Sales/Booking reports.
+- `src/components/quantity-stepper.tsx`, `action-icon-button.tsx`,
+  `pagination.tsx` — shared stepper, edit/delete table action button, pager.
 - `src/index.ts` — package entry, re-exports all components + `cn`.
+  **Every new component file MUST be added here** (a missing export crashes
+  the importing page at runtime).
 
 ### Design Tokens — `packages/config`
 - `tailwind.preset.js` — shared Tailwind theme extension: color tokens
@@ -610,7 +627,30 @@ deliver a ready-to-extract ZIP with only changed/created files.
   read and on write).
 - `src/get-repository.ts` — `getBookingRepository(supabase)` factory.
 - `src/hooks.ts` — `useBookings` (date-range list), `useCreateBooking`.
-- `src/index.ts` — module entry.
+- `src/overlap.ts` — the no-overlap rule: `rangesOverlap` (half-open
+  [start, end)), `blocksSlot` (cancelled doesn't block), `assertValidRange`,
+  `BookingConflictError` (user-facing message naming the clashing booking).
+  Used by BOTH repositories — never duplicate the rule elsewhere.
+- `src/index.ts` — module entry (also exports `overlap.ts`).
+
+### Module: Expenses — `packages/modules/expenses`
+- `package.json` — `@isnabero/module-expenses`; same deps as the other modules.
+- `src/categories.ts` — fixed `EXPENSE_CATEGORIES` (rent, utilities, supplies,
+  salaries, other), `getExpenseCategoryLabel`. A test checks it equals
+  `expenseCategoryEnum` in `packages/db`.
+- `src/types.ts` — `Expense` (amount as number, `expenseDate` as YYYY-MM-DD),
+  `CreateExpenseInput`, `ListExpensesOptions`.
+- `src/validation.ts` — `normalizeExpenseInput` (used by BOTH repositories):
+  category/method valid, trimmed description ≤120, notes ≤500, amount rounded
+  to cents and ≥0.01 ≤9,999,999.99, real calendar date, not in the future.
+  Also `todayYmd()`.
+- `src/repository.ts` — `ExpensesRepository`: `listExpenses`, `createExpense`,
+  `voidExpense` (deliberately no update/delete — financial history).
+- `src/mock-repository.ts`, `src/supabase-repository.ts` (explicit row
+  mapper), `src/get-repository.ts`, `src/hooks.ts` (`useExpenses`,
+  `useCreateExpense`, `useVoidExpense`; query key `["expenses", businessId,
+  includeVoided]`), `src/index.ts`.
+- `src/__tests__/mock-repository.test.ts` — 15 tests.
 
 ### Web App — `apps/web`
 - `package.json` — all app-level deps (react-router, react-hook-form, zod,
@@ -619,6 +659,7 @@ deliver a ready-to-extract ZIP with only changed/created files.
 - `tailwind.config.cjs` — extends `packages/config` preset, sets content
   globs (app src + `packages/ui`). NOTE: `.cjs` extension required because
   `package.json` has `"type": "module"`.
+- `eslint.config.js` — flat ESLint config (see "Code-quality fixes" round).
 - `postcss.config.cjs` — Tailwind + autoprefixer. Same `.cjs` note applies.
 - `tsconfig.json` — extends root base, sets `@/*` path alias.
 - `index.html` — Vite entry HTML.
@@ -650,9 +691,17 @@ deliver a ready-to-extract ZIP with only changed/created files.
   throws on an empty string) — only warns if `VITE_DATA_SOURCE=supabase`
   and real env vars are actually missing.
 - `src/lib/module-registry.ts` — **`MODULE_REGISTRY`**: the code-side list
-  of modules with sidebar label/path/icon. `ModuleKey` type must stay in
-  sync with `moduleKeyEnum` in `packages/db/src/schema/core.ts`. Include
-  whenever adding, renaming, or reordering a sidebar module entry.
+  of modules (catalog, pos, booking, expenses) with `label`, `description`
+  (shown in the setup wizard), `path`, `icon`, optional `requires` (POS and
+  Booking need Catalog) and optional `permission` (role gate for sidebar
+  entry + route). Also exports `getModuleDefinition`, `normalizeModules`
+  (adds required modules) and `dependentsOf`. `ModuleKey` must stay in sync
+  with `moduleKeyEnum` in `packages/db/src/schema/core.ts` (a test checks it).
+  Include whenever adding, renaming, or reordering a module.
+- `src/lib/permissions.ts` — **`PERMISSIONS`**: the one role→permission map
+  (`business.configure` owner; `employees.manage`, `payments.void`,
+  `expenses.view`, `expenses.manage`, `audit.view` owner+admin), `hasPermission`. The
+  database RLS in migration 0004 mirrors it — change both together.
 - `src/lib/repositories/repository.ts` — `CoreRepository` interface for
   everything always-on (not a toggleable module): `listEnabledModules`,
   `listPaymentRecords`, `listEmployees`, `createEmployee`,
@@ -695,10 +744,17 @@ deliver a ready-to-extract ZIP with only changed/created files.
 - `src/hooks/use-delete-employee.ts` — `useDeleteEmployee(businessId)`:
   calls `CoreRepository.deleteEmployee`, invalidates employees list +
   dashboard stats.
-- `src/hooks/use-delete-payment-record.ts` —
-  `useDeletePaymentRecord(businessId)`: calls
-  `CoreRepository.deletePaymentRecord`, invalidates payment records +
-  dashboard stats.
+- `src/hooks/use-void-payment-record.ts` — `useVoidPaymentRecord(businessId)`:
+  calls `CoreRepository.voidPaymentRecord` (soft delete), invalidates payment
+  records + dashboard stats.
+- `src/hooks/use-permission.ts` — `useCan()` (checker; denies while auth or
+  the employee role is still loading) and `usePermission(p)`. Replaced the
+  deleted `use-has-role.ts`.
+- `src/hooks/use-business.ts`, `use-save-business-setup.ts` — business row
+  query and the setup-wizard save mutation.
+- `src/hooks/use-pagination.ts` — `usePagination(items, pageSize)`.
+- `src/hooks/use-media-query.ts` — `useMediaQuery(query)`; drives the sidebar's
+  desktop-panel vs mobile-drawer behavior.
 
 **`src/components/` — Reusable Feature Components**
 - `src/components/catalog/CreateOfferingModal.tsx` — "Add offering" form
@@ -706,6 +762,10 @@ deliver a ready-to-extract ZIP with only changed/created files.
   dynamic bundle inclusions list (shown only when type = bundle). Shows a
   success toast on save. Include when changing what fields an offering can
   have.
+- `src/components/catalog/offering-form-schema.ts` — `offeringFormSchema` +
+  `OfferingFormValues`, split out of the modal so it is unit-tested. Blank
+  Duration / inclusion Qty become `undefined` (→ null), NOT 0; duration and qty
+  must be positive whole numbers. Tests: `__tests__/offering-form-schema.test.ts`.
 - `src/components/pos/CheckoutModal.tsx` — payment method selector (cash/
   GCash/bank transfer/other) with conditional reference-code field. Include
   when changing checkout/payment-method behavior.
@@ -714,20 +774,27 @@ deliver a ready-to-extract ZIP with only changed/created files.
   customer name, start time. Lives in Booking's `PageHeader` action slot,
   replacing what used to be an always-visible inline form.
 - `src/components/employees/AddEmployeeModal.tsx` — "Add employee" form
-  (react-hook-form + zod): full name + role select. Dialog description
-  explicitly notes the placeholder-userId limitation to the person using
-  it. Shows a success toast on save.
+  (react-hook-form + zod): full name + role select. Email field and email
+  validation exist ONLY in supabase mode (real invite); mock mode creates a
+  local record without an email. Shows a success toast on save.
 - `src/components/employees/EditEmployeeModal.tsx` — pencil-icon trigger,
   pre-filled name/role form, calls `useUpdateEmployee`. Lives in the
   Employees table's Actions column.
 - `src/components/employees/DeleteEmployeeButton.tsx` — trash-icon trigger
   + `ConfirmDialog`, calls `useDeleteEmployee`. Lives in the Employees
   table's Actions column.
-- `src/components/payments/DeletePaymentRecordButton.tsx` — trash-icon
-  trigger + `ConfirmDialog` with an explicit warning that deleting a
-  transaction does NOT reverse the linked order/booking. Lives in the
-  Payments table's Actions column (Payments deliberately has no Edit — see
-  Section 1 note).
+- `src/components/payments/VoidPaymentRecordButton.tsx` — `Ban`-icon trigger +
+  `ConfirmDialog`; voids (soft-deletes) a record, does NOT reverse the linked
+  order/booking. Lives in the Payments Actions column (no Edit, deliberately).
+- `src/components/reports/{Sales,Booking,Catalog}ReportSection.tsx` — the three
+  Reports sections (recharts); Sales/Booking use `TrendBadge` +
+  `computePercentChange` for period-over-period comparison.
+- `src/components/ErrorBoundary.tsx` — class error boundary wrapping the route
+  `<Outlet>` in `AppLayout` (keyed on pathname, so navigating away clears it):
+  a crashing page shows an "Something went wrong" card + Try again while the
+  sidebar stays usable.
+- `src/components/PageFallback.tsx` — shared "Loading…" Suspense fallback
+  (App.tsx for /login, AppLayout for pages).
 - `src/components/ThemeToggle.tsx` — sun/moon icon button, calls
   `useThemeStore`. Lives in the Sidebar footer.
 
@@ -743,7 +810,9 @@ deliver a ready-to-extract ZIP with only changed/created files.
 - `src/layouts/AppLayout.tsx` — Sidebar + fluid-width content container
   (`px-6 lg:px-10 xl:px-14`, NO max-width cap — was `max-w-6xl`, removed
   because it wasted horizontal space on wide screens) with a fade-in
-  animation + `<Outlet>` wrapper for all authenticated routes.
+  animation + `<ErrorBoundary>` + `<Suspense>` + `<Outlet>` wrapper for all
+  authenticated routes (Suspense lives here so the sidebar stays mounted while
+  a lazy page chunk loads).
 
 **`src/pages/` — Screens**
 - `src/pages/DashboardPage.tsx` — `PageHeader` + `StatCard` grid, plus
@@ -754,8 +823,8 @@ deliver a ready-to-extract ZIP with only changed/created files.
   `CoreRepository.listPaymentRecords`).
 - `src/pages/PaymentsPage.tsx` — 3-stat summary row + `FilterBar` (search
   reference/source + method-filter tabs) + payment ledger table with an
-  **Actions column (Delete only via `DeletePaymentRecordButton`** — no
-  Edit, deliberately). Method column uses color-coded `Badge`; skeleton
+  **Actions column (Void only via `VoidPaymentRecordButton`**, owner/admin
+  only — no Edit, deliberately), "Show voided" checkbox, pagination, CSV export. Method column uses color-coded `Badge`; skeleton
   rows while loading; `EmptyState` for both "no data" and "no filter
   matches". Always-on, not a module page.
 - `src/pages/EmployeesPage.tsx` — 3-stat summary row + `FilterBar` (search
@@ -763,10 +832,12 @@ deliver a ready-to-extract ZIP with only changed/created files.
   `EditEmployeeModal`, `Delete` via `DeleteEmployeeButton`). Role column
   uses color-coded `Badge`; skeleton rows; `EmptyState` for both empty and
   no-matches states. `AddEmployeeModal` in the `PageHeader` action slot.
-- `src/pages/ReportsPage.tsx` — `PageHeader` + a preview grid of "Coming
-  soon" report cards, one per enabled module (`UPCOMING_REPORTS` array
-  filtered by `useBusinessModules`); intended to become a framework where
-  each module registers its own real report widget later.
+- `src/pages/ReportsPage.tsx` — `PageHeader` + the Sales/Booking/Catalog
+  report sections, rendered per enabled module (lazy-loaded; owns the recharts
+  chunk).
+- `src/lib/percent-change.ts` — `computePercentChange(current, previous)`;
+  returns null when previous is 0 (no baseline). Tested in
+  `src/lib/__tests__/percent-change.test.ts`.
 - `src/pages/CatalogPage.tsx` — `FilterBar` (search + type-filter tabs:
   All/Items/Bundles/Add-ons) above an offering grid (`Card interactive`)
   with type `Badge`, price, inclusions list, available/sold-out `Badge` +
@@ -778,7 +849,9 @@ deliver a ready-to-extract ZIP with only changed/created files.
   remove-line-item button + `CheckoutModal`. Skeleton grid while loading,
   `EmptyState` when no offerings are available. Shows a toast on completed
   sale.
-- `src/pages/BookingPage.tsx` — 3-stat summary row + `NewBookingModal` in
+- `src/pages/BookingPage.tsx` — window is today through the next 30 days
+  (`UPCOMING_DAYS`), each card shows a date label for non-today bookings;
+  "Today's Bookings" counts only today's. 3-stat summary row + `NewBookingModal` in
   the `PageHeader` action slot (replaced the old always-visible inline
   form) + `FilterBar` (search by customer name) + full-width bookings list
   (icon-labeled `Card interactive` rows). Skeleton rows while loading,
@@ -848,72 +921,7 @@ page's "Coming soon" placeholder cards into real, working reports.
   transactions, ₱18,713 total) to confirm the expanded seed data flows
   through every page that reads it.
 
-**Sidebar/scroll layout bug fix + dialog overflow fix + dead code cleanup
-(bug-fix round):** The person found a real bug via screenshot: when a
-page's content was taller than the viewport, the whole browser document
-scrolled instead of just the content area, and since the sidebar isn't
-fixed/sticky, it scrolled away too — leaving blank white space where it
-used to be.
-
-- **Root cause**: `AppLayout.tsx`'s outer container used `min-h-screen`
-  (can grow beyond viewport height) instead of `h-screen overflow-hidden`
-  (fixed at exactly viewport height). `main`'s `overflow-y-auto` can only
-  create its own internal scroll region if its parent is height-
-  constrained — with `min-h-screen`, the parent just kept growing instead,
-  so the browser's own document scrolled rather than `main`. **Fixed** by
-  changing the outer container to `h-screen overflow-hidden` — this is
-  the standard, correct pattern for "persistent sidebar + scrollable
-  content area" layouts. Also changed `Sidebar.tsx`'s `aside` from an
-  independent `h-screen` to `h-full`, so it fills its now-constrained
-  parent rather than assuming the parent always equals the viewport.
-  **The code comment in `AppLayout.tsx` explicitly says not to revert this
-  to `min-h-screen`** — read it before touching this file's layout classes.
-- **Proactively found and fixed the same class of bug elsewhere**: while
-  double-checking, found `DialogContent` (`packages/ui/src/components/
-  dialog.tsx`) had the identical missing-height-constraint problem — a
-  dialog with enough content (e.g., adding several bundle inclusions in
-  Create Offering) could grow taller than the viewport with literally no
-  way to scroll down to reach the Save button. Fixed by adding
-  `max-h-[85vh] overflow-y-auto` to `DialogContent` — every dialog in the
-  app now scrolls internally instead of ever overflowing off-screen. This
-  wasn't reported by the person — caught during the "double-check
-  everything" pass they asked for.
-- **Dead code removed**: `apps/web/src/components/payments/
-  DeletePaymentRecordButton.tsx` and `apps/web/src/hooks/
-  use-delete-payment-record.ts` — leftover from before payment deletion
-  was changed to voiding (soft delete) several rounds back. Confirmed
-  nothing referenced them before deleting.
-- **Verified thoroughly, not just by reasoning about the CSS**: rendered
-  the actual built app in a 1400×500px viewport (deliberately short, to
-  force the exact overflow scenario from the bug report) and confirmed via
-  JS evaluation that `document.scrollHeight === document.clientHeight`
-  (zero outer scroll exists at all now), that the sidebar's bounding box
-  never moves regardless of scroll attempts, and that `main.scrollTop`
-  correctly changes when scrolling — i.e., `main` is the one actually
-  scrolling internally, exactly as intended. Also took a screenshot
-  confirming this visually. Same double-check pass also functionally
-  verified two things that were only reasoned-about (not click-tested) in
-  the previous round: **pagination** (clicking Next actually changes the
-  displayed rows) and **CSV export** (a real file downloads, with correct
-  filename, headers, and all 27 records present) — both confirmed working.
-  Also confirmed the dialog fix directly: added 8 inclusion rows to a
-  bundle offering and confirmed the Save button stayed reachable (dialog
-  capped at 850px within a 1000px viewport). All 18 tests still pass,
-  typecheck and build both clean.
-
-### New/Changed Files This Round (bug fixes)
-- `apps/web/src/layouts/AppLayout.tsx` — outer container `min-h-screen` →
-  `h-screen overflow-hidden`. Read the code comment before changing this.
-- `apps/web/src/layouts/Sidebar.tsx` — `aside` height class `h-screen` →
-  `h-full`.
-- `packages/ui/src/components/dialog.tsx` — `DialogContent` gained
-  `max-h-[85vh] overflow-y-auto`.
-- **Removed** (dead code): `apps/web/src/components/payments/
-  DeletePaymentRecordButton.tsx`, `apps/web/src/hooks/
-  use-delete-payment-record.ts`.
-
 ### New/Changed Files This Round (seed data + reports)
-
 - `packages/db/src/mock/store.ts` — completely rewritten with the
   deterministic-PRNG generator described above. If touching seed data
   again, edit the `offeringsSeed`/`employeesSeed` arrays for static data,
@@ -949,13 +957,14 @@ used to be.
   "Showing X-Y of Z" control.
 - `apps/web/src/hooks/use-pagination.ts` — `usePagination(items, pageSize)`
   client-side pagination hook.
-- `apps/web/src/lib/export-csv.ts` — `exportToCsv(filename, rows)`,
-  dependency-free CSV download utility.
+- `apps/web/src/lib/export-csv.ts` — `buildCsv(rows)` (pure, tested in
+  `lib/__tests__/export-csv.test.ts`) + `exportToCsv(filename, rows)` download.
+  Text cells starting with `= + - @` get a leading `'` (formula-injection
+  guard); numbers untouched.
 - `apps/web/src/providers/AuthProvider.tsx` — auth context (mock-mode
   synthetic session vs. real Supabase auth). Wraps the whole app in
   `App.tsx`.
-- `apps/web/src/hooks/use-has-role.ts` — `useHasRole(allowedRoles)` role
-  gate, reads from `AuthProvider`.
+- (`use-has-role.ts` was deleted in Round 17 — see `use-permission.ts`.)
 - `apps/web/src/components/ProtectedRoute.tsx` — redirects to `/login` if
   unauthenticated (never fires in mock mode).
 - `apps/web/src/pages/LoginPage.tsx` — real Supabase email/password
@@ -983,8 +992,288 @@ used to be.
   chunk — see the code comment for why splitting React-dependent libs
   (tried once, reverted) breaks the app at runtime with a circular chunk.
 
+### Round: Dashboard / Catalog / POS visual redesign
+Request: these three pages were "plain and simple" — wanted more modern, clean,
+aesthetic, visually appealing, and user-friendly. Approach: extend existing
+design-system primitives (shared `packages/ui` components, existing shadow/
+animation tokens in `tailwind.preset.js`) rather than one-off page styles, so
+the same visual language (gradient icon tiles, type-accent tints) now shows up
+consistently everywhere those components are used, not just on these 3 pages.
+
+- `packages/ui/src/components/stat-card.tsx` — icon tile upgraded from a flat
+  tint to a soft diagonal gradient (`bg-gradient-to-br` + `ring-1`) with a
+  hover scale; value now uses `font-display`; added optional `helpText` slot
+  for a secondary line under the value. Backward compatible — this
+  automatically improves every page that already uses `StatCard`
+  (Dashboard, Payments, Booking, Employees), not just Dashboard.
+- `packages/ui/src/components/quantity-stepper.tsx` — new shared `+`/`-`
+  quantity control (`QuantityStepper`), exported from `packages/ui/src/
+  index.ts`. Replaces the raw number `<Input>` for cart-line quantity in POS;
+  reusable anywhere else a line-item count needs editing later (Booking,
+  Inventory).
+- `apps/web/src/pages/DashboardPage.tsx` — greeting-based description
+  ("Good morning/afternoon/evening — …"); Quick Actions rewritten as tinted
+  icon-tile rows (success/info/default accents matching each module) instead
+  of a plain bordered list; Getting Started now shows an actual progress bar
+  (`width: ${percent}%`) above the checklist plus a success banner when
+  complete; Recent Activity rows get a per-source icon circle (POS → cart
+  icon, Booking → calendar icon) instead of bare text.
+- `apps/web/src/pages/CatalogPage.tsx` — offering cards now lead with a
+  type-accent icon tile (Box/Layers/PlusCircle for item/bundle/addon, same
+  tint mapping as POS below); price promoted to a bold `font-display` primary-
+  colored figure; inclusions changed from a bullet `<ul>` to wrapped pill
+  chips; sold-out cards are dimmed (`opacity-70`) for an at-a-glance scan;
+  card footer (availability badge + toggle button) pinned to the bottom via
+  `mt-auto` so cards of uneven height still align.
+- `apps/web/src/pages/PosPage.tsx` — item tiles now show the same type-accent
+  icon tile as Catalog so an item's visual identity is consistent between the
+  two screens; cart panel is `sticky top-6` so it stays in view while
+  scrolling a long item grid; cart lines use the new `QuantityStepper`
+  instead of a raw number input; added an item-count `Badge` next to "Current
+  Sale"; empty cart now uses `EmptyState` instead of a plain paragraph; total
+  enlarged to `text-lg font-bold` with the figure in `font-display` primary
+  color to match Catalog's price treatment.
+- Verified: `pnpm turbo run typecheck build test` all green; also rendered
+  the built app with Playwright (light + dark, Dashboard/Catalog/POS, plus
+  POS with items added to cart to confirm the stepper) — no layout breaks,
+  dark mode gradients/tints hold up.
+- Cleanup applied this round (carried over from a prior round's instruction
+  that hadn't actually been executed yet): deleted the stale
+  `apps/web/src/components/payments/DeletePaymentRecordButton.tsx` and
+  `apps/web/src/hooks/use-delete-payment-record.ts` — both referenced the
+  removed `deletePaymentRecord` repository method and were failing
+  `typecheck`; `VoidPaymentRecordButton`/`use-void-payment-record` (soft-
+  delete) are the only ones in use.
+
+### New Files This Round
+- `packages/ui/src/components/quantity-stepper.tsx` — `QuantityStepper`,
+  exported from `packages/ui/src/index.ts`.
+
+### Deleted Files This Round
+- `apps/web/src/components/payments/DeletePaymentRecordButton.tsx`
+- `apps/web/src/hooks/use-delete-payment-record.ts`
+(ZIPs can't represent deletions — if applying this round's delta onto a copy
+that still has these two files, delete them manually; they're dead code
+referencing a removed repository method and will fail typecheck otherwise.)
+
+### Round: Reports crash fix (TrendBadge export)
+- **Root cause:** `packages/ui/src/index.ts` never exported `trend-badge.tsx`,
+  so `SalesReportSection`/`BookingReportSection` failed at module load
+  ("does not provide an export named 'TrendBadge'"), crashing the Reports
+  route. Fix: added `export * from "./components/trend-badge";`.
+- `apps/web/src/main.tsx` — `BrowserRouter` now sets `future` flags
+  `v7_startTransition` + `v7_relativeSplatPath` (silences React Router v7
+  warnings; no behavior change in current routes).
+- Doc corrections: removed stale references to the deleted
+  `DeletePaymentRecordButton`/`use-delete-payment-record`, "Coming soon"
+  Reports, "Demo Cafe" seed; added TrendBadge/percent-change/use-media-query.
+- Test count is now 25 (catalog 4, pos 3, booking 2, web 16).
+
+### Round: Code-quality fixes
+- **Per-package typecheck:** `"typecheck": "tsc --noEmit"` added to
+  `packages/db`, `packages/ui`, and `packages/modules/{catalog,pos,booking}`
+  `package.json`. `pnpm typecheck` (turbo) now checks all 6 packages
+  independently, not just what `apps/web` imports.
+- **ESLint:** new `apps/web/eslint.config.js` (flat config: `@eslint/js` +
+  `typescript-eslint` recommended + `react-hooks` rules; ignores `dist` and
+  `*.config.*`; `no-explicit-any` is off ONLY for
+  `src/lib/repositories/supabase-*.ts` row mappers). Dev deps added to
+  `apps/web/package.json`: `eslint@9`, `@eslint/js`, `typescript-eslint`,
+  `eslint-plugin-react-hooks`, `globals`. `pnpm lint` passes with zero warnings
+  (`--max-warnings 0`); confirmed it flags a deliberate unused variable.
+  Run `pnpm install` after extracting (lockfile changed).
+- **Global mutation error toasts:** `apps/web/src/main.tsx` builds the
+  `QueryClient` with a `MutationCache.onError` that shows `toast.error` for any
+  failed mutation (reads `.message` structurally because PostgREST errors are
+  plain objects). Do NOT add per-call error toasts for mutations — it would
+  double-toast; use per-call `onError` only for custom behavior.
+- **POS cashier:** `PosPage.tsx` now passes `employee?.id ?? null` (from
+  `useAuth()`) as `employeeId` in checkout, instead of always `null`.
+- **Known open items (deferred):** see the "Bug-fix sweep" round below.
+
+### Round: Bug-fix sweep
+User direction: fix all errors first → then add the remaining roadmap
+features → then a dedicated visual/design pass. Supabase mode stays LAST.
+Bugs found by reading every page/component, each fixed and verified (unit
+test and/or real-browser click-through):
+1. **Add offering saved blank Duration/Qty as 0** (`z.coerce.number()` turns
+   `""` into 0) → `offering-form-schema.ts` (see components list).
+2. **POS: clearing the quantity box deleted the cart line** (stepper min was
+   0) → `PosPage` passes `min={1}`; removal is the X button.
+3. **POS: Checkout button stayed clickable during a pending sale (duplicate
+   sale risk)** → `CheckoutModal` trigger disabled while `isPending`.
+4. **Payments: filter bar (with "Show voided") was hidden when no active
+   records, so voided ones couldn't be revealed** → bar always renders.
+5. **Booking showed today only, so a booking for tomorrow vanished after
+   creation** → today + 30 days with date labels; customer name is trimmed.
+6. **Employees: last owner could be deleted/demoted** → `LAST_OWNER_MESSAGE`
+   + guard in BOTH `mock-repository.ts` and `supabase-repository.ts`
+   (`updateEmployee`/`deleteEmployee` throw; surfaced by the global mutation
+   toast). Delete button hidden on your own row. Test added.
+7. **CSV export formula injection** → see export-csv entry.
+8. **No error boundary / whole layout replaced while a page chunk loaded** →
+   `ErrorBoundary` + Suspense moved into `AppLayout`.
+- Tests: 34 total (catalog 4, pos 3, booking 2, web 25).
+- **Still open (deliberately deferred):** Supabase mode readiness (RLS write
+  policies for employees/offering_inclusions/pos_order_items/payment_records
+  update, missing 0000 migration, business resolution after login, first-owner
+  bootstrap, edge-function caller auth) — LAST step; Reports fetch whole
+  tables in Supabase mode (needs SQL views/RPC). Feature gaps (not bugs):
+  booking status can't be changed after creation (always "pending"), no
+  edit/delete for offerings or bookings. (Booking overlap rule: resolved in
+  the next round.)
+
+### Round: Booking no-overlap rule
+**Business rule (decided by the user): two bookings can't share a time slot.**
+Scope = the whole business (one bookable resource). Back-to-back is allowed
+(end == next start); cancelled bookings free their slot.
+- `packages/modules/booking/src/overlap.ts` (new) — shared helpers + 
+  `BookingConflictError` (see Module: Booking).
+- `mock-repository.ts` / `supabase-repository.ts` `createBooking` — validate
+  the range, reject conflicts. Supabase also pre-checks with a query (friendly
+  message) and maps DB error `23P01` (exclusion_violation) to
+  `BookingConflictError` for the race case.
+- `supabase/migrations/0003_booking_no_overlap.sql` (new) — `btree_gist`,
+  `bookings_valid_range` CHECK (end > start) and `bookings_no_overlap`
+  EXCLUDE constraint (business_id =, tstzrange(start,end) &&, where status <>
+  'cancelled'). Apply order: 0000 (drizzle-generated) → 0001 → 0002 → 0003.
+  **Verified against a real Postgres 16** (overlap rejected, back-to-back OK,
+  other business unaffected, cancelled doesn't block, bad range rejected);
+  NOT yet run through Supabase CLI / the app in supabase mode.
+- UI: no component change needed — the global mutation error toast shows the
+  conflict message and `NewBookingModal` stays open so the time can be
+  changed. Verified in a real browser (overlap rejected, +20 min accepted).
+- Tests: booking tests moved to far-future dates (2031/2032) so they can't
+  collide with seeded bookings; 4 overlap tests added. Total **38** tests
+  (catalog 4, pos 3, booking 6, web 25).
+- Seed note: the mock seed creates ≤1 short booking/day, so it never
+  self-overlaps. If seed generation changes, keep that true.
+- Still open: booking status can't be changed after creation; no
+  edit/delete for offerings or bookings; Supabase-mode readiness (LAST).
+
+### Round 17: RBAC, setup wizard, expenses
+**RBAC.** `lib/permissions.ts` (map above) → `hooks/use-permission.ts` →
+`components/RouteGuard.tsx` (`permission?`, `moduleKey?`; permission checked
+first, then a "module is turned off" screen linking owners to Business Setup).
+Sidebar items and Dashboard quick actions are filtered by permission.
+`PaymentsPage` uses `payments.void`, `EmployeesPage` uses `employees.manage`.
+`business.configure` is owner-only (admin can't run setup) — one-line change.
+Mock role switch: `VITE_MOCK_ROLE=owner|admin|staff` (mock mode only; typed in
+`vite-env.d.ts`, documented in `.env.example`). `AuthProvider` derives
+`employeeLoading` from a resolved user+business key (no "no role" flash) and
+guards stale employee responses. `packages/db/src/mock/store.ts` exports
+`DEMO_ADMIN_USER_ID` / `DEMO_STAFF_USER_ID` (match `supabase/seed.sql`).
+**Setup wizard.** `businesses.setup_completed_at` (nullable; the demo business
+is seeded as already set up). `pages/SetupPage.tsx` + `components/setup/`
+(`SetupWizard` 3 steps Business → Modules → Review, `SetupSteps`,
+`ModuleToggleList`; `Switch` added to `packages/ui` and exported).
+`components/SetupGate.tsx` redirects an owner of a not-yet-set-up business to
+`/app/setup` (setup route sits outside the gate). `CoreRepository` gained
+`getBusiness` and `saveBusinessSetup` (rename, set every module's enabled flag,
+stamp `setupCompletedAt` first time only; POS/Booking pull in Catalog).
+Dashboard checklist step 1 = "Finish business setup". Sidebar has "Business
+Setup" (owner).
+**Expenses.** Schema `packages/db/src/schema/expenses.ts` (`expenses` table,
+`expense_category` enum; void-only via `voided_at`). Mock seed appended AFTER
+all other rng use so earlier seeded data is unchanged. Web:
+`pages/ExpensesPage.tsx` (3 stat cards, category tabs, search, Show voided,
+pagination, void action gated by `expenses.manage`),
+`components/expenses/` (`AddExpenseModal`, `VoidExpenseButton`,
+`expense-form-schema.ts` — amount kept as a string to avoid the
+blank→0 coercion, `expense-stats.ts`) plus tests. Registered in
+`MODULE_REGISTRY` (permission `expenses.view`), lazy route `/app/expenses`
+inside `SetupGate` + `RouteGuard moduleKey="expenses"`, Dashboard quick action.
+Reports do NOT include expenses yet (staff can view Reports).
+**Migration** `supabase/migrations/0004_roles_and_expenses.sql` (NOT applied —
+Supabase is last): `employee_has_role()` (security definer, fixed
+search_path), owner-only update on `businesses`, owner-only `business_modules`
+writes (replaces the 0001 policy), RLS on `expenses` for owner/admin (select,
+insert, update; no delete policy) and a trigger allowing only `voided_at` to
+change. Apply order 0000 → 0001 → 0002 → 0003 → 0004. **Verified on a real
+Postgres 16** (baseline generated with drizzle-kit, `auth.uid()` stubbed,
+non-superuser role): owner/admin can insert + void, amount edits and deletes
+are blocked, staff see and insert nothing, admin can't rename the business or
+toggle modules, cross-business insert/read blocked. NOT run through Supabase
+CLI. `seed.sql` enables the expenses module.
+**Verification.** typecheck, lint (0 warnings), build, tests all green.
+Total **77** tests (catalog 4, pos 3, booking 6, expenses 15, web 49).
+Playwright (owner/admin/staff): nav + quick action visibility, direct-URL
+denial for staff, validation, add, search, category filter, void, Show voided,
+future date rejected, no horizontal overflow at 390px. The "expenses turned
+off" screen uses the generic `RouteGuard` module path (verified for other
+modules) and was not separately exercised for expenses.
+**After extracting this round's ZIP run `pnpm install`** (new workspace
+package; `pnpm-lock.yaml` is included).
+
+### Round 18: CSV data export
+CSV only (PDF is batch 3). One shared UX: `components/ExportCsvButton.tsx`
+(props `filenamePrefix`, `buildRows(range)`, `withDateRange?`, `hint?`,
+`disabled?`). Without a range it downloads on click; with one it opens a dialog
+(optional From/To, both inclusive, blank = everything; live row count; reversed
+range shows an error; Download disabled at 0 rows; filename gets the range).
+Exports respect each page's current filters/search/"Show voided".
+- `lib/date-range.ts` — `toLocalYmd` (local day, not UTC), `inDateRange`,
+  `validateDateRange`.
+- `lib/export-rows.ts` — pure row builders (`paymentRows`, `expenseRows`,
+  `bookingRows`, `offeringRows`, `employeeRows`, `salesReportRows`). Dates are
+  local YYYY-MM-DD and times local HH:mm. The old Payments export used UTC ISO
+  timestamps; it now uses these columns (Date, Time, Source, Method, Reference,
+  Amount, Status). `lib/export-csv.ts` (formula-injection-safe) is unchanged.
+- Wired into: Payments, Expenses, Booking (only the loaded today+30-day window),
+  Catalog, Employees (owner/admin only, like the rest of that page's actions),
+  Sales Report card (last 14 days of daily revenue). Booking and Catalog report
+  cards have no separate export (the Booking/Catalog list exports cover them).
+- Tests: `date-range.test.ts` (3), `export-rows.test.ts` (5). Total **85**
+  tests (catalog 4, pos 3, booking 6, expenses 15, web 57).
+- Playwright: direct downloads (Catalog, Employees), range dialog (count,
+  disabled states, narrowing 20 → 5 rows, filename, CSV rows = count),
+  Payments and Sales Report downloads, staff sees no Employees export.
+  Booking export was only checked for the button's presence, not its content
+  (covered by the unit test).
+
+### Round 19: Audit trail — CURRENT
+First item of batch 3 (agreed order: Audit trail → PDF export → Inventory →
+Receipts (printable sales receipt with TIN/address fields, NOT claimed as
+BIR-compliant) → Staff scheduling → Language toggle (English + Filipino) →
+Offline resilience).
+**What is logged** (`AUDIT_ACTIONS`): sale.completed, payment.voided,
+booking.created, offering.created / availability_changed, expense.created /
+voided, employee.created / updated / deleted, business.updated (rename or setup
+completed), business.modules_changed (one entry per module flipped, by key).
+No-ops are not logged (re-voiding, unchanged employee save, same availability);
+rejected operations are not logged.
+**Mock mode:** repositories call `recordAudit(...)` after a successful change;
+the actor comes from `setAuditActor`, which `AuthProvider` sets to the signed-in
+employee ("System" if none). Supabase repositories do NOT log — triggers do.
+**Supabase mode:** `migrations/0005_audit_log.sql` — RLS (owner/admin read only,
+no insert/update/delete policy so rows are permanent and unforgeable) and
+security-definer triggers calling `audit_write()` (actor = employee matching
+`auth.uid()`, else "System"; skips when the business is gone so a business
+cascade delete still works). Summary wording mirrors the mock.
+**UI:** `pages/AuditLogPage.tsx` at `/app/audit` (permission `audit.view`,
+owner/admin; sidebar "Audit Log"): entity tabs, search, pagination, CSV export
+with date range (`auditLogRows` in `lib/export-rows.ts`). `CoreRepository.
+listAuditLog` (newest first, limit 500; read-only by design).
+**Migration 0004 fix (found while testing 0005 on real Postgres):** 0001 had no
+UPDATE policy on `payment_records` and no write policies on `employees`, so
+voiding a payment and the app's employee update/delete would have been blocked
+in Supabase mode. 0004 now adds owner/admin update on payment records (a trigger
+freezes everything except `voided_at`) and owner/admin insert/update/delete on
+employees. Re-apply 0004 from this ZIP (it was never applied anywhere).
+**Verification:** typecheck, lint, build, tests green — **93** tests (catalog 5,
+pos 4, booking 7, expenses 17, web 60). Real Postgres 16 (0000 baseline from
+drizzle-kit, auth.uid() stubbed, non-superuser role): every action produced the
+right entry with the right actor; no-ops logged nothing; owner couldn't
+update/delete/forge audit rows; staff read 0 rows; staff couldn't void payments;
+payment edits blocked; deleting a business still worked. Playwright (admin,
+staff): nav/direct URL gating, empty state, entries by Maria Santos, tabs,
+search, CSV, no mobile overflow.
+Known limits: the mock log resets on reload (in-memory, like all mock data);
+the last-owner rule is still app-level only (not a DB constraint); Supabase mode
+overall is NOT yet run through the Supabase CLI.
+
 ### Never Include in Prompts
 - `node_modules/` (any level) — build artifacts, never source.
 - `.turbo/`, `dist/` — build output/cache.
 - `.env`, `.env.local` — secrets.
-- `pnpm-lock.yaml` — huge, auto-generated, never needs manual editing.
+- `pnpm-lock.yaml` — huge, auto-generated, never needs manual editing (but it IS shipped in a round's ZIP when dependencies changed).

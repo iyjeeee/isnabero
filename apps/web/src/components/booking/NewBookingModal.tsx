@@ -27,7 +27,7 @@ export function NewBookingModal({ businessId }: NewBookingModalProps) {
 
   const handleCreate = () => {
     const offering = offerings.find((item) => item.id === selectedOfferingId);
-    if (!offering || !startTime || !customerName) {
+    if (!offering || !startTime || !customerName.trim()) {
       toast.error("Fill in a package, customer name, and start time first");
       return;
     }
@@ -37,7 +37,7 @@ export function NewBookingModal({ businessId }: NewBookingModalProps) {
       {
         offeringId: offering.id,
         mode: "appointment",
-        customerName,
+        customerName: customerName.trim(),
         customerContact: null,
         startTime: start,
         endTime: end,

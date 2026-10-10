@@ -35,7 +35,7 @@ export function CheckoutModal({ lines, total, isPending, onConfirm }: CheckoutMo
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button className="w-full" disabled={lines.length === 0} onClick={() => setOpen(true)}>
+      <Button className="w-full" disabled={lines.length === 0 || isPending} onClick={() => setOpen(true)}>
         Checkout — ₱{total.toFixed(2)}
       </Button>
       <DialogContent>

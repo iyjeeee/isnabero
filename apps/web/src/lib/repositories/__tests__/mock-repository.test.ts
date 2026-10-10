@@ -74,3 +74,71 @@ describe("mockCoreRepository — payment records", () => {
     expect(statsAfterVoid.todaySalesTotal).toBe(statsBefore.todaySalesTotal);
   });
 });
+
+describe("mockCoreRepository — last-owner protection", () => {
+  it("refuses to delete or demote the only owner, but allows it once another owner exists", async () => {
+    const employees = await mockCoreRepository.listEmployees(DEMO_BUSINESS_ID);
+    const owners = employees.filter((employee) => employee.role === "owner");
+    expect(owners).toHaveLength(1);
+    const owner = owners[0]!;
+
+    await expect(mockCoreRepository.deleteEmployee(DEMO_BUSINESS_ID, owner.id)).rejects.toThrow(/at least one owner/);
+    await expect(
+      mockCoreRepository.updateEmployee(DEMO_BUSINESS_ID, owner.id, { fullName: owner.fullName, role: "admin" }),
+    ).rejects.toThrow(/at least one owner/);
+
+    // a second owner unlocks demoting the first; restore the original state afterwards for other tests
+    const second = await mockCoreRepository.createEmployee(DEMO_BUSINESS_ID, { fullName: "Second Owner", role: "owner" });
+    await mockCoreRepository.updateEmployee(DEMO_BUSINESS_ID, owner.id, { fullName: owner.fullName, role: "admin" });
+    await mockCoreRepository.updateEmployee(DEMO_BUSINESS_ID, owner.id, { fullName: owner.fullName, role: "owner" });
+    await mockCoreRepository.deleteEmployee(DEMO_BUSINESS_ID, second.id);
+  });
+});
+
+describe("mockCoreRepository — business setup", () => {
+  const TEST_BUSINESS_ID = "test-business-setup";
+
+  it("treats the seeded demo business as already set up", async () => {
+    const business = await mockCoreRepository.getBusiness(DEMO_BUSINESS_ID);
+    expect(business.setupCompletedAt).not.toBeNull();
+  });
+
+  it("rejects an unknown business", async () => {
+    await expect(mockCoreRepository.getBusiness("nope")).rejects.toThrow(/not found/);
+    await expect(mockCoreRepository.saveBusinessSetup("nope", { name: "X", enabledModules: [] })).rejects.toThrow(/not found/);
+  });
+
+  it("stamps setupCompletedAt on first save only, renames, and sets modules (adding what they need)", async () => {
+    mockDb.businesses.push({ id: TEST_BUSINESS_ID, name: "Fresh Shop", slug: "fresh-shop", createdAt: new Date(), setupCompletedAt: null });
+    try {
+      expect((await mockCoreRepository.getBusiness(TEST_BUSINESS_ID)).setupCompletedAt).toBeNull();
+
+      const first = await mockCoreRepository.saveBusinessSetup(TEST_BUSINESS_ID, { name: "  My Shop  ", enabledModules: ["pos"] });
+      expect(first.name).toBe("My Shop");
+      expect(first.setupCompletedAt).not.toBeNull();
+      expect(await mockCoreRepository.listEnabledModules(TEST_BUSINESS_ID)).toEqual(["catalog", "pos"]);
+
+      // re-run: turn POS off, Booking on — completion date is kept, modules are replaced (not appended)
+      const second = await mockCoreRepository.saveBusinessSetup(TEST_BUSINESS_ID, { name: "My Shop", enabledModules: ["booking"] });
+      expect(second.setupCompletedAt).toEqual(first.setupCompletedAt);
+      expect((await mockCoreRepository.listEnabledModules(TEST_BUSINESS_ID)).sort()).toEqual(["booking", "catalog"]);
+      expect(mockDb.businessModules.filter((row) => row.businessId === TEST_BUSINESS_ID && row.moduleKey === "pos")).toHaveLength(1);
+
+      // turning everything off is allowed — the always-on core still works
+      await mockCoreRepository.saveBusinessSetup(TEST_BUSINESS_ID, { name: "My Shop", enabledModules: [] });
+      expect(await mockCoreRepository.listEnabledModules(TEST_BUSINESS_ID)).toEqual([]);
+    } finally {
+      mockDb.businesses.splice(mockDb.businesses.findIndex((b) => b.id === TEST_BUSINESS_ID), 1);
+      mockDb.businessModules = mockDb.businessModules.filter((row) => row.businessId !== TEST_BUSINESS_ID);
+    }
+  });
+
+  it("rejects a blank or too-long name without changing anything", async () => {
+    const before = await mockCoreRepository.getBusiness(DEMO_BUSINESS_ID);
+    const modulesBefore = await mockCoreRepository.listEnabledModules(DEMO_BUSINESS_ID);
+    await expect(mockCoreRepository.saveBusinessSetup(DEMO_BUSINESS_ID, { name: "   ", enabledModules: [] })).rejects.toThrow(/required/);
+    await expect(mockCoreRepository.saveBusinessSetup(DEMO_BUSINESS_ID, { name: "x".repeat(81), enabledModules: [] })).rejects.toThrow(/80/);
+    expect((await mockCoreRepository.getBusiness(DEMO_BUSINESS_ID)).name).toBe(before.name);
+    expect(await mockCoreRepository.listEnabledModules(DEMO_BUSINESS_ID)).toEqual(modulesBefore);
+  });
+});

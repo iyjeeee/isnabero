@@ -12,6 +12,10 @@ export interface SalesReportData {
   dailyRevenue: DailyPoint[];
   methodBreakdown: BreakdownSlice[];
   totalRevenue: number;
+  // previousPeriodRevenue: total from the immediately preceding window of the same length (e.g. if
+  // dailyRevenue covers the last 14 days, this covers the 14 days before that) — the baseline for the
+  // period-over-period comparison shown via TrendBadge.
+  previousPeriodRevenue: number;
   transactionCount: number;
   averageSale: number;
   voidedCount: number;
@@ -21,6 +25,9 @@ export interface BookingReportData {
   dailyBookings: DailyPoint[];
   statusBreakdown: BreakdownSlice[];
   totalBookings: number;
+  // previousPeriodCount: bookings whose start time fell in the immediately preceding window of the
+  // same length as dailyBookings — same comparison purpose as SalesReportData.previousPeriodRevenue.
+  previousPeriodCount: number;
   upcomingCount: number;
   completedCount: number;
   cancelledCount: number;

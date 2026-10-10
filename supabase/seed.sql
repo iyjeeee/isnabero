@@ -6,14 +6,15 @@
 -- historical data in a real Supabase project, seed it by actually using the app (POS checkouts,
 -- bookings) for a few days, or write a one-off script against these tables.
 
-insert into businesses (id, name, slug) values
-  ('00000000-0000-0000-0000-000000000001', 'Sample Business', 'sample-business')
+insert into businesses (id, name, slug, setup_completed_at) values
+  ('00000000-0000-0000-0000-000000000001', 'Sample Business', 'sample-business', now()) -- demo counts as already set up
 on conflict do nothing;
 
 insert into business_modules (business_id, module_key, enabled) values
   ('00000000-0000-0000-0000-000000000001', 'catalog', true),
   ('00000000-0000-0000-0000-000000000001', 'pos', true),
-  ('00000000-0000-0000-0000-000000000001', 'booking', true)
+  ('00000000-0000-0000-0000-000000000001', 'booking', true),
+  ('00000000-0000-0000-0000-000000000001', 'expenses', true)
 on conflict do nothing;
 
 -- NOTE: these employees use placeholder user_id values (not real auth.users rows) since seed.sql runs
