@@ -10,6 +10,8 @@ import type {
   posOrderItems,
   bookings,
   expenses,
+  stockItems,
+  stockMovements,
 } from "../schema";
 
 // DEMO_BUSINESS_ID matches supabase/seed.sql exactly, so switching VITE_DATA_SOURCE between
@@ -32,6 +34,8 @@ type PosOrder = InferSelectModel<typeof posOrders>;
 type PosOrderItem = InferSelectModel<typeof posOrderItems>;
 type Booking = InferSelectModel<typeof bookings>;
 type Expense = InferSelectModel<typeof expenses>;
+export type StockItem = InferSelectModel<typeof stockItems>;
+export type StockMovement = InferSelectModel<typeof stockMovements>;
 
 // genId: lightweight id generator — crypto.randomUUID is available in both browser and Node 20+
 function genId(): string {
@@ -64,7 +68,17 @@ const intBetween = (min: number, max: number) => Math.floor(rng() * (max - min +
 // --- Core rows -------------------------------------------------------------------------------
 
 const businessesSeed: Business[] = [
-  { id: DEMO_BUSINESS_ID, name: "Sample Business", slug: "sample-business", createdAt: new Date(), setupCompletedAt: new Date("2026-01-15") }, // demo counts as already set up
+  {
+    id: DEMO_BUSINESS_ID,
+    name: "Sample Business",
+    slug: "sample-business",
+    createdAt: new Date(),
+    setupCompletedAt: new Date("2026-01-15"),
+    address: "123 Rizal Street, Quezon City",
+    tin: null,
+    contactNumber: "0917 123 4567",
+    receiptFooter: "Thank you! Come again.",
+  }, // demo counts as already set up
 ];
 
 const businessModulesSeed: BusinessModule[] = [
@@ -72,6 +86,7 @@ const businessModulesSeed: BusinessModule[] = [
   { id: genId(), businessId: DEMO_BUSINESS_ID, moduleKey: "pos", enabled: true, createdAt: new Date() },
   { id: genId(), businessId: DEMO_BUSINESS_ID, moduleKey: "booking", enabled: true, createdAt: new Date() },
   { id: genId(), businessId: DEMO_BUSINESS_ID, moduleKey: "expenses", enabled: true, createdAt: new Date() },
+  { id: genId(), businessId: DEMO_BUSINESS_ID, moduleKey: "inventory", enabled: true, createdAt: new Date() },
 ];
 
 // Four employees across all three roles, so role-based UI (badges, gated actions) has real variety
@@ -161,6 +176,7 @@ for (let dayOffset = 20; dayOffset >= 0; dayOffset--) {
       status: voided ? "voided" : "paid",
       total: total.toFixed(2),
       paymentRecordId: payment.id,
+      receiptNumber: posOrdersSeed.length + 1, // history is generated oldest-first, so numbers run in order
       createdAt,
     };
     posOrdersSeed.push(order);
@@ -265,6 +281,18 @@ permitDay.setDate(permitDay.getDate() - 3);
 addExpense(permitDay, "other", "Permit renewal fee", 1500, "cash");
 addExpense(permitDay, "other", "Permit renewal fee (duplicate entry)", 1500, "cash", true);
 
+// Stock tracking for three menu items — one healthy, one low, one out — so Inventory/POS/Dashboard show every state.
+// Built from fixed numbers (no rng), so it can't disturb the seeded sales above.
+const stockItemsSeed: StockItem[] = [];
+const stockMovementsSeed: StockMovement[] = [];
+for (const [name, quantity, lowStockThreshold] of [["Sisig", 24, 5], ["Lumpia (6 pcs)", 6, 10], ["Halo-Halo", 0, 3]] as const) {
+  const offering = offeringsSeed.find((item) => item.name === name)!;
+  stockItemsSeed.push({ offeringId: offering.id, businessId: DEMO_BUSINESS_ID, quantity, lowStockThreshold, createdAt: new Date("2026-02-10") });
+  if (quantity > 0) {
+    stockMovementsSeed.push({ id: genId(), businessId: DEMO_BUSINESS_ID, offeringId: offering.id, delta: quantity, kind: "initial", note: "Opening count", referenceId: null, recordedBy: null, createdAt: new Date("2026-02-10") });
+  }
+}
+
 // mockDb: plain mutable in-memory tables. Fine for dev-only mock data — components stay reactive via
 // React Query cache invalidation in each repository's mutations, not via any reactivity in this store.
 export const mockDb = {
@@ -278,6 +306,8 @@ export const mockDb = {
   posOrderItems: posOrderItemsSeed,
   bookings: bookingsSeed,
   expenses: expensesSeed,
+  stockItems: stockItemsSeed,
+  stockMovements: stockMovementsSeed,
 };
 
 export { genId };

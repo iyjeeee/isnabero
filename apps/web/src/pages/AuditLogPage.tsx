@@ -16,6 +16,7 @@ const ENTITY_TABS: { value: "all" | AuditEntity; label: string }[] = [
   { value: "payment", label: "Payments" },
   { value: "booking", label: "Bookings" },
   { value: "offering", label: "Catalog" },
+  { value: "stock", label: "Stock" },
   { value: "expense", label: "Expenses" },
   { value: "employee", label: "Employees" },
   { value: "business", label: "Business" },
@@ -26,6 +27,7 @@ const ENTITY_BADGE_VARIANT: Record<AuditEntity, "default" | "success" | "info" |
   booking: "info",
   offering: "default",
   expense: "warning",
+  stock: "info",
   employee: "secondary",
   business: "secondary",
 };

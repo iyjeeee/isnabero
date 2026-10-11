@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ShoppingCart, CalendarClock, LayoutGrid, Receipt } from "lucide-react";
+import { ShoppingCart, CalendarClock, LayoutGrid, Receipt, Boxes } from "lucide-react";
 import type { Permission } from "@/lib/permissions";
 
 // ModuleKey mirrors packages/db's moduleKeyEnum — keep these two lists in sync when adding a new module
@@ -24,6 +24,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   { key: "pos", label: "POS / Cashier", description: "Ring up sales and record how customers paid.", path: "/app/pos", icon: ShoppingCart, requires: ["catalog"] },
   { key: "booking", label: "Booking", description: "Reserve time slots for customers.", path: "/app/booking", icon: CalendarClock, requires: ["catalog"] },
   { key: "expenses", label: "Expenses", description: "Track rent, utilities, supplies and other spending (owners and admins).", path: "/app/expenses", icon: Receipt, permission: "expenses.view" },
+  { key: "inventory", label: "Inventory", description: "Track stock counts; sales deduct automatically and low stock is flagged.", path: "/app/inventory", icon: Boxes, requires: ["catalog"] },
 ];
 
 export function getModuleDefinition(key: ModuleKey): ModuleDefinition | undefined {

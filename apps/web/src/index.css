@@ -93,3 +93,23 @@
     @apply bg-background text-foreground border-input;
   }
 }
+
+/* Receipt printing: the receipt is rendered in a hidden copy under <body>; when printing, everything else is hidden. */
+.receipt-print-root {
+  display: none;
+}
+@media print {
+  @page {
+    margin: 6mm;
+  }
+  body > *:not(.receipt-print-root) {
+    display: none !important;
+  }
+  .receipt-print-root {
+    display: block;
+  }
+  .receipt-print-root .receipt-sheet {
+    max-width: 80mm;
+    padding: 0;
+  }
+}

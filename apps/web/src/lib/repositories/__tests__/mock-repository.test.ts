@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { mockCoreRepository } from "../mock-repository";
-import { mockDb, DEMO_BUSINESS_ID, DEMO_OWNER_USER_ID } from "@isnabero/db";
+import { mockDb, DEMO_BUSINESS_ID, DEMO_OWNER_USER_ID, auditRows } from "@isnabero/db";
+import { formatTin, validateReceiptDetails } from "../repository";
 
 describe("mockCoreRepository — employees", () => {
   it("creates, updates, and deletes an employee", async () => {
@@ -109,7 +110,7 @@ describe("mockCoreRepository — business setup", () => {
   });
 
   it("stamps setupCompletedAt on first save only, renames, and sets modules (adding what they need)", async () => {
-    mockDb.businesses.push({ id: TEST_BUSINESS_ID, name: "Fresh Shop", slug: "fresh-shop", createdAt: new Date(), setupCompletedAt: null });
+    mockDb.businesses.push({ id: TEST_BUSINESS_ID, name: "Fresh Shop", slug: "fresh-shop", createdAt: new Date(), setupCompletedAt: null, address: null, tin: null, contactNumber: null, receiptFooter: null });
     try {
       expect((await mockCoreRepository.getBusiness(TEST_BUSINESS_ID)).setupCompletedAt).toBeNull();
 
@@ -140,5 +141,51 @@ describe("mockCoreRepository — business setup", () => {
     await expect(mockCoreRepository.saveBusinessSetup(DEMO_BUSINESS_ID, { name: "x".repeat(81), enabledModules: [] })).rejects.toThrow(/80/);
     expect((await mockCoreRepository.getBusiness(DEMO_BUSINESS_ID)).name).toBe(before.name);
     expect(await mockCoreRepository.listEnabledModules(DEMO_BUSINESS_ID)).toEqual(modulesBefore);
+  });
+});
+
+describe("receipt details", () => {
+  const blank = { address: "", tin: "", contactNumber: "", receiptFooter: "" };
+  const original = () => {
+    const business = mockDb.businesses.find((item) => item.id === DEMO_BUSINESS_ID);
+    return { address: business?.address ?? "", tin: business?.tin ?? "", contactNumber: business?.contactNumber ?? "", receiptFooter: business?.receiptFooter ?? "" };
+  };
+
+  it("formats 9- and 12-digit TINs and rejects anything else", () => {
+    expect(formatTin("123456789")).toBe("123-456-789");
+    expect(formatTin("123 456 789 000")).toBe("123-456-789-000");
+    expect(formatTin("123-456-789-0")).toBeNull();
+    expect(formatTin("12A-456-789")).toBeNull();
+  });
+
+  it("turns blanks into null and reports field errors", () => {
+    expect(validateReceiptDetails(blank).values).toEqual({ address: null, tin: null, contactNumber: null, receiptFooter: null });
+    const { errors } = validateReceiptDetails({ address: "x".repeat(201), tin: "12", contactNumber: "call me", receiptFooter: "y".repeat(121) });
+    expect(Object.keys(errors).sort()).toEqual(["address", "contactNumber", "receiptFooter", "tin"]);
+  });
+
+  it("saves details, normalises the TIN and logs one audit entry without the TIN", async () => {
+    const before = original();
+    const logged = auditRows.length;
+    try {
+      const saved = await mockCoreRepository.saveReceiptDetails(DEMO_BUSINESS_ID, { ...before, address: "  1 Test Ave  ", tin: "123456789012" });
+      expect(saved).toMatchObject({ address: "1 Test Ave", tin: "123-456-789-012" });
+      const entry = auditRows.find((row) => row.summary === "Receipt details updated");
+      expect(entry?.action).toBe("business.updated");
+      expect(entry?.summary).not.toMatch(/123/);
+      // an unchanged save adds nothing
+      const count = auditRows.length;
+      await mockCoreRepository.saveReceiptDetails(DEMO_BUSINESS_ID, { ...before, address: "1 Test Ave", tin: "123-456-789-012" });
+      expect(auditRows.length).toBe(count);
+      expect(count).toBe(logged + 1);
+    } finally {
+      await mockCoreRepository.saveReceiptDetails(DEMO_BUSINESS_ID, before);
+    }
+  });
+
+  it("rejects an invalid TIN without changing anything", async () => {
+    const before = original();
+    await expect(mockCoreRepository.saveReceiptDetails(DEMO_BUSINESS_ID, { ...before, tin: "nope" })).rejects.toThrow(/TIN/);
+    expect(original()).toEqual(before);
   });
 });

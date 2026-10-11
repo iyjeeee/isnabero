@@ -1,8 +1,9 @@
 import { mockDb, delay, genId, recordAudit, auditRows, auditPeso, DEMO_OWNER_USER_ID } from "@isnabero/db";
-import { LAST_OWNER_MESSAGE, normalizeBusinessName } from "./repository";
+import { LAST_OWNER_MESSAGE, normalizeBusinessName, normalizeReceiptDetails } from "./repository";
 import type {
   BusinessView,
   SaveBusinessSetupInput,
+  ReceiptDetailsInput,
   CoreRepository,
   CreateEmployeeInput,
   UpdateEmployeeInput,
@@ -28,7 +29,16 @@ function findBusiness(businessId: string) {
 }
 
 function toBusinessView(business: (typeof mockDb.businesses)[number]): BusinessView {
-  return { id: business.id, name: business.name, slug: business.slug, setupCompletedAt: business.setupCompletedAt };
+  return {
+    id: business.id,
+    name: business.name,
+    slug: business.slug,
+    setupCompletedAt: business.setupCompletedAt,
+    address: business.address,
+    tin: business.tin,
+    contactNumber: business.contactNumber,
+    receiptFooter: business.receiptFooter,
+  };
 }
 
 export const mockCoreRepository: CoreRepository = {
@@ -60,6 +70,16 @@ export const mockCoreRepository: CoreRepository = {
       if (enabled.has(definition.key) === before.has(definition.key)) continue;
       recordAudit({ businessId, action: "business.modules_changed", entityId: businessId, summary: `Module ${definition.key} turned ${enabled.has(definition.key) ? "on" : "off"}` });
     }
+    return toBusinessView(business);
+  },
+
+  async saveReceiptDetails(businessId, input: ReceiptDetailsInput): Promise<BusinessView> {
+    await delay(250);
+    const business = findBusiness(businessId);
+    const next = normalizeReceiptDetails(input);
+    const changed = next.address !== business.address || next.tin !== business.tin || next.contactNumber !== business.contactNumber || next.receiptFooter !== business.receiptFooter;
+    Object.assign(business, { address: next.address, tin: next.tin, contactNumber: next.contactNumber, receiptFooter: next.receiptFooter });
+    if (changed) recordAudit({ businessId, action: "business.updated", entityId: businessId, summary: "Receipt details updated" });
     return toBusinessView(business);
   },
 

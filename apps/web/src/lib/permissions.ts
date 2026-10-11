@@ -9,8 +9,9 @@ export const PERMISSIONS = {
   "employees.manage": ["owner", "admin"], // add / edit / remove employees
   "payments.void": ["owner", "admin"], // void a payment record
   "expenses.view": ["owner", "admin"], // see the Expenses page
-  "expenses.manage": ["owner", "admin"],
-  "audit.view": ["owner", "admin"], // record / void expenses
+  "expenses.manage": ["owner", "admin"], // record / void expenses
+  "audit.view": ["owner", "admin"],
+  "inventory.manage": ["owner", "admin"], // staff can see stock levels but not change them
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof PERMISSIONS;

@@ -12,10 +12,12 @@ import {
   CheckCircle2,
   Circle,
   Receipt,
+  TriangleAlert,
   Sparkles,
 } from "lucide-react";
 import { PageHeader, StatCard, Card, CardContent, CardHeader, CardTitle, Badge, EmptyState, cn } from "@isnabero/ui";
 import { useOfferings } from "@isnabero/module-catalog";
+import { useStockLevels } from "@isnabero/module-inventory";
 import { supabase } from "@/lib/supabase";
 import { useBusinessStore } from "@/stores/business-store";
 import { useBusinessModules } from "@/hooks/use-business-modules";
@@ -24,6 +26,7 @@ import { useCan } from "@/hooks/use-permission";
 import { getModuleDefinition } from "@/lib/module-registry";
 import type { Permission } from "@/lib/permissions";
 import { useDashboardStats } from "@/hooks/use-dashboard-stats";
+import { StockBadge } from "@/components/inventory/StockBadge";
 import { getCoreRepository } from "@/lib/repositories/get-repository";
 
 // QUICK_ACTIONS: shortcuts to the most common next step per module — kept in sync manually with
@@ -58,6 +61,9 @@ export default function DashboardPage() {
   const { data: offerings = [] } = useOfferings(supabase, businessId ?? "");
   const { data: business } = useBusiness(businessId);
   const can = useCan();
+  const inventoryOn = enabledModules.includes("inventory");
+  const { data: stockLevels = [] } = useStockLevels(supabase, inventoryOn ? (businessId ?? "") : ""); // empty id keeps the query off when Inventory is disabled
+  const stockAlerts = stockLevels.filter((level) => level.status !== "ok").sort((a, b) => (a.status === b.status ? a.offeringName.localeCompare(b.offeringName) : a.status === "out" ? -1 : 1));
   const repository = getCoreRepository(supabase);
 
   const { data: recentPayments = [], isLoading: paymentsLoading } = useQuery({
@@ -95,6 +101,28 @@ export default function DashboardPage() {
         <StatCard label="Upcoming Bookings" value={stats?.upcomingBookingsCount ?? 0} icon={CalendarClock} accent="info" isLoading={statsLoading} />
         <StatCard label="Active Employees" value={stats?.activeEmployeesCount ?? 0} icon={Users} accent="default" isLoading={statsLoading} />
       </div>
+
+      {inventoryOn && stockAlerts.length > 0 && (
+        <Card className="animate-slide-up border-warning/40">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TriangleAlert className="h-4 w-4 text-warning" />
+              Stock alerts
+            </CardTitle>
+            <Link to="/app/inventory" className="text-sm font-medium text-primary hover:underline">
+              Open Inventory
+            </Link>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-x-6 gap-y-2">
+            {stockAlerts.map((level) => (
+              <div key={level.offeringId} className="flex items-center gap-2 text-sm">
+                <span className="font-medium">{level.offeringName}</span>
+                <StockBadge level={level} />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Quick Actions */}

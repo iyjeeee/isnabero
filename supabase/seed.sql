@@ -6,15 +6,16 @@
 -- historical data in a real Supabase project, seed it by actually using the app (POS checkouts,
 -- bookings) for a few days, or write a one-off script against these tables.
 
-insert into businesses (id, name, slug, setup_completed_at) values
-  ('00000000-0000-0000-0000-000000000001', 'Sample Business', 'sample-business', now()) -- demo counts as already set up
+insert into businesses (id, name, slug, setup_completed_at, address, contact_number, receipt_footer) values
+  ('00000000-0000-0000-0000-000000000001', 'Sample Business', 'sample-business', now(), '123 Rizal Street, Quezon City', '0917 123 4567', 'Thank you! Come again.') -- demo counts as already set up
 on conflict do nothing;
 
 insert into business_modules (business_id, module_key, enabled) values
   ('00000000-0000-0000-0000-000000000001', 'catalog', true),
   ('00000000-0000-0000-0000-000000000001', 'pos', true),
   ('00000000-0000-0000-0000-000000000001', 'booking', true),
-  ('00000000-0000-0000-0000-000000000001', 'expenses', true)
+  ('00000000-0000-0000-0000-000000000001', 'expenses', true),
+  ('00000000-0000-0000-0000-000000000001', 'inventory', true)
 on conflict do nothing;
 
 -- NOTE: these employees use placeholder user_id values (not real auth.users rows) since seed.sql runs
@@ -44,3 +45,16 @@ insert into offering_inclusions (offering_id, label, quantity) values
   ('00000000-0000-0000-0000-000000000106', 'Printed copies', 4),
   ('00000000-0000-0000-0000-000000000106', 'Photo strip', 1)
 on conflict do nothing;
+
+-- Stock tracking for three menu items (one healthy, one low, one out). Counts come from movements, so insert the
+-- items at 0 and let the stock_movements trigger (migration 0006) apply the opening counts.
+insert into stock_items (offering_id, business_id, quantity, low_stock_threshold) values
+  ('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000001', 0, 5),
+  ('00000000-0000-0000-0000-000000000103', '00000000-0000-0000-0000-000000000001', 0, 10),
+  ('00000000-0000-0000-0000-000000000104', '00000000-0000-0000-0000-000000000001', 0, 3)
+on conflict do nothing;
+
+insert into stock_movements (business_id, offering_id, delta, kind, note)
+select '00000000-0000-0000-0000-000000000001', v.offering_id::uuid, v.delta, 'initial', 'Opening count'
+from (values ('00000000-0000-0000-0000-000000000101', 24), ('00000000-0000-0000-0000-000000000103', 6)) as v(offering_id, delta)
+where not exists (select 1 from stock_movements);

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { PackageOpen, LayoutGrid, Search, Box, Layers, PlusCircle } from "lucide-react";
 import { useOfferings, useToggleOfferingAvailability } from "@isnabero/module-catalog";
+import { useStockLevels } from "@isnabero/module-inventory";
 import { Card, CardContent, Button, Badge, PageHeader, EmptyState, Skeleton, Input, FilterBar, Pagination, cn } from "@isnabero/ui";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -8,6 +9,7 @@ import { useBusinessStore } from "@/stores/business-store";
 import { usePagination } from "@/hooks/use-pagination";
 import { ExportButton } from "@/components/ExportButton";
 import { offeringRows } from "@/lib/export-rows";
+import { StockBadge } from "@/components/inventory/StockBadge";
 import { CreateOfferingModal } from "@/components/catalog/CreateOfferingModal";
 
 const TYPE_BADGE_VARIANT = { item: "default", bundle: "info", addon: "secondary" } as const;
@@ -31,6 +33,8 @@ export default function CatalogPage() {
   const businessId = useBusinessStore((state) => state.businessId) ?? "";
   const { data: offerings = [], isLoading } = useOfferings(supabase, businessId);
   const toggleAvailability = useToggleOfferingAvailability(supabase, businessId);
+  const { data: stockLevels = [] } = useStockLevels(supabase, businessId);
+  const stockByOffering = new Map(stockLevels.map((level) => [level.offeringId, level]));
 
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<(typeof TYPE_TABS)[number]["value"]>("all");
@@ -154,9 +158,12 @@ export default function CatalogPage() {
                 )}
 
                 <div className="mt-auto flex items-center justify-between border-t pt-3">
-                  <Badge variant={offering.isAvailable ? "success" : "destructive"}>
-                    {offering.isAvailable ? "Available" : "Sold out"}
-                  </Badge>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge variant={offering.isAvailable ? "success" : "destructive"}>
+                      {offering.isAvailable ? "Available" : "Sold out"}
+                    </Badge>
+                    {stockByOffering.has(offering.id) && <StockBadge level={stockByOffering.get(offering.id)!} />}
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Expense } from "@isnabero/module-expenses";
 import type { BookingWithOffering } from "@isnabero/module-booking";
 import type { OfferingWithInclusions } from "@isnabero/module-catalog";
-import { bookingRows, employeeRows, expenseRows, offeringRows, paymentRows, salesReportRows } from "../export-rows";
+import { bookingRows, employeeRows, expenseRows, offeringRows, paymentRows, salesReportRows, stockMovementRows, stockRows } from "../export-rows";
 
 const expense = (overrides: Partial<Expense>): Expense => ({
   id: "1", businessId: "b", category: "rent", description: "Rent", amount: 100, expenseDate: "2026-03-10",
@@ -56,5 +56,14 @@ describe("export rows", () => {
   it("employees and sales report map straight across", () => {
     expect(employeeRows([{ id: "1", fullName: "Juan", role: "owner", createdAt: new Date(2026, 0, 5) }])).toEqual([{ Name: "Juan", Role: "owner", Added: "2026-01-05" }]);
     expect(salesReportRows([{ date: "2026-03-10", value: 12.5 }])).toEqual([{ Date: "2026-03-10", Revenue: 12.5 }]);
+  });
+
+  it("stock levels and movements: readable status, signed change, System when no one acted", () => {
+    expect(stockRows([{ offeringId: "1", offeringName: "Sisig", offeringType: "item", quantity: 2, lowStockThreshold: 5, status: "low" }])).toEqual([
+      { Item: "Sisig", Type: "item", "In stock": 2, "Low-stock level": 5, Status: "Low" },
+    ]);
+    const movement = { id: "1", offeringId: "1", offeringName: "Sisig", delta: -2, kind: "sale" as const, note: null, recordedByName: null, createdAt: new Date(2026, 2, 10, 9, 5) };
+    expect(stockMovementRows([movement], { from: "2026-03-11" })).toEqual([]);
+    expect(stockMovementRows([movement], {})).toEqual([{ Date: "2026-03-10", Time: "09:05", Item: "Sisig", Change: -2, Type: "sale", Reason: "", By: "System" }]);
   });
 });

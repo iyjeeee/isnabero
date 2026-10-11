@@ -23,6 +23,11 @@ export const businesses = pgTable("businesses", {
   slug: text("slug").notNull().unique(), // used for tenant lookup / future public storefront URLs
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   setupCompletedAt: timestamp("setup_completed_at", { withTimezone: true }), // null = first-run setup wizard not finished yet
+  // Printed on sales receipts (all optional; edited from Business Setup by the owner)
+  address: text("address"),
+  tin: text("tin"), // Tax Identification Number, stored formatted (123-456-789 or 123-456-789-000)
+  contactNumber: text("contact_number"),
+  receiptFooter: text("receipt_footer"), // short thank-you line
 });
 
 // business_modules: which sidebar modules are enabled per business — this table drives the dynamic sidebar

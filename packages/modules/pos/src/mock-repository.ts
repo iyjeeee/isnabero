@@ -1,9 +1,17 @@
-import { mockDb, delay, genId, recordAudit, auditPeso } from "@isnabero/db";
+import { mockDb, delay, genId, recordAudit, auditPeso, assertStockForSale, applyStockMove } from "@isnabero/db";
 import type { CheckoutInput, CheckoutResult, PosRepository } from "./repository";
+import type { Receipt, ReceiptRef } from "./receipt";
+
+// nextReceiptNumber: one more than the highest number issued for this business (voided sales keep theirs)
+function nextReceiptNumber(businessId: string): number {
+  return mockDb.posOrders.reduce((max, order) => (order.businessId === businessId ? Math.max(max, order.receiptNumber) : max), 0) + 1;
+}
 
 export const mockPosRepository: PosRepository = {
   async checkout({ businessId, employeeId, lines, method, referenceCode }: CheckoutInput): Promise<CheckoutResult> {
     await delay(400);
+    // Refuse before recording anything, so a stock shortage never leaves a half-recorded sale
+    assertStockForSale(businessId, lines.map((line) => ({ offeringId: line.offering.id, quantity: line.quantity })));
     const total = lines.reduce((sum, line) => sum + Number(line.offering.price) * line.quantity, 0);
 
     const payment = {
@@ -25,6 +33,7 @@ export const mockPosRepository: PosRepository = {
       status: "paid" as const,
       total: String(total),
       paymentRecordId: payment.id,
+      receiptNumber: nextReceiptNumber(businessId),
       createdAt: new Date(),
     };
     mockDb.posOrders.push(order);
@@ -39,7 +48,42 @@ export const mockPosRepository: PosRepository = {
       })),
     );
 
+    // Take sold quantities out of stock (only offerings that are tracked)
+    for (const line of lines) {
+      if (mockDb.stockItems.some((row) => row.offeringId === line.offering.id && row.businessId === businessId)) {
+        applyStockMove({ businessId, offeringId: line.offering.id, delta: -line.quantity, kind: "sale", referenceId: order.id, recordedBy: employeeId });
+      }
+    }
     recordAudit({ businessId, action: "sale.completed", entityId: order.id, summary: `Sale of ${auditPeso(total)} paid by ${method}` });
-    return { orderId: order.id, total };
+    return { orderId: order.id, total, receiptNumber: order.receiptNumber };
+  },
+
+  async getReceipt(businessId: string, ref: ReceiptRef): Promise<Receipt | null> {
+    await delay(150);
+    const order = mockDb.posOrders.find(
+      (item) => item.businessId === businessId && ("orderId" in ref ? item.id === ref.orderId : item.paymentRecordId === ref.paymentRecordId),
+    );
+    const business = mockDb.businesses.find((item) => item.id === businessId);
+    if (!order || !business) return null;
+    const payment = mockDb.paymentRecords.find((item) => item.id === order.paymentRecordId);
+    const cashier = mockDb.employees.find((item) => item.id === order.employeeId);
+    const lines = mockDb.posOrderItems
+      .filter((item) => item.orderId === order.id)
+      .map((item) => {
+        const unitPrice = Number(item.unitPrice);
+        return { name: mockDb.offerings.find((offering) => offering.id === item.offeringId)?.name ?? "Item", quantity: item.quantity, unitPrice, amount: unitPrice * item.quantity };
+      });
+    return {
+      orderId: order.id,
+      receiptNumber: order.receiptNumber,
+      issuedAt: order.createdAt,
+      business: { name: business.name, address: business.address, tin: business.tin, contactNumber: business.contactNumber, footer: business.receiptFooter },
+      cashierName: cashier?.fullName ?? null,
+      method: payment?.method ?? "other",
+      referenceCode: payment?.referenceCode ?? null,
+      lines,
+      total: Number(order.total),
+      voided: order.status === "voided" || Boolean(payment?.voidedAt),
+    };
   },
 };

@@ -30,11 +30,9 @@ with routes/icons/labels. The sidebar renders the intersection: a module
 must be BOTH registered in code AND enabled in the DB to appear.
 
 **v1 build order (in progress):** Core (auth/dashboard/payments/employees/
-reports) → Catalog → POS → Booking. Inventory and Expenses exist as enum
-values in the DB (`moduleKeyEnum`) so the schema is future-proofed, but have
-no route/page/registry entry yet — deliberately deferred until there's a
-real business asking for them (see "avoid building the full 15-module list
-before shipping" discussion).
+reports) → Catalog → POS → Booking. Expenses and Inventory are now real modules
+(Rounds 17 and 21); other `moduleKeyEnum` values (e.g. online_store) still have
+no route/page/registry entry.
 
 **Mock/live data-source architecture (major change this round):** Every
 module (Catalog, POS, Booking) and every core feature (business_modules/
@@ -86,9 +84,8 @@ something behaves unexpectedly in old exported chats/notes):
    for future server/edge-function use only).
 
 **Deliberately deferred/simplified for v1:**
-- No full inventory/stock-deduction system — `offerings.isAvailable` is a
-  manual sold-out/available toggle instead, covering most of the real-world
-  need at a fraction of the effort.
+- Stock tracking is optional per offering (Round 21); `offerings.isAvailable`
+  remains the manual sold-out toggle for untracked items.
 - Online payments are simple reference-code input forms (GCash ref number,
   bank transfer ref), not a payment gateway integration.
 - POS checkout is single-transaction (payment record → order → line items)
@@ -488,6 +485,15 @@ deliver a ready-to-extract ZIP with only changed/created files.
   mock repositories must use these exact action names/wording.
 - `src/mock/audit.ts` — mock-mode logging: `setAuditActor` (set by
   AuthProvider), `recordAudit`, `auditRows` (kept out of `mockDb` on purpose).
+- `src/schema/inventory.ts` — `stockItems` (PK `offeringId`; quantity,
+  lowStockThreshold) and `stockMovements` (append-only ledger; `delta` ≠ 0,
+  kind, note, referenceId), `stockMovementKindEnum`.
+- `src/inventory.ts` — `STOCK_KINDS`, `MANUAL_STOCK_KINDS`, `MAX_STOCK_QUANTITY`,
+  `stockStatus(qty, threshold)` (single source of ok/low/out), `InsufficientStockError`.
+- `src/mock/stock.ts` — mock-mode `assertStockForSale` / `applyStockMove` (the
+  Supabase equivalents are the 0006 trigger + `checkout_sale` RPC).
+- Round 22: `businesses` gained `address`, `tin`, `contactNumber`, `receiptFooter` (all nullable) in
+  `schema/core.ts`; `posOrders` gained `receiptNumber` (NOT NULL, unique per business) in `schema/pos.ts`.
 - `src/schema/index.ts` — barrel re-exporting all schema files.
 
 ### Supabase — `supabase/`
@@ -499,11 +505,13 @@ deliver a ready-to-extract ZIP with only changed/created files.
   their data" issues. NOTE: drizzle-kit will generate `0000_*.sql` (the
   actual `CREATE TABLE` statements) once `pnpm db:generate` is run against a
   live DB connection — that file does not exist yet in this scaffold.
+- `migrations/0007_receipts.sql` — see Round 22.
+- `migrations/0006_inventory.sql` — see Round 21.
 - `migrations/0002`–`0005` — void payment records; booking no-overlap;
   roles + expenses RLS (Round 17, re-shipped in Round 19 with payment-void and
   employee policies); audit log triggers (Round 19).
 - `seed.sql` — demo business ("Sample Business", already set up) with
-  catalog/pos/booking/expenses enabled, 7 offerings, 4 employees; auto-applied on `supabase db reset`. Does
+  catalog/pos/booking/expenses/inventory enabled, 7 offerings, 4 employees, opening stock for Sisig (24) and Lumpia (6), and sample receipt details (address, phone, footer — no TIN); auto-applied on `supabase db reset`. Does
   NOT replicate the mock store's 21-day generated history. Safe to edit/clear.
 
 ### Shared UI — `packages/ui`
@@ -651,6 +659,28 @@ deliver a ready-to-extract ZIP with only changed/created files.
   `useCreateExpense`, `useVoidExpense`; query key `["expenses", businessId,
   includeVoided]`), `src/index.ts`.
 - `src/__tests__/mock-repository.test.ts` — 15 tests.
+
+### Module: POS receipts — `packages/modules/pos` (Round 22 additions)
+- `src/receipt.ts` — `Receipt`, `ReceiptLine`, `ReceiptBusiness`, `ReceiptRef` (`{orderId}` or
+  `{paymentRecordId}`), `formatReceiptNumber` (000123), `receiptRefKey`.
+- `PosRepository.getReceipt(businessId, ref)` (null when no POS sale matches) in the mock and Supabase
+  repositories; `CheckoutResult` now includes `receiptNumber`. Hook `useReceipt` (key
+  `["receipt", businessId, ref]`).
+
+### Module: Inventory — `packages/modules/inventory`
+- `package.json` — `@isnabero/module-inventory` (copy of the expenses setup); `tsconfig.json`.
+- `src/types.ts` — `StockLevel`, `StockMovementView`, `StartTrackingInput`,
+  `AdjustStockInput`, `ListMovementsOptions`.
+- `src/validation.ts` — `normalizeTracking`, `normalizeThreshold`,
+  `normalizeAdjustment` (note required; restock/return > 0; damage < 0;
+  correction any non-zero), `formatDelta`. Used by both repositories.
+- `src/repository.ts` — `InventoryRepository`: `listStockLevels`, `listMovements`,
+  `startTracking`, `stopTracking`, `setLowStockThreshold`, `adjustStock`.
+- `src/mock-repository.ts` (logs audit), `src/supabase-repository.ts` (inserts
+  only; triggers keep counts and audit), `src/get-repository.ts`, `src/hooks.ts`
+  (`useStockLevels`, `useStockMovements`, mutations; all invalidate
+  `["stock", businessId]`), `src/index.ts`.
+- `src/__tests__/mock-repository.test.ts` — 12 tests.
 
 ### Web App — `apps/web`
 - `package.json` — all app-level deps (react-router, react-hook-form, zod,
@@ -1272,7 +1302,7 @@ Known limits: the mock log resets on reload (in-memory, like all mock data);
 the last-owner rule is still app-level only (not a DB constraint); Supabase mode
 overall is NOT yet run through the Supabase CLI.
 
-### Round 20: PDF export — CURRENT
+### Round 20: PDF export
 Batch 3 item 2. `components/ExportCsvButton.tsx` was **replaced** by
 `components/ExportButton.tsx` (every page's "Export" now opens one dialog:
 optional From/To where relevant, live row count, then **Download PDF** or
@@ -1301,6 +1331,87 @@ Payments, Expenses, Booking, Catalog, Employees, Audit Log, Sales Report card.
   disables both buttons). One generated PDF was rendered and inspected visually.
   Not separately re-tested in the browser: PDF from Payments, Booking, Audit Log
   and Sales Report (same component and row builders, covered by unit tests).
+
+### Round 21: Inventory
+Batch 3 item 3 (next: Receipts → Staff scheduling → Language toggle → Offline
+resilience).
+**Model:** stock is a ledger (`stock_movements`) with a maintained count
+(`stock_items`). Tracking is optional per offering, set up from the Inventory page
+(not the Add-offering form). Whole-number counts. Bookable bundles (with
+`durationMinutes`) can't be tracked. Inventory is its own module and `requires`
+catalog. The manual Sold-out toggle still works for untracked items; tracked items
+show out-of-stock via derived status (`isAvailable` is not written).
+**Web:** `pages/InventoryPage.tsx` (`/app/inventory`, visible to all roles; stat
+cards, All/Low/Out tabs, search, status table, Stock history with date-range
+PDF/CSV export). Writes need the new permission `inventory.manage` (owner/admin):
+`components/inventory/` (`TrackItemModal`, `AdjustStockModal`, `ItemSettingsModal`,
+`StockBadge`, `inventory-form-schema.ts` + test). Also: POS tiles show "N left" /
+"Out of stock", can't add beyond stock; Dashboard "Stock alerts" card; Catalog
+`StockBadge`; Audit Log "Stock" tab; `stockRows` / `stockMovementRows` in
+`lib/export-rows.ts`.
+**Sale deduction:** mock `pos` repository checks stock before creating anything
+(all-or-nothing) then writes `sale` movements. Supabase `pos` repository now calls
+the `checkout_sale` RPC (prices read from the DB, cashier = `auth.uid()`).
+Voiding a payment does NOT restock yet. Sale audit summary is now
+`Sale of ₱X paid by METHOD` (no item count) in both modes.
+**Audit:** new actions `stock.tracking_changed`, `stock.adjusted`.
+**Migration** `supabase/migrations/0006_inventory.sql` (NOT applied to Supabase):
+RLS (members read; owner/admin write; no `sale` movements from clients; ledger
+immutable), `stock_items_guard` (count only changes via the movement trigger),
+`stock_movements_apply` trigger, audit triggers, `checkout_sale` RPC (locks stock
+rows, errcode 23514 on shortage). Verified on real Postgres 16 (baseline + 0001–
+0006 + seed): sale deducts + audits; shortage/out-of-stock leave nothing behind;
+staff can't forge movements or edit counts; oversell adjustment blocked; direct
+quantity edit blocked. Not run through the Supabase CLI.
+**Tests:** **120** total (catalog 5, pos 9, booking 7, expenses 17, inventory 12,
+web 70). typecheck/lint/build green. Playwright (admin + staff): dashboard alerts,
+stats, opening history, validation, track/adjust/oversell/damage/correction,
+threshold, stop tracking, POS tile states and 7th-Lumpia block, checkout reduces
+stock, CSV + PDF download, Catalog badges, Audit "Stock" entries, staff read-only,
+no horizontal overflow at 390px (inventory, POS, catalog, dashboard, audit).
+**Setup:** run `pnpm install` (new workspace package + lockfile).
+Known limits: pre-existing — deleting a business that has POS sales fails in
+Postgres because `pos_order_items.offering_id` is ON DELETE RESTRICT; reports don't
+include stock; mock data resets on reload.
+
+### Round 22: Receipts — CURRENT
+Batch 3 item 4 (next: Staff scheduling → Language toggle → Offline resilience).
+**What a receipt is:** a *sales receipt* for a POS sale — business name, address, phone, TIN (each only if set),
+receipt number, date/time, cashier, lines (qty × name, unit price, amount), total, payment method + reference,
+footer message, and the fixed line "This is a sales receipt, not an official receipt." **It is NOT BIR-compliant and
+never claims to be** (no ORUS/permit/serial/VAT breakdown, no official-receipt series).
+**Numbers:** sequential per business, shown as `000123`; voided sales keep theirs and print "*** VOIDED ***".
+Mock: next = highest + 1 (`nextReceiptNumber` in the POS mock repo; seeded history is numbered oldest-first).
+Supabase: `pos_orders_assign_receipt` BEFORE INSERT trigger (advisory lock per business) ignores whatever the client
+sends; `pos_orders_freeze_receipt` blocks changing a number later.
+**Receipt details** (address ≤200, TIN, phone ≤30, footer ≤120; all optional): edited by the owner
+(`business.configure`) on **Business Setup** in a "Receipt details" card (shown after first-run setup only).
+`validateReceiptDetails` / `normalizeReceiptDetails` / `formatTin` in `lib/repositories/repository.ts` (shared by
+the form and both repositories; TIN = 9 or 12 digits, stored `123-456-789[-000]`).
+`CoreRepository.saveReceiptDetails`; `BusinessView` has the four new fields. Audit: one "Receipt details updated"
+entry (action `business.updated`, no values logged) — mock logs it, the 0007 trigger logs it in Supabase mode.
+**UI:** `components/receipt/` — `ReceiptSheet` (the receipt, black-on-white), `ReceiptDialog` (Print + Download PDF),
+`ReceiptDetailsCard`. The receipt dialog opens automatically after a POS sale, and Payment Records has a receipt
+button on every POS row (all roles; Actions column now always shown). Printing: a hidden copy of the receipt is
+rendered into `<body>` (`.receipt-print-root`, CSS at the end of `index.css`) and everything else is hidden under
+`@media print`. `lib/receipt-pdf.ts` — 80 mm-wide one-page PDF (money as "PHP 1,234.00"; the page is never shorter
+than 90 mm because jsPDF flips wider-than-tall pages to landscape). `lib/receipt-format.ts` — labels/formatters and
+the disclaimer text. Hooks: `use-save-receipt-details.ts`; `use-void-payment-record.ts` also refreshes receipts.
+**Migration** `supabase/migrations/0007_receipts.sql` (NOT applied to Supabase; idempotent): new columns, backfill
+numbers oldest-first then NOT NULL + unique, the two triggers, audit trigger update, and `checkout_sale` now also
+returns `receipt_number`. Verified on real Postgres 16 both on a fresh baseline (applied twice) and as an upgrade of a
+DB with existing orders (backfill 1,2,3 by date); staff sale returns 1 then 2; a forged insert with number 999 got
+the next number; changing a number is blocked; staff can't edit the business; one audit entry for a receipt-details
+edit and none for a no-op save, TIN not in the log; two sessions selling at once got 32 distinct numbers 1..32.
+**Tests:** **134** total (catalog 5, pos 15, booking 7, expenses 17, inventory 12, web 78). typecheck/lint/build
+green. Playwright (owner, staff): details form validation + TIN reformat, receipt after sale (all fields), PDF
+download + text, print media emulation (only the receipt, 1 page), voided stamp, receipt from Payments, audit entry,
+staff can open receipts but not void or reach Business Setup, no horizontal overflow at 390px. The generated PDF
+was rendered and inspected.
+Known limits: receipts read the business's *current* details and offering names (no snapshot at sale time — fine
+today since offerings can't be renamed, but a TIN edit changes reprints); only POS sales have receipts (not
+bookings); the Supabase `getReceipt` query (PostgREST embeds) is written but not run against a real Supabase/
+PostgREST; Print uses the browser's print dialog (thermal-printer paper size is chosen there).
 
 ### Never Include in Prompts
 - `node_modules/` (any level) — build artifacts, never source.

@@ -26,11 +26,12 @@ describe("normalizeModules", () => {
   it("adds required modules: POS or Booking pull in Catalog", () => {
     expect(normalizeModules(["pos"])).toEqual(["catalog", "pos"]);
     expect(normalizeModules(["booking"])).toEqual(["catalog", "booking"]);
+    expect(normalizeModules(["inventory"])).toEqual(["catalog", "inventory"]);
   });
 
   it("dedupes, returns registry order, and drops keys that aren't registered", () => {
     expect(normalizeModules(["booking", "pos", "pos", "catalog"])).toEqual(["catalog", "pos", "booking"]);
-    expect(normalizeModules(["inventory", "online_store"])).toEqual([]);
+    expect(normalizeModules(["online_store"])).toEqual([]);
   });
 
   it("returns an empty list for an empty selection", () => {

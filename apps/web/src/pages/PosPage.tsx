@@ -2,12 +2,14 @@ import { useMemo, useState } from "react";
 import { ShoppingCart, X, Search, Box, Layers, PlusCircle, Receipt } from "lucide-react";
 import { useOfferings } from "@isnabero/module-catalog";
 import { useCartStore, useCheckout } from "@isnabero/module-pos";
+import { useStockLevels, type StockLevel } from "@isnabero/module-inventory";
 import { Card, CardContent, PageHeader, EmptyState, Skeleton, Input, FilterBar, QuantityStepper, Badge, cn } from "@isnabero/ui";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useBusinessStore } from "@/stores/business-store";
 import { useAuth } from "@/providers/AuthProvider";
 import { CheckoutModal } from "@/components/pos/CheckoutModal";
+import { ReceiptDialog } from "@/components/receipt/ReceiptDialog";
 
 // TYPE_ICON/TYPE_TILE_TINT: same type-accent mapping as Catalog, so an item keeps the same visual
 // identity whether you're editing it there or tapping it here to ring up a sale.
@@ -24,18 +26,33 @@ export default function PosPage() {
   const { lines, addOffering, updateQuantity, removeLine, clear, total } = useCartStore();
   const { employee } = useAuth(); // cashier recorded on the order; null until the employee row resolves
   const checkout = useCheckout(supabase);
+  const { data: stockLevels = [] } = useStockLevels(supabase, businessId);
+  const stockByOffering = useMemo(() => new Map<string, StockLevel>(stockLevels.map((level) => [level.offeringId, level])), [stockLevels]);
   const [search, setSearch] = useState("");
+  const [receiptOrderId, setReceiptOrderId] = useState<string | null>(null); // the receipt shown after a sale
 
   const handleCheckout = (method: "cash" | "gcash" | "bank_transfer" | "other", referenceCode?: string) => {
     checkout.mutate(
       { businessId, employeeId: employee?.id ?? null, lines, method, referenceCode },
       {
-        onSuccess: () => {
+        onSuccess: (result) => {
           toast.success(`Sale completed — ₱${total().toFixed(2)}`);
           clear();
+          setReceiptOrderId(result.orderId);
         },
       },
     );
+  };
+
+  // addToCart: a tracked item can't be added beyond what's in stock (the repository enforces it again at checkout)
+  const addToCart = (offering: (typeof offerings)[number]) => {
+    const stock = stockByOffering.get(offering.id);
+    const inCart = lines.find((line) => line.offering.id === offering.id)?.quantity ?? 0;
+    if (stock && inCart >= stock.quantity) {
+      toast.error(stock.quantity <= 0 ? `${offering.name} is out of stock.` : `Only ${stock.quantity} ${offering.name} left in stock.`);
+      return;
+    }
+    addOffering(offering);
   };
 
   const availableOfferings = useMemo(
@@ -73,11 +90,14 @@ export default function PosPage() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {availableOfferings.map((offering) => {
               const TypeIcon = TYPE_ICON[offering.type];
+              const stock = stockByOffering.get(offering.id);
+              const soldOut = stock?.status === "out";
               return (
                 <button
                   key={offering.id}
-                  onClick={() => addOffering(offering)}
-                  className="group flex flex-col items-start gap-2.5 rounded-lg border bg-card p-4 text-left shadow-card transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-elevated active:scale-[0.98]"
+                  onClick={() => addToCart(offering)}
+                  disabled={soldOut}
+                  className="group flex flex-col items-start gap-2.5 rounded-lg border bg-card p-4 text-left shadow-card transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-elevated active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
                 >
                   <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg transition-transform duration-150 group-hover:scale-105", TYPE_TILE_TINT[offering.type])}>
                     <TypeIcon className="h-4 w-4" />
@@ -86,6 +106,11 @@ export default function PosPage() {
                     <p className="truncate font-medium leading-tight">{offering.name}</p>
                     <p className="mt-0.5 text-sm font-semibold text-primary">₱{Number(offering.price).toFixed(2)}</p>
                   </div>
+                  {stock && (
+                    <Badge variant={stock.status === "out" ? "destructive" : stock.status === "low" ? "warning" : "secondary"}>
+                      {stock.status === "out" ? "Out of stock" : `${stock.quantity} left`}
+                    </Badge>
+                  )}
                 </button>
               );
             })}
@@ -116,7 +141,7 @@ export default function PosPage() {
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
                       {/* min=1: clearing the box to retype must not drop the line — removal is the X button */}
-                      <QuantityStepper min={1} value={line.quantity} onChange={(next) => updateQuantity(line.offering.id, next)} />
+                      <QuantityStepper min={1} max={stockByOffering.get(line.offering.id)?.quantity ?? 999} value={line.quantity} onChange={(next) => updateQuantity(line.offering.id, next)} />
                       <button
                         onClick={() => removeLine(line.offering.id)}
                         className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
@@ -140,6 +165,7 @@ export default function PosPage() {
           </CardContent>
         </Card>
       </div>
+      <ReceiptDialog businessId={businessId} reference={receiptOrderId ? { orderId: receiptOrderId } : null} onClose={() => setReceiptOrderId(null)} />
     </div>
   );
 }

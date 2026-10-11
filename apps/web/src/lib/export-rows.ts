@@ -1,6 +1,7 @@
 import type { BookingWithOffering } from "@isnabero/module-booking";
 import type { OfferingWithInclusions } from "@isnabero/module-catalog";
 import { getAuditActionLabel } from "@isnabero/db";
+import type { StockLevel, StockMovementView } from "@isnabero/module-inventory";
 import { getExpenseCategoryLabel, type Expense } from "@isnabero/module-expenses";
 import { inDateRange, toLocalYmd, type DateRange } from "@/lib/date-range";
 import type { AuditLogEntry, EmployeeView, PaymentRecordView } from "@/lib/repositories/repository";
@@ -83,6 +84,30 @@ export function auditLogRows(entries: AuditLogEntry[], range: DateRange): CsvRow
       Who: entry.actorName,
       Action: getAuditActionLabel(entry.action),
       Details: entry.summary,
+    }));
+}
+
+export function stockRows(levels: StockLevel[]): CsvRow[] {
+  return levels.map((level) => ({
+    Item: level.offeringName,
+    Type: level.offeringType,
+    "In stock": level.quantity,
+    "Low-stock level": level.lowStockThreshold,
+    Status: level.status === "out" ? "Out of stock" : level.status === "low" ? "Low" : "OK",
+  }));
+}
+
+export function stockMovementRows(movements: StockMovementView[], range: DateRange): CsvRow[] {
+  return movements
+    .filter((movement) => inDateRange(toLocalYmd(movement.createdAt), range))
+    .map((movement) => ({
+      Date: toLocalYmd(movement.createdAt),
+      Time: localTime(movement.createdAt),
+      Item: movement.offeringName,
+      Change: movement.delta,
+      Type: movement.kind,
+      Reason: movement.note ?? "",
+      By: movement.recordedByName ?? "System",
     }));
 }
 

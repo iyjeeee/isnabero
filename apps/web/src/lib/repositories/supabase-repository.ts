@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { LAST_OWNER_MESSAGE, normalizeBusinessName } from "./repository";
+import { LAST_OWNER_MESSAGE, normalizeBusinessName, normalizeReceiptDetails } from "./repository";
 import type {
   BusinessView,
   SaveBusinessSetupInput,
+  ReceiptDetailsInput,
   CoreRepository,
   CreateEmployeeInput,
   UpdateEmployeeInput,
@@ -14,6 +15,8 @@ import type {
   ListAuditLogOptions,
 } from "./repository";
 import { MODULE_REGISTRY, normalizeModules, type ModuleKey } from "@/lib/module-registry";
+
+const BUSINESS_COLUMNS = "id, name, slug, setup_completed_at, address, tin, contact_number, receipt_footer";
 
 export function createSupabaseCoreRepository(supabase: SupabaseClient): CoreRepository {
   // assertNotLastOwner: throws if `employeeId` is currently the business's only owner
@@ -28,11 +31,15 @@ export function createSupabaseCoreRepository(supabase: SupabaseClient): CoreRepo
     name: row.name,
     slug: row.slug,
     setupCompletedAt: row.setup_completed_at ? new Date(row.setup_completed_at) : null,
+    address: row.address ?? null,
+    tin: row.tin ?? null,
+    contactNumber: row.contact_number ?? null,
+    receiptFooter: row.receipt_footer ?? null,
   });
 
   return {
     async getBusiness(businessId): Promise<BusinessView> {
-      const { data, error } = await supabase.from("businesses").select("id, name, slug, setup_completed_at").eq("id", businessId).single();
+      const { data, error } = await supabase.from("businesses").select(BUSINESS_COLUMNS).eq("id", businessId).single();
       if (error) throw error;
       return mapBusinessRow(data);
     },
@@ -57,7 +64,20 @@ export function createSupabaseCoreRepository(supabase: SupabaseClient): CoreRepo
         .from("businesses")
         .update({ name, setup_completed_at: current?.setup_completed_at ?? new Date().toISOString() })
         .eq("id", businessId)
-        .select("id, name, slug, setup_completed_at")
+        .select(BUSINESS_COLUMNS)
+        .single();
+      if (error) throw error;
+      return mapBusinessRow(data);
+    },
+
+    // The audit trigger (migration 0007) logs "Receipt details updated" — don't log here
+    async saveReceiptDetails(businessId, input: ReceiptDetailsInput): Promise<BusinessView> {
+      const next = normalizeReceiptDetails(input);
+      const { data, error } = await supabase
+        .from("businesses")
+        .update({ address: next.address, tin: next.tin, contact_number: next.contactNumber, receipt_footer: next.receiptFooter })
+        .eq("id", businessId)
+        .select(BUSINESS_COLUMNS)
         .single();
       if (error) throw error;
       return mapBusinessRow(data);

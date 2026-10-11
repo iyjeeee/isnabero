@@ -1,15 +1,16 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Wallet, Receipt, TrendingUp, Search } from "lucide-react";
+import { Wallet, Receipt, ReceiptText, TrendingUp, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useBusinessStore } from "@/stores/business-store";
 import { getCoreRepository } from "@/lib/repositories/get-repository";
 import { usePermission } from "@/hooks/use-permission";
 import { usePagination } from "@/hooks/use-pagination";
 import { paymentRows } from "@/lib/export-rows";
-import { Card, CardContent, Badge, PageHeader, EmptyState, Skeleton, StatCard, FilterBar, Input, Pagination, cn } from "@isnabero/ui";
+import { Card, CardContent, Badge, PageHeader, EmptyState, Skeleton, StatCard, FilterBar, Input, Pagination, ActionIconButton, cn } from "@isnabero/ui";
 import { ExportButton } from "@/components/ExportButton";
 import { VoidPaymentRecordButton } from "@/components/payments/VoidPaymentRecordButton";
+import { ReceiptDialog } from "@/components/receipt/ReceiptDialog";
 
 const METHOD_BADGE_VARIANT = { cash: "success", gcash: "info", bank_transfer: "default", other: "secondary" } as const;
 const METHOD_TABS = [
@@ -27,6 +28,7 @@ export default function PaymentsPage() {
   const canManage = usePermission("payments.void");
 
   const [showVoided, setShowVoided] = useState(false);
+  const [receiptPaymentId, setReceiptPaymentId] = useState<string | null>(null);
 
   const { data: records = [], isLoading } = useQuery({
     queryKey: ["payment_records", businessId, showVoided],
@@ -128,7 +130,7 @@ export default function PaymentsPage() {
                   <th className="px-4 py-3">Method</th>
                   <th className="px-4 py-3">Reference</th>
                   <th className="px-4 py-3 text-right">Amount</th>
-                  {canManage && <th className="px-4 py-3 text-right">Actions</th>}
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -150,15 +152,16 @@ export default function PaymentsPage() {
                         </Badge>
                       )}
                     </td>
-                    {canManage && (
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end">
-                          {!record.voidedAt && (
-                            <VoidPaymentRecordButton businessId={businessId} recordId={record.id} amountLabel={`₱${record.amount.toFixed(2)}`} />
-                          )}
-                        </div>
-                      </td>
-                    )}
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-1">
+                        {record.sourceModule === "pos" && (
+                          <ActionIconButton icon={ReceiptText} aria-label={`View receipt for ${record.createdAt.toLocaleString()}`} title="View receipt" onClick={() => setReceiptPaymentId(record.id)} />
+                        )}
+                        {canManage && !record.voidedAt && (
+                          <VoidPaymentRecordButton businessId={businessId} recordId={record.id} amountLabel={`₱${record.amount.toFixed(2)}`} />
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -171,6 +174,7 @@ export default function PaymentsPage() {
           )}
         </CardContent>
       </Card>
+      <ReceiptDialog businessId={businessId} reference={receiptPaymentId ? { paymentRecordId: receiptPaymentId } : null} onClose={() => setReceiptPaymentId(null)} />
     </div>
   );
 }

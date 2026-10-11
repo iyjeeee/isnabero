@@ -4,3 +4,4 @@ export * from "./pos";
 export * from "./booking";
 export * from "./expenses";
 export * from "./audit";
+export * from "./inventory";

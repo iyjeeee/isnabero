@@ -10,6 +10,7 @@ export function useVoidPaymentRecord(businessId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payment_records", businessId] });
       queryClient.invalidateQueries({ queryKey: ["dashboard_stats", businessId] });
+      queryClient.invalidateQueries({ queryKey: ["receipt", businessId] }); // a voided sale's receipt is stamped VOIDED
     },
   });
 }
