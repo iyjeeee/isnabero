@@ -13,6 +13,9 @@ export const AUDIT_ACTIONS = {
   "employee.deleted": { entity: "employee", label: "Employee removed" },
   "stock.tracking_changed": { entity: "stock", label: "Stock tracking changed" },
   "stock.adjusted": { entity: "stock", label: "Stock adjusted" },
+  "shift.created": { entity: "shift", label: "Shift scheduled" },
+  "shift.updated": { entity: "shift", label: "Shift changed" },
+  "shift.deleted": { entity: "shift", label: "Shift removed" },
   "business.updated": { entity: "business", label: "Business updated" },
   "business.modules_changed": { entity: "business", label: "Modules changed" },
 } as const;

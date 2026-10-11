@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Expense } from "@isnabero/module-expenses";
 import type { BookingWithOffering } from "@isnabero/module-booking";
 import type { OfferingWithInclusions } from "@isnabero/module-catalog";
-import { bookingRows, employeeRows, expenseRows, offeringRows, paymentRows, salesReportRows, stockMovementRows, stockRows } from "../export-rows";
+import { bookingRows, employeeRows, expenseRows, offeringRows, paymentRows, salesReportRows, shiftRows, stockMovementRows, stockRows } from "../export-rows";
 
 const expense = (overrides: Partial<Expense>): Expense => ({
   id: "1", businessId: "b", category: "rent", description: "Rent", amount: 100, expenseDate: "2026-03-10",
@@ -65,5 +65,13 @@ describe("export rows", () => {
     const movement = { id: "1", offeringId: "1", offeringName: "Sisig", delta: -2, kind: "sale" as const, note: null, recordedByName: null, createdAt: new Date(2026, 2, 10, 9, 5) };
     expect(stockMovementRows([movement], { from: "2026-03-11" })).toEqual([]);
     expect(stockMovementRows([movement], {})).toEqual([{ Date: "2026-03-10", Time: "09:05", Item: "Sisig", Change: -2, Type: "sale", Reason: "", By: "System" }]);
+  });
+
+  it("shifts: weekday, hours, employee name (or Unknown), and the date range filter", () => {
+    const shift = { id: "1", businessId: "b", employeeId: "e1", shiftDate: "2026-10-05", startTime: "09:00", endTime: "17:30", note: "Opens" };
+    const names = new Map([["e1", "Pedro Reyes"]]);
+    expect(shiftRows([shift], names, {})).toEqual([{ Date: "2026-10-05", Day: "Mon", Employee: "Pedro Reyes", Start: "09:00", End: "17:30", Hours: "8h 30m", Note: "Opens" }]);
+    expect(shiftRows([{ ...shift, employeeId: "gone", note: null }], names, {})[0]).toMatchObject({ Employee: "Unknown employee", Note: "" });
+    expect(shiftRows([shift], names, { from: "2026-10-06" })).toEqual([]);
   });
 });

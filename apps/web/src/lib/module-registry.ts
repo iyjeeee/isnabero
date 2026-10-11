@@ -1,11 +1,11 @@
 import type { LucideIcon } from "lucide-react";
-import { ShoppingCart, CalendarClock, LayoutGrid, Receipt, Boxes } from "lucide-react";
+import { ShoppingCart, CalendarClock, CalendarDays, LayoutGrid, Receipt, Boxes } from "lucide-react";
 import type { Permission } from "@/lib/permissions";
 
 // ModuleKey mirrors packages/db's moduleKeyEnum — keep these two lists in sync when adding a new module
 // (module-registry.test.ts fails if a registered key is missing from the enum).
-// "online_store" | "inventory" have no route/registry entry yet since those modules aren't built.
-export type ModuleKey = "catalog" | "pos" | "booking" | "online_store" | "inventory" | "expenses";
+// "online_store" has no route/registry entry yet since that module isn't built.
+export type ModuleKey = "catalog" | "pos" | "booking" | "online_store" | "inventory" | "expenses" | "scheduling";
 
 export interface ModuleDefinition {
   key: ModuleKey;
@@ -25,6 +25,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
   { key: "booking", label: "Booking", description: "Reserve time slots for customers.", path: "/app/booking", icon: CalendarClock, requires: ["catalog"] },
   { key: "expenses", label: "Expenses", description: "Track rent, utilities, supplies and other spending (owners and admins).", path: "/app/expenses", icon: Receipt, permission: "expenses.view" },
   { key: "inventory", label: "Inventory", description: "Track stock counts; sales deduct automatically and low stock is flagged.", path: "/app/inventory", icon: Boxes, requires: ["catalog"] },
+  { key: "scheduling", label: "Schedule", description: "Plan weekly staff shifts; everyone can see the schedule, owners and admins edit it.", path: "/app/schedule", icon: CalendarDays },
 ];
 
 export function getModuleDefinition(key: ModuleKey): ModuleDefinition | undefined {

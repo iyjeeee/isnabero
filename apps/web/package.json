@@ -18,6 +18,7 @@
     "@isnabero/module-catalog": "workspace:*",
     "@isnabero/module-expenses": "workspace:*",
     "@isnabero/module-inventory": "workspace:*",
+    "@isnabero/module-scheduling": "workspace:*",
     "@isnabero/module-pos": "workspace:*",
     "@isnabero/ui": "workspace:*",
     "@supabase/supabase-js": "^2.46.1",

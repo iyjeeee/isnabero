@@ -492,6 +492,9 @@ deliver a ready-to-extract ZIP with only changed/created files.
   `stockStatus(qty, threshold)` (single source of ok/low/out), `InsufficientStockError`.
 - `src/mock/stock.ts` — mock-mode `assertStockForSale` / `applyStockMove` (the
   Supabase equivalents are the 0006 trigger + `checkout_sale` RPC).
+- `src/schema/scheduling.ts` — `shifts` (employee, `shiftDate` YYYY-MM-DD, `startTime`/`endTime` HH:MM wall-clock,
+  note; cascades with the employee). `moduleKeyEnum` gained `scheduling`; `AUDIT_ACTIONS` gained `shift.created /
+  updated / deleted` (entity "shift"). The mock store seeds this week + next (fixed pattern, no rng).
 - Round 22: `businesses` gained `address`, `tin`, `contactNumber`, `receiptFooter` (all nullable) in
   `schema/core.ts`; `posOrders` gained `receiptNumber` (NOT NULL, unique per business) in `schema/pos.ts`.
 - `src/schema/index.ts` — barrel re-exporting all schema files.
@@ -505,13 +508,14 @@ deliver a ready-to-extract ZIP with only changed/created files.
   their data" issues. NOTE: drizzle-kit will generate `0000_*.sql` (the
   actual `CREATE TABLE` statements) once `pnpm db:generate` is run against a
   live DB connection — that file does not exist yet in this scaffold.
+- `migrations/0008_scheduling.sql` — see Round 23.
 - `migrations/0007_receipts.sql` — see Round 22.
 - `migrations/0006_inventory.sql` — see Round 21.
 - `migrations/0002`–`0005` — void payment records; booking no-overlap;
   roles + expenses RLS (Round 17, re-shipped in Round 19 with payment-void and
   employee policies); audit log triggers (Round 19).
 - `seed.sql` — demo business ("Sample Business", already set up) with
-  catalog/pos/booking/expenses/inventory enabled, 7 offerings, 4 employees, opening stock for Sisig (24) and Lumpia (6), and sample receipt details (address, phone, footer — no TIN); auto-applied on `supabase db reset`. Does
+  catalog/pos/booking/expenses/inventory enabled, 7 offerings, 4 employees, opening stock for Sisig (24) and Lumpia (6), sample receipt details (address, phone, footer — no TIN), and two weeks of shifts relative to today; auto-applied on `supabase db reset`. Does
   NOT replicate the mock store's 21-day generated history. Safe to edit/clear.
 
 ### Shared UI — `packages/ui`
@@ -666,6 +670,17 @@ deliver a ready-to-extract ZIP with only changed/created files.
 - `PosRepository.getReceipt(businessId, ref)` (null when no POS sale matches) in the mock and Supabase
   repositories; `CheckoutResult` now includes `receiptNumber`. Hook `useReceipt` (key
   `["receipt", businessId, ref]`).
+
+### Module: Scheduling — `packages/modules/scheduling`
+- `package.json` — `@isnabero/module-scheduling` (copy of the expenses setup); `tsconfig.json`.
+- `src/types.ts` — `Shift`, `ShiftInput`, `UpdateShiftInput` (no employee: reassign by remove + add), `ListShiftsOptions`,
+  `CopyWeekInput/Result`. `src/dates.ts` — YYYY-MM-DD helpers (`addDays`, `weekStartOf` Monday, `weekDays`, `isRealDate`).
+- `src/validation.ts` — `normalizeShiftInput` / `normalizeShiftTimes` (real date; end after start; 15 min–16 h; same day;
+  note ≤120), `shiftsOverlap` (touching is fine), formatters `formatClock`, `formatClockShort`, `formatHours`.
+- `src/repository.ts` — `SchedulingRepository`: `listShifts`, `createShift`, `updateShift`, `deleteShift`, `copyWeek`.
+- `src/mock-repository.ts` (logs audit), `src/supabase-repository.ts` (maps the 23P01 exclusion error; triggers audit),
+  `src/get-repository.ts`, `src/hooks.ts` (`useShifts`, `useCreateShift`, `useUpdateShift`, `useDeleteShift`, `useCopyWeek`;
+  key `["shifts", businessId, from, to]`), `src/index.ts`. `src/__tests__/scheduling.test.ts` — 13 tests.
 
 ### Module: Inventory — `packages/modules/inventory`
 - `package.json` — `@isnabero/module-inventory` (copy of the expenses setup); `tsconfig.json`.
@@ -1374,7 +1389,7 @@ Known limits: pre-existing — deleting a business that has POS sales fails in
 Postgres because `pos_order_items.offering_id` is ON DELETE RESTRICT; reports don't
 include stock; mock data resets on reload.
 
-### Round 22: Receipts — CURRENT
+### Round 22: Receipts
 Batch 3 item 4 (next: Staff scheduling → Language toggle → Offline resilience).
 **What a receipt is:** a *sales receipt* for a POS sale — business name, address, phone, TIN (each only if set),
 receipt number, date/time, cashier, lines (qty × name, unit price, amount), total, payment method + reference,
@@ -1412,6 +1427,37 @@ Known limits: receipts read the business's *current* details and offering names 
 today since offerings can't be renamed, but a TIN edit changes reprints); only POS sales have receipts (not
 bookings); the Supabase `getReceipt` query (PostgREST embeds) is written but not run against a real Supabase/
 PostgREST; Print uses the browser's print dialog (thermal-printer paper size is chosen there).
+
+### Round 23: Staff scheduling — CURRENT
+Batch 3 item 5 (next: Language toggle (English + Filipino) → Offline resilience → visuals/design pass → Supabase last).
+**Model:** a *shift* = one employee, one calendar day, start/end wall-clock times (no timezone). Same-day only (a night
+shift is two shifts); 15 min–16 h; an employee can't have overlapping shifts (touching is fine). Weeks run Monday–Sunday.
+**Permissions:** the module (`scheduling`, no `requires`) is visible to every role; `schedule.manage` (owner, admin) adds,
+edits, removes and copies. Staff get a read-only grid. Removing an employee removes their shifts silently.
+**UI:** `pages/SchedulePage.tsx` at `/app/schedule` (sidebar "Schedule"): week navigation + "This week", 3 stat cards
+(shifts, hours, staff scheduled), `components/schedule/WeekGrid.tsx` (employees × Mon–Sun, "N working" per day, hours per
+person, "You" badge, today highlighted; scrolls sideways inside its card on small screens), `ShiftModal.tsx` (add / edit /
+remove; employee locked when editing), `shift-form-schema.ts`, `schedule-stats.ts` (`computeWeekStats`). "Copy last week"
+repeats the previous week's shifts into the shown week and skips any that would overlap (toast reports both counts).
+Export (CSV/PDF) of the shown week via `shiftRows` in `lib/export-rows.ts`. Audit Log has a "Shifts" tab.
+**Audit:** created ("Scheduled X on date 09:00–17:00"), updated (only when day/time changes: "Changed shift for X: old →
+new"), deleted ("Removed X's shift on …"). A note-only edit isn't logged. Mock logs it; triggers do in Supabase mode.
+**Migration** `supabase/migrations/0008_scheduling.sql` (NOT applied; idempotent): `scheduling` enum value, `shifts` table,
+CHECK on length, **exclusion constraint** `shifts_no_overlap` (btree_gist), RLS (members read; owner/admin write, employee
+must be in the same business), freeze trigger (employee/business can't change), audit trigger (silent on employee cascade).
+Verified on real Postgres 16 on a fresh baseline (applied twice), as an upgrade (table missing), and with seed: staff can read
+but not insert/update/delete; overlaps blocked, touching and other employees fine; 10-minute, 17-hour and backwards shifts
+blocked; another business's employee blocked; employee swap blocked; audit wording matches the mock; note-only edit not
+logged; deleting an employee removed their 10 shifts with no shift audit entries; two sessions racing an overlapping shift —
+one failed, one row stayed.
+**Tests:** **155** total (catalog 5, pos 15, booking 7, expenses 17, inventory 12, scheduling 13, web 86). typecheck/lint/build
+green. Playwright (owner, staff): seeded week stats (19 shifts, 152h, 4 of 4), add with prefilled employee, end-before-start
+error, overlap refused, edit (employee locked), remove, CSV rows, week navigation, copy last week (19 copied, second copy 19
+skipped), Audit "Shifts" entries, no page overflow at 390px, staff read-only with "You" badge.
+**Setup:** run `pnpm install` (new workspace package + lockfile). Existing businesses need the `scheduling` row in
+`business_modules` (turn it on in Business Setup).
+Known limits: no time-off/availability, no overnight shifts, no shift swaps or publishing/notifications; the Supabase
+repository has not been run against a real Supabase/PostgREST.
 
 ### Never Include in Prompts
 - `node_modules/` (any level) — build artifacts, never source.

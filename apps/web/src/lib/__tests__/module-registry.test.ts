@@ -27,6 +27,7 @@ describe("normalizeModules", () => {
     expect(normalizeModules(["pos"])).toEqual(["catalog", "pos"]);
     expect(normalizeModules(["booking"])).toEqual(["catalog", "booking"]);
     expect(normalizeModules(["inventory"])).toEqual(["catalog", "inventory"]);
+    expect(normalizeModules(["scheduling"])).toEqual(["scheduling"]); // needs nothing else
   });
 
   it("dedupes, returns registry order, and drops keys that aren't registered", () => {

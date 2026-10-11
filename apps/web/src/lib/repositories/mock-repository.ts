@@ -163,6 +163,8 @@ export const mockCoreRepository: CoreRepository = {
     if (index === -1) return;
     if (isLastOwner(businessId, employeeId)) throw new Error(LAST_OWNER_MESSAGE);
     const [removed] = mockDb.employees.splice(index, 1);
+    // Their shifts go with them, silently (the database cascades the same way)
+    for (let i = mockDb.shifts.length - 1; i >= 0; i--) if (mockDb.shifts[i]?.employeeId === employeeId) mockDb.shifts.splice(i, 1);
     if (removed) recordAudit({ businessId, action: "employee.deleted", entityId: removed.id, summary: `Removed ${removed.fullName} (${removed.role})` });
   },
 

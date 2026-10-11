@@ -11,6 +11,7 @@ export const moduleKeyEnum = pgEnum("module_key", [
   "online_store",
   "inventory",
   "expenses",
+  "scheduling",
 ]);
 
 // payment_method: how a transaction was settled — kept generic since reference-code flows are all "manual" methods

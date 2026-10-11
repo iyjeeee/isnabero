@@ -19,6 +19,7 @@ const PosPage = lazy(() => import("@/pages/PosPage"));
 const BookingPage = lazy(() => import("@/pages/BookingPage"));
 const ExpensesPage = lazy(() => import("@/pages/ExpensesPage"));
 const InventoryPage = lazy(() => import("@/pages/InventoryPage"));
+const SchedulePage = lazy(() => import("@/pages/SchedulePage"));
 const AuditLogPage = lazy(() => import("@/pages/AuditLogPage"));
 const SetupPage = lazy(() => import("@/pages/SetupPage"));
 
@@ -49,6 +50,7 @@ export default function App() {
                 <Route path="pos" element={<RouteGuard moduleKey="pos"><PosPage /></RouteGuard>} />
                 <Route path="booking" element={<RouteGuard moduleKey="booking"><BookingPage /></RouteGuard>} />
                 <Route path="inventory" element={<RouteGuard moduleKey="inventory"><InventoryPage /></RouteGuard>} />
+                <Route path="schedule" element={<RouteGuard moduleKey="scheduling"><SchedulePage /></RouteGuard>} />
                 <Route path="expenses" element={<RouteGuard moduleKey="expenses"><ExpensesPage /></RouteGuard>} />
               </Route>
             </Route>

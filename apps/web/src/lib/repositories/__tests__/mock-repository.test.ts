@@ -189,3 +189,15 @@ describe("receipt details", () => {
     expect(original()).toEqual(before);
   });
 });
+
+describe("employees and shifts", () => {
+  it("removing an employee removes their shifts too (without a per-shift audit entry)", async () => {
+    const temp = await mockCoreRepository.createEmployee(DEMO_BUSINESS_ID, { fullName: "Temp Worker", role: "staff" });
+    mockDb.shifts.push({ id: "temp-shift", businessId: DEMO_BUSINESS_ID, employeeId: temp.id, shiftDate: "2030-02-04", startTime: "09:00", endTime: "12:00", note: null, createdAt: new Date() });
+    const before = mockDb.shifts.length;
+    await mockCoreRepository.deleteEmployee(DEMO_BUSINESS_ID, temp.id);
+    expect(mockDb.shifts.length).toBe(before - 1);
+    expect(mockDb.shifts.some((shift) => shift.employeeId === temp.id)).toBe(false);
+    expect(auditRows.some((row) => row.action === "shift.deleted")).toBe(false);
+  });
+});

@@ -3,6 +3,7 @@ import type { OfferingWithInclusions } from "@isnabero/module-catalog";
 import { getAuditActionLabel } from "@isnabero/db";
 import type { StockLevel, StockMovementView } from "@isnabero/module-inventory";
 import { getExpenseCategoryLabel, type Expense } from "@isnabero/module-expenses";
+import { formatHours, shiftMinutes, type Shift } from "@isnabero/module-scheduling";
 import { inDateRange, toLocalYmd, type DateRange } from "@/lib/date-range";
 import type { AuditLogEntry, EmployeeView, PaymentRecordView } from "@/lib/repositories/repository";
 
@@ -84,6 +85,23 @@ export function auditLogRows(entries: AuditLogEntry[], range: DateRange): CsvRow
       Who: entry.actorName,
       Action: getAuditActionLabel(entry.action),
       Details: entry.summary,
+    }));
+}
+
+const WEEKDAY = new Intl.DateTimeFormat("en-PH", { weekday: "short" });
+
+// shiftRows: one row per shift in the date range; `employeeNames` maps employee id -> name
+export function shiftRows(shifts: Shift[], employeeNames: Map<string, string>, range: DateRange): CsvRow[] {
+  return shifts
+    .filter((shift) => inDateRange(shift.shiftDate, range))
+    .map((shift) => ({
+      Date: shift.shiftDate,
+      Day: WEEKDAY.format(new Date(`${shift.shiftDate}T00:00:00`)),
+      Employee: employeeNames.get(shift.employeeId) ?? "Unknown employee",
+      Start: shift.startTime,
+      End: shift.endTime,
+      Hours: formatHours(shiftMinutes(shift)),
+      Note: shift.note ?? "",
     }));
 }
 

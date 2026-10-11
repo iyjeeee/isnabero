@@ -12,6 +12,7 @@ import type {
   expenses,
   stockItems,
   stockMovements,
+  shifts,
 } from "../schema";
 
 // DEMO_BUSINESS_ID matches supabase/seed.sql exactly, so switching VITE_DATA_SOURCE between
@@ -35,6 +36,7 @@ type PosOrderItem = InferSelectModel<typeof posOrderItems>;
 type Booking = InferSelectModel<typeof bookings>;
 type Expense = InferSelectModel<typeof expenses>;
 export type StockItem = InferSelectModel<typeof stockItems>;
+export type Shift = InferSelectModel<typeof shifts>;
 export type StockMovement = InferSelectModel<typeof stockMovements>;
 
 // genId: lightweight id generator — crypto.randomUUID is available in both browser and Node 20+
@@ -87,6 +89,7 @@ const businessModulesSeed: BusinessModule[] = [
   { id: genId(), businessId: DEMO_BUSINESS_ID, moduleKey: "booking", enabled: true, createdAt: new Date() },
   { id: genId(), businessId: DEMO_BUSINESS_ID, moduleKey: "expenses", enabled: true, createdAt: new Date() },
   { id: genId(), businessId: DEMO_BUSINESS_ID, moduleKey: "inventory", enabled: true, createdAt: new Date() },
+  { id: genId(), businessId: DEMO_BUSINESS_ID, moduleKey: "scheduling", enabled: true, createdAt: new Date() },
 ];
 
 // Four employees across all three roles, so role-based UI (badges, gated actions) has real variety
@@ -293,6 +296,27 @@ for (const [name, quantity, lowStockThreshold] of [["Sisig", 24, 5], ["Lumpia (6
   }
 }
 
+// Shifts for this week and next (Mon = 0). Fixed pattern, no rng, so it never shifts the generated history above.
+const shiftsSeed: Shift[] = [];
+const weekStart = new Date();
+weekStart.setHours(0, 0, 0, 0);
+weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+const SHIFT_PATTERN: Array<[employeeIndex: number, days: number[], start: string, end: string, note: string | null]> = [
+  [0, [0, 1, 2, 3, 4], "09:00", "17:00", null], // Juan: weekdays
+  [1, [0, 1, 2, 3, 4], "09:00", "17:00", null], // Maria: weekdays
+  [2, [1, 2, 4, 5, 6], "10:00", "18:00", "Opens the shop"], // Pedro
+  [3, [0, 3, 5, 6], "13:00", "21:00", null], // Ana: afternoons
+];
+for (const weekOffset of [0, 7]) {
+  for (const [employeeIndex, days, startTime, endTime, note] of SHIFT_PATTERN) {
+    for (const day of days) {
+      const date = new Date(weekStart);
+      date.setDate(date.getDate() + weekOffset + day);
+      shiftsSeed.push({ id: genId(), businessId: DEMO_BUSINESS_ID, employeeId: employeesSeed[employeeIndex]!.id, shiftDate: ymd(date), startTime, endTime, note, createdAt: new Date("2026-02-10") });
+    }
+  }
+}
+
 // mockDb: plain mutable in-memory tables. Fine for dev-only mock data — components stay reactive via
 // React Query cache invalidation in each repository's mutations, not via any reactivity in this store.
 export const mockDb = {
@@ -308,6 +332,7 @@ export const mockDb = {
   expenses: expensesSeed,
   stockItems: stockItemsSeed,
   stockMovements: stockMovementsSeed,
+  shifts: shiftsSeed,
 };
 
 export { genId };

@@ -11,6 +11,7 @@ export const PERMISSIONS = {
   "expenses.view": ["owner", "admin"], // see the Expenses page
   "expenses.manage": ["owner", "admin"], // record / void expenses
   "audit.view": ["owner", "admin"],
+  "schedule.manage": ["owner", "admin"], // staff can see the schedule but not edit it
   "inventory.manage": ["owner", "admin"], // staff can see stock levels but not change them
 } as const satisfies Record<string, readonly Role[]>;
 
