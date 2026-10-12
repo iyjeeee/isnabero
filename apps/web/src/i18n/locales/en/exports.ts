@@ -1,0 +1,15 @@
+export const exports = {
+  button: "Export",
+  dialogTitle: "Export {title}",
+  descriptionRange: "Pick dates to limit the export, or leave both blank to export everything.",
+  descriptionPage: "Download what's listed on this page.",
+  from: "From",
+  to: "To",
+  rowCount: "{count} row will be exported.|{count} rows will be exported.",
+  creating: "Creating…",
+  downloadPdf: "Download PDF",
+  downloadCsv: "Download CSV",
+  toastCsv: "Exported {count} row to CSV|Exported {count} rows to CSV",
+  toastPdf: "Exported {count} row to PDF|Exported {count} rows to PDF",
+  pdfError: "Couldn't create the PDF. Please try again.",
+};

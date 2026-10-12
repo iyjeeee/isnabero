@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, Badge, PageHeader, EmptyState
 import { useStockLevels, useStockMovements, formatDelta } from "@isnabero/module-inventory";
 import { supabase } from "@/lib/supabase";
 import { useBusinessStore } from "@/stores/business-store";
+import { useFormat, useLabels, useT } from "@/i18n";
 import { usePermission } from "@/hooks/use-permission";
 import { usePagination } from "@/hooks/use-pagination";
 import { stockMovementRows, stockRows } from "@/lib/export-rows";
@@ -14,14 +15,16 @@ import { AdjustStockModal } from "@/components/inventory/AdjustStockModal";
 import { ItemSettingsModal } from "@/components/inventory/ItemSettingsModal";
 
 const STATUS_TABS = [
-  { value: "all", label: "All" },
-  { value: "low", label: "Low" },
-  { value: "out", label: "Out" },
+  { value: "all", labelKey: "common.all" },
+  { value: "low", labelKey: "inventory.page.tabLow" },
+  { value: "out", labelKey: "inventory.page.tabOut" },
 ] as const;
-const KIND_LABELS = { initial: "Opening count", restock: "Restock", correction: "Correction", damage: "Damaged / lost", return: "Return", sale: "Sale" } as const;
 const PAGE_SIZE = 10;
 
 export default function InventoryPage() {
+  const { t } = useT();
+  const labels = useLabels();
+  const format = useFormat();
   const businessId = useBusinessStore((state) => state.businessId) ?? "";
   const canManage = usePermission("inventory.manage");
   const { data: levels = [], isLoading } = useStockLevels(supabase, businessId);
@@ -44,8 +47,8 @@ export default function InventoryPage() {
     <div className="space-y-6">
       <PageHeader
         icon={Boxes}
-        title="Inventory"
-        description="Stock counts for the items you track. Sales take from these automatically."
+        title={t("inventory.page.title")}
+        description={t("inventory.page.description")}
         action={
           <div className="flex items-center gap-2">
             <ExportButton title="Inventory" filenamePrefix="inventory" disabled={filtered.length === 0} buildRows={() => stockRows(filtered)} />
@@ -55,9 +58,9 @@ export default function InventoryPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Tracked Items" value={levels.length} icon={Boxes} accent="default" isLoading={isLoading} />
-        <StatCard label="Low Stock" value={lowCount} icon={TriangleAlert} accent="warning" isLoading={isLoading} />
-        <StatCard label="Out of Stock" value={outCount} icon={PackageX} accent="info" isLoading={isLoading} />
+        <StatCard label={t("inventory.page.trackedItems")} value={levels.length} icon={Boxes} accent="default" isLoading={isLoading} />
+        <StatCard label={t("inventory.page.lowStock")} value={lowCount} icon={TriangleAlert} accent="warning" isLoading={isLoading} />
+        <StatCard label={t("inventory.page.outOfStock")} value={outCount} icon={PackageX} accent="info" isLoading={isLoading} />
       </div>
 
       <FilterBar>
@@ -69,13 +72,13 @@ export default function InventoryPage() {
               onClick={() => setStatusFilter(tab.value)}
               className={cn("shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors", statusFilter === tab.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent")}
             >
-              {tab.label}
+              {t(tab.labelKey)}
             </button>
           ))}
         </div>
         <div className="relative w-full sm:w-64">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search items…" aria-label="Search inventory" value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
+          <Input placeholder={t("inventory.page.searchPlaceholder")} aria-label={t("inventory.page.searchAria")} value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
         </div>
       </FilterBar>
 
@@ -91,22 +94,22 @@ export default function InventoryPage() {
           {!isLoading && levels.length === 0 && (
             <EmptyState
               icon={Boxes}
-              title="No items tracked yet"
-              description={canManage ? "Use “Track an item” to start counting stock for something you sell." : "An owner or admin can start tracking stock for items."}
+              title={t("inventory.empty.noneTitle")}
+              description={canManage ? t("inventory.empty.noneManage") : t("inventory.empty.noneReadonly")}
               className="border-0"
             />
           )}
-          {!isLoading && levels.length > 0 && filtered.length === 0 && <EmptyState icon={Search} title="No matches" description="Try a different search or status." className="border-0" />}
+          {!isLoading && levels.length > 0 && filtered.length === 0 && <EmptyState icon={Search} title={t("inventory.empty.noMatchesTitle")} description={t("inventory.empty.noMatchesDescription")} className="border-0" />}
           {!isLoading && items.pageItems.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/50 text-left text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3">Item</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3 text-right">In stock</th>
-                    <th className="px-4 py-3 text-right">Warn at</th>
-                    {canManage && <th className="px-4 py-3 text-right">Actions</th>}
+                    <th className="px-4 py-3">{t("inventory.table.item")}</th>
+                    <th className="px-4 py-3">{t("common.status")}</th>
+                    <th className="px-4 py-3 text-right">{t("inventory.table.inStock")}</th>
+                    <th className="px-4 py-3 text-right">{t("inventory.table.warnAt")}</th>
+                    {canManage && <th className="px-4 py-3 text-right">{t("common.actions")}</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -144,37 +147,37 @@ export default function InventoryPage() {
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="flex items-center gap-2 text-base">
             <History className="h-4 w-4 text-primary" />
-            Stock history
+            {t("inventory.history.title")}
           </CardTitle>
           <ExportButton title="Stock History" filenamePrefix="stock-history" withDateRange disabled={movements.length === 0} buildRows={(range) => stockMovementRows(movements, range)} />
         </CardHeader>
         <CardContent className="p-0">
           {movementsLoading && <Skeleton className="m-5 h-24" />}
-          {!movementsLoading && movements.length === 0 && <EmptyState icon={History} title="No stock changes yet" description="Restocks, corrections and sales of tracked items will be listed here." className="border-0" />}
+          {!movementsLoading && movements.length === 0 && <EmptyState icon={History} title={t("inventory.history.emptyTitle")} description={t("inventory.history.emptyDescription")} className="border-0" />}
           {!movementsLoading && history.pageItems.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/50 text-left text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3">When</th>
-                    <th className="px-4 py-3">Item</th>
-                    <th className="px-4 py-3">Type</th>
-                    <th className="px-4 py-3 text-right">Change</th>
-                    <th className="px-4 py-3">Reason</th>
-                    <th className="px-4 py-3">By</th>
+                    <th className="px-4 py-3">{t("inventory.history.when")}</th>
+                    <th className="px-4 py-3">{t("inventory.history.item")}</th>
+                    <th className="px-4 py-3">{t("inventory.history.type")}</th>
+                    <th className="px-4 py-3 text-right">{t("inventory.history.change")}</th>
+                    <th className="px-4 py-3">{t("inventory.history.reason")}</th>
+                    <th className="px-4 py-3">{t("inventory.history.by")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {history.pageItems.map((movement) => (
                     <tr key={movement.id} className="border-b last:border-0 hover:bg-accent/50">
-                      <td className="whitespace-nowrap px-4 py-3">{movement.createdAt.toLocaleString()}</td>
+                      <td className="whitespace-nowrap px-4 py-3">{format.dateTime(movement.createdAt)}</td>
                       <td className="px-4 py-3">{movement.offeringName}</td>
                       <td className="px-4 py-3">
-                        <Badge variant={movement.kind === "sale" ? "info" : "secondary"}>{KIND_LABELS[movement.kind]}</Badge>
+                        <Badge variant={movement.kind === "sale" ? "info" : "secondary"}>{labels.stockKind(movement.kind)}</Badge>
                       </td>
                       <td className={cn("px-4 py-3 text-right font-medium tabular-nums", movement.delta > 0 ? "text-success" : "text-destructive")}>{formatDelta(movement.delta)}</td>
                       <td className="px-4 py-3 text-muted-foreground">{movement.note ?? "—"}</td>
-                      <td className="px-4 py-3">{movement.recordedByName ?? "System"}</td>
+                      <td className="px-4 py-3">{movement.recordedByName ?? t("inventory.history.system")}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -1,0 +1,30 @@
+export const audit = {
+  title: "Audit Log",
+  description: "Who did what, and when. Entries can't be edited or deleted.",
+  exportHint: "Uses the filter and search currently applied.",
+  searchPlaceholder: "Search person or details…",
+  searchAria: "Search audit log",
+  tabs: {
+    sale: "Sales",
+    payment: "Payments",
+    booking: "Bookings",
+    offering: "Catalog",
+    stock: "Stock",
+    shift: "Shifts",
+    expense: "Expenses",
+    employee: "Employees",
+    business: "Business",
+  },
+  empty: {
+    noneTitle: "Nothing logged yet",
+    noneDescription: "Sales, voids, bookings, expenses and staff changes will appear here as they happen.",
+    noMatchesTitle: "No matches",
+    noMatchesDescription: "Try a different search term or filter.",
+  },
+  table: {
+    when: "When",
+    who: "Who",
+    action: "Action",
+    details: "Details",
+  },
+};

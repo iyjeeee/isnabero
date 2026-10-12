@@ -1,4 +1,5 @@
 import { Button, type ButtonProps } from "./button";
+import { useUiLabels } from "./ui-labels";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./dialog";
 
 export interface ConfirmDialogProps {
@@ -20,11 +21,12 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = "Confirm",
+  confirmLabel,
   isPending,
   variant = "destructive",
   onConfirm,
 }: ConfirmDialogProps) {
+  const labels = useUiLabels();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -34,10 +36,10 @@ export function ConfirmDialog({
         </DialogHeader>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {labels.cancel}
           </Button>
           <Button type="button" variant={variant} onClick={onConfirm} disabled={isPending}>
-            {isPending ? "Please wait…" : confirmLabel}
+            {isPending ? labels.pleaseWait : (confirmLabel ?? labels.confirm)}
           </Button>
         </DialogFooter>
       </DialogContent>

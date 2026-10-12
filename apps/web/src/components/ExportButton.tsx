@@ -7,6 +7,7 @@ import { buildPdf } from "@/lib/export-pdf";
 import { toLocalYmd, validateDateRange, type DateRange } from "@/lib/date-range";
 import type { CsvRow } from "@/lib/export-rows";
 import { useBusinessStore } from "@/stores/business-store";
+import { useT } from "@/i18n";
 import { useBusiness } from "@/hooks/use-business";
 
 interface ExportButtonProps {
@@ -22,6 +23,7 @@ interface ExportButtonProps {
 // ExportButton: one export UX for every list page. Opens a small dialog: optional From/To (both blank = everything), a
 // live row count, then CSV or PDF. CSV is for spreadsheets, PDF for printing or sharing.
 export function ExportButton({ title, filenamePrefix, buildRows, withDateRange = false, moneyColumns, hint, disabled }: ExportButtonProps) {
+  const { t } = useT();
   const businessId = useBusinessStore((state) => state.businessId) ?? "";
   const { data: business } = useBusiness(businessId);
   const [open, setOpen] = useState(false);
@@ -39,7 +41,7 @@ export function ExportButton({ title, filenamePrefix, buildRows, withDateRange =
 
   const handleCsv = () => {
     exportToCsv(`${filenamePrefix}-${suffix}.csv`, rows);
-    toast.success(`Exported ${rows.length} row${rows.length === 1 ? "" : "s"} to CSV`);
+    toast.success(t("exports.toastCsv", { count: rows.length }));
     setOpen(false);
   };
 
@@ -48,10 +50,10 @@ export function ExportButton({ title, filenamePrefix, buildRows, withDateRange =
     try {
       const doc = await buildPdf({ title, businessName: business?.name ?? "Isnabero", subtitle: rangeLabel, rows, moneyColumns });
       doc.save(`${filenamePrefix}-${suffix}.pdf`);
-      toast.success(`Exported ${rows.length} row${rows.length === 1 ? "" : "s"} to PDF`);
+      toast.success(t("exports.toastPdf", { count: rows.length }));
       setOpen(false);
     } catch {
-      toast.error("Couldn't create the PDF. Please try again.");
+      toast.error(t("exports.pdfError"));
     } finally {
       setPdfPending(false);
     }
@@ -68,43 +70,43 @@ export function ExportButton({ title, filenamePrefix, buildRows, withDateRange =
         disabled={disabled}
       >
         <Download className="h-4 w-4" />
-        Export
+        {t("exports.button")}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Export {title}</DialogTitle>
+            <DialogTitle>{t("exports.dialogTitle", { title })}</DialogTitle>
             <DialogDescription>
-              {withDateRange ? "Pick dates to limit the export, or leave both blank to export everything." : "Download what's listed on this page."}
+              {withDateRange ? t("exports.descriptionRange") : t("exports.descriptionPage")}
               {hint ? ` ${hint}` : ""}
             </DialogDescription>
           </DialogHeader>
           {withDateRange && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="export-from">From</Label>
+                <Label htmlFor="export-from">{t("exports.from")}</Label>
                 <Input id="export-from" type="date" max={range.to || undefined} value={range.from ?? ""} onChange={(event) => setRange({ ...range, from: event.target.value })} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="export-to">To</Label>
+                <Label htmlFor="export-to">{t("exports.to")}</Label>
                 <Input id="export-to" type="date" min={range.from || undefined} value={range.to ?? ""} onChange={(event) => setRange({ ...range, to: event.target.value })} />
               </div>
             </div>
           )}
           <p className={rangeError ? "text-sm text-destructive" : "text-sm text-muted-foreground"} role="status">
-            {rangeError ?? `${rows.length} row${rows.length === 1 ? "" : "s"} will be exported.`}
+            {rangeError ?? t("exports.rowCount", { count: rows.length })}
           </p>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="button" variant="outline" onClick={handlePdf} disabled={rows.length === 0 || pdfPending}>
               <FileText className="h-4 w-4" />
-              {pdfPending ? "Creating…" : "Download PDF"}
+              {pdfPending ? t("exports.creating") : t("exports.downloadPdf")}
             </Button>
             <Button type="button" onClick={handleCsv} disabled={rows.length === 0 || pdfPending}>
               <Download className="h-4 w-4" />
-              Download CSV
+              {t("exports.downloadCsv")}
             </Button>
           </DialogFooter>
         </DialogContent>

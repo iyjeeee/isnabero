@@ -6,6 +6,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useCan } from "@/hooks/use-permission";
 import { useBusinessModules } from "@/hooks/use-business-modules";
 import { useBusinessStore } from "@/stores/business-store";
+import { useT } from "@/i18n";
 import { PageFallback } from "@/components/PageFallback";
 import { getModuleDefinition, type ModuleKey } from "@/lib/module-registry";
 import type { Permission } from "@/lib/permissions";
@@ -20,6 +21,7 @@ interface RouteGuardProps {
 // instead of the page — typing the URL directly can't bypass the hidden nav link. The database enforces the same
 // rules via RLS.
 export function RouteGuard({ permission, moduleKey, children }: RouteGuardProps) {
+  const { t } = useT();
   const { loading, employeeLoading } = useAuth();
   const businessId = useBusinessStore((state) => state.businessId);
   const { data: enabledModules, isLoading: modulesLoading } = useBusinessModules(businessId);
@@ -35,11 +37,11 @@ export function RouteGuard({ permission, moduleKey, children }: RouteGuardProps)
     return (
       <EmptyState
         icon={ShieldAlert}
-        title="You don't have access to this page"
-        description="Your role doesn't include this. Ask an owner or admin if you need it."
+        title={t("app.routeGuard.noAccessTitle")}
+        description={t("app.routeGuard.noAccessHint")}
         action={
           <Button asChild variant="outline">
-            <Link to="/app">Back to Dashboard</Link>
+            <Link to="/app">{t("app.routeGuard.backToDashboard")}</Link>
           </Button>
         }
       />
@@ -51,11 +53,11 @@ export function RouteGuard({ permission, moduleKey, children }: RouteGuardProps)
     return (
       <EmptyState
         icon={PowerOff}
-        title={`${definition?.label ?? "This module"} is turned off`}
-        description="It isn't enabled for this business."
+        title={t("app.routeGuard.moduleOffTitle", { module: moduleKey ? t(`modules.${moduleKey}.label`) : t("app.routeGuard.thisModule") })}
+        description={t("app.routeGuard.moduleOffHint")}
         action={
           <Button asChild variant="outline">
-            <Link to={can("business.configure") ? "/app/setup" : "/app"}>{can("business.configure") ? "Open Business Setup" : "Back to Dashboard"}</Link>
+            <Link to={can("business.configure") ? "/app/setup" : "/app"}>{can("business.configure") ? t("app.routeGuard.openSetup") : t("app.routeGuard.backToDashboard")}</Link>
           </Button>
         }
       />

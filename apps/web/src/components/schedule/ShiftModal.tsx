@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button, ConfirmDialog, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Label, Select } from "@isnabero/ui";
 import { MAX_NOTE_LENGTH, useCreateShift, useDeleteShift, useUpdateShift, type Shift } from "@isnabero/module-scheduling";
 import { supabase } from "@/lib/supabase";
+import { useT } from "@/i18n";
 import type { EmployeeView } from "@/lib/repositories/repository";
 import { shiftFormSchema, type ShiftFormValues } from "./shift-form-schema";
 
@@ -37,6 +38,7 @@ export function ShiftModal({ businessId, state, employees, onClose }: ShiftModal
 }
 
 function ShiftForm({ businessId, state, employees, onClose }: Omit<ShiftModalProps, "state"> & { state: ShiftEditorState }) {
+  const { t, tm } = useT();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const createShift = useCreateShift(supabase, businessId);
   const updateShift = useUpdateShift(supabase, businessId);
@@ -54,9 +56,9 @@ function ShiftForm({ businessId, state, employees, onClose }: Omit<ShiftModalPro
       },
     });
     if (state.mode === "edit") {
-      updateShift.mutate({ shiftId: state.shift.id, input: { shiftDate: values.shiftDate, startTime: values.startTime, endTime: values.endTime, note: values.note ?? "" } }, done("Shift updated"));
+      updateShift.mutate({ shiftId: state.shift.id, input: { shiftDate: values.shiftDate, startTime: values.startTime, endTime: values.endTime, note: values.note ?? "" } }, done(t("schedule.modal.updated")));
     } else {
-      createShift.mutate({ ...values, note: values.note ?? "" }, done("Shift added"));
+      createShift.mutate({ ...values, note: values.note ?? "" }, done(t("schedule.modal.added")));
     }
   });
 
@@ -64,63 +66,63 @@ function ShiftForm({ businessId, state, employees, onClose }: Omit<ShiftModalPro
     <>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit shift" : "Add shift"}</DialogTitle>
-          <DialogDescription>Shifts stay within one day. For a night shift, add one shift per day.</DialogDescription>
+          <DialogTitle>{isEdit ? t("schedule.modal.editTitle") : t("schedule.modal.addTitle")}</DialogTitle>
+          <DialogDescription>{t("schedule.modal.description")}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
           <div className="space-y-1.5">
-            <Label htmlFor="shift-employee">Employee</Label>
+            <Label htmlFor="shift-employee">{t("schedule.modal.employee")}</Label>
             <Select id="shift-employee" disabled={isEdit} aria-invalid={Boolean(errors.employeeId)} {...form.register("employeeId")}>
-              <option value="">Select an employee…</option>
+              <option value="">{t("schedule.modal.employeePlaceholder")}</option>
               {employees.map((employee) => (
                 <option key={employee.id} value={employee.id}>
                   {employee.fullName}
                 </option>
               ))}
             </Select>
-            {errors.employeeId && <p className="text-xs text-destructive">{errors.employeeId.message}</p>}
+            {errors.employeeId && <p className="text-xs text-destructive">{tm(errors.employeeId.message)}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="shift-date">Date</Label>
+            <Label htmlFor="shift-date">{t("schedule.modal.date")}</Label>
             <Input id="shift-date" type="date" aria-invalid={Boolean(errors.shiftDate)} {...form.register("shiftDate")} />
-            {errors.shiftDate && <p className="text-xs text-destructive">{errors.shiftDate.message}</p>}
+            {errors.shiftDate && <p className="text-xs text-destructive">{tm(errors.shiftDate.message)}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="shift-start">Starts</Label>
+              <Label htmlFor="shift-start">{t("schedule.modal.starts")}</Label>
               <Input id="shift-start" type="time" aria-invalid={Boolean(errors.startTime)} {...form.register("startTime")} />
-              {errors.startTime && <p className="text-xs text-destructive">{errors.startTime.message}</p>}
+              {errors.startTime && <p className="text-xs text-destructive">{tm(errors.startTime.message)}</p>}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="shift-end">Ends</Label>
+              <Label htmlFor="shift-end">{t("schedule.modal.ends")}</Label>
               <Input id="shift-end" type="time" aria-invalid={Boolean(errors.endTime)} {...form.register("endTime")} />
-              {errors.endTime && <p className="text-xs text-destructive">{errors.endTime.message}</p>}
+              {errors.endTime && <p className="text-xs text-destructive">{tm(errors.endTime.message)}</p>}
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="shift-note">Note (optional)</Label>
-            <Input id="shift-note" maxLength={MAX_NOTE_LENGTH} placeholder="e.g. Opens the shop" aria-invalid={Boolean(errors.note)} {...form.register("note")} />
-            {errors.note && <p className="text-xs text-destructive">{errors.note.message}</p>}
+            <Label htmlFor="shift-note">{t("schedule.modal.note")}</Label>
+            <Input id="shift-note" maxLength={MAX_NOTE_LENGTH} placeholder={t("schedule.modal.notePlaceholder")} aria-invalid={Boolean(errors.note)} {...form.register("note")} />
+            {errors.note && <p className="text-xs text-destructive">{tm(errors.note.message)}</p>}
           </div>
 
           <DialogFooter className="gap-2 sm:justify-between">
             {isEdit ? (
               <Button type="button" variant="outline" className="text-destructive" onClick={() => setConfirmDelete(true)}>
-                Remove shift
+                {t("schedule.modal.remove")}
               </Button>
             ) : (
               <span />
             )}
             <div className="flex flex-col-reverse gap-2 sm:flex-row">
               <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending ? "Saving…" : isEdit ? "Save changes" : "Add shift"}
+                {isPending ? t("common.saving") : isEdit ? t("schedule.modal.saveChanges") : t("schedule.modal.addTitle")}
               </Button>
             </div>
           </DialogFooter>
@@ -131,14 +133,14 @@ function ShiftForm({ businessId, state, employees, onClose }: Omit<ShiftModalPro
         <ConfirmDialog
           open={confirmDelete}
           onOpenChange={setConfirmDelete}
-          title="Remove this shift?"
-          description="It disappears from the schedule. The change is recorded in the Audit Log."
-          confirmLabel="Remove shift"
+          title={t("schedule.modal.removeTitle")}
+          description={t("schedule.modal.removeDescription")}
+          confirmLabel={t("schedule.modal.remove")}
           isPending={deleteShift.isPending}
           onConfirm={() =>
             deleteShift.mutate(state.shift.id, {
               onSuccess: () => {
-                toast.success("Shift removed");
+                toast.success(t("schedule.modal.removed"));
                 setConfirmDelete(false);
                 onClose();
               },

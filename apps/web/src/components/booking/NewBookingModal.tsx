@@ -5,12 +5,14 @@ import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescrip
 import { useOfferings } from "@isnabero/module-catalog";
 import { useCreateBooking } from "@isnabero/module-booking";
 import { supabase } from "@/lib/supabase";
+import { useT } from "@/i18n";
 
 interface NewBookingModalProps {
   businessId: string;
 }
 
 export function NewBookingModal({ businessId }: NewBookingModalProps) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const { data: offerings = [] } = useOfferings(supabase, businessId);
   const createBooking = useCreateBooking(supabase, businessId);
@@ -28,7 +30,7 @@ export function NewBookingModal({ businessId }: NewBookingModalProps) {
   const handleCreate = () => {
     const offering = offerings.find((item) => item.id === selectedOfferingId);
     if (!offering || !startTime || !customerName.trim()) {
-      toast.error("Fill in a package, customer name, and start time first");
+      toast.error(t("booking.modal.fillIn"));
       return;
     }
     const start = new Date(startTime);
@@ -45,7 +47,7 @@ export function NewBookingModal({ businessId }: NewBookingModalProps) {
       },
       {
         onSuccess: () => {
-          toast.success(`Booked ${customerName} for ${offering.name}`);
+          toast.success(t("booking.modal.booked", { customer: customerName, offering: offering.name }));
           resetForm();
           setOpen(false);
         },
@@ -57,19 +59,19 @@ export function NewBookingModal({ businessId }: NewBookingModalProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <Button onClick={() => setOpen(true)}>
         <CalendarPlus className="h-4 w-4" />
-        New Booking
+        {t("booking.modal.trigger")}
       </Button>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New booking</DialogTitle>
-          <DialogDescription>Reserve a slot against a bookable package from Catalog.</DialogDescription>
+          <DialogTitle>{t("booking.modal.title")}</DialogTitle>
+          <DialogDescription>{t("booking.modal.description")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="booking-offering">Package</Label>
+            <Label htmlFor="booking-offering">{t("booking.modal.package")}</Label>
             <Select id="booking-offering" value={selectedOfferingId} onChange={(event) => setSelectedOfferingId(event.target.value)}>
-              <option value="">Select a package…</option>
+              <option value="">{t("booking.modal.packagePlaceholder")}</option>
               {offerings
                 .filter((offering) => offering.durationMinutes)
                 .map((offering) => (
@@ -80,21 +82,21 @@ export function NewBookingModal({ businessId }: NewBookingModalProps) {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="booking-customerName">Customer name</Label>
+            <Label htmlFor="booking-customerName">{t("booking.modal.customerName")}</Label>
             <Input id="booking-customerName" value={customerName} onChange={(event) => setCustomerName(event.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="booking-startTime">Start time</Label>
+            <Label htmlFor="booking-startTime">{t("booking.modal.startTime")}</Label>
             <Input id="booking-startTime" type="datetime-local" value={startTime} onChange={(event) => setStartTime(event.target.value)} />
           </div>
         </div>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button onClick={handleCreate} disabled={createBooking.isPending}>
-            {createBooking.isPending ? "Booking…" : "Confirm Booking"}
+            {createBooking.isPending ? t("booking.modal.booking") : t("booking.modal.confirm")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -772,6 +772,20 @@ deliver a ready-to-extract ZIP with only changed/created files.
   `.dark` class on `<html>`. Works together with the inline script in
   `index.html` (avoids theme-flash on load).
 
+- `src/stores/language-store.ts` — `useLanguageStore` (Zustand): current language (`en` | `fil`). Persists to `localStorage`
+  (`isnabero-language`, guarded), first visit uses `detectLanguage` (Filipino/Tagalog browsers → `fil`, else `en`), sets `<html lang>`.
+
+**`src/i18n/` — Translations (Round 24)**
+- `languages.ts` (`LANGUAGES`, `detectLanguage`, `localeOf`), `translate.ts` (`translate`, `msg`/`decodeMessage` form-message tokens,
+  `flattenKeys`, types), `dictionaries.ts`, `use-t.ts` (`useT`, `translateNow`), `format.ts` (`useFormat` dates/times by locale),
+  `use-labels.ts` (`useLabels`: translated enum labels — role, method, booking status, stock kind, audit action…), `index.ts`.
+- `locales/en/*.ts` (source of truth) and `locales/fil/*.ts` (typed `Dictionary[...]`, so a missing/extra key fails typecheck),
+  one file per area: common, nav, ui, errors, modules, enums, language, dashboard, payments, reports, employees, setup, auth,
+  catalog, pos, receipt, booking, expenses, schedule, inventory, audit, exports, app.
+- `__tests__/i18n.test.ts` (same keys/placeholders/plural forms in both languages, no accidentally untranslated copy, module and
+  audit-action coverage, translate/msg/detect), `__tests__/hardcoded-text.test.ts` (AST scan of every TSX for untranslated JSX
+  text, text attributes, toasts and literals in JSX expressions).
+
 **`src/hooks/` — Data Hooks (app-level, not module-specific)**
 - `src/hooks/use-business-modules.ts` — `useBusinessModules(businessId)`:
   calls `CoreRepository.listEnabledModules`. Include when debugging "module
@@ -840,6 +854,7 @@ deliver a ready-to-extract ZIP with only changed/created files.
   sidebar stays usable.
 - `src/components/PageFallback.tsx` — shared "Loading…" Suspense fallback
   (App.tsx for /login, AppLayout for pages).
+- `src/components/LanguageSwitcher.tsx` — EN/FIL button (sidebar footer, login page); `src/providers/UiLabelsBridge.tsx` feeds translated labels to `packages/ui` (`ui-labels.tsx`: `UiLabelsProvider`/`useUiLabels`, English defaults).
 - `src/components/ThemeToggle.tsx` — sun/moon icon button, calls
   `useThemeStore`. Lives in the Sidebar footer.
 
@@ -1428,7 +1443,7 @@ today since offerings can't be renamed, but a TIN edit changes reprints); only P
 bookings); the Supabase `getReceipt` query (PostgREST embeds) is written but not run against a real Supabase/
 PostgREST; Print uses the browser's print dialog (thermal-printer paper size is chosen there).
 
-### Round 23: Staff scheduling — CURRENT
+### Round 23: Staff scheduling
 Batch 3 item 5 (next: Language toggle (English + Filipino) → Offline resilience → visuals/design pass → Supabase last).
 **Model:** a *shift* = one employee, one calendar day, start/end wall-clock times (no timezone). Same-day only (a night
 shift is two shifts); 15 min–16 h; an employee can't have overlapping shifts (touching is fine). Weeks run Monday–Sunday.
@@ -1458,6 +1473,33 @@ skipped), Audit "Shifts" entries, no page overflow at 390px, staff read-only wit
 `business_modules` (turn it on in Business Setup).
 Known limits: no time-off/availability, no overnight shifts, no shift swaps or publishing/notifications; the Supabase
 repository has not been run against a real Supabase/PostgREST.
+
+### Round 24: Language toggle (English + Filipino) — CURRENT
+Batch 3 item 6 (next: Offline resilience → visuals/design pass → Supabase last).
+**Behaviour:** a language button (EN/FIL) sits next to the theme toggle in the sidebar footer and on the login page. The choice is
+remembered (`isnabero-language`); first visit follows the browser (fil/tl → Filipino, otherwise English). Dates, weekdays and times
+follow the language (`useFormat`); `<html lang>` is `en-PH` / `fil-PH`. Numbers and ₱ formatting are unchanged.
+**Architecture:** custom typed i18n, no new dependency (see `src/i18n/` above). English is the source of truth; Filipino is typed
+against it. Use `const { t, tm } = useT()`; plurals are `"1 item|{count} items"` with `t(key, { count })`; placeholders `{name}`.
+Zod schemas are built at import time, so they use `msg("area.key")` tokens and forms render them with `tm(error.message)`. Stored enum
+values are never changed; display labels come from `useLabels()`. Shared components in `packages/ui` get strings through
+`UiLabelsProvider` (Pagination, QuantityStepper, dialog Close, ConfirmDialog, TrendBadge).
+**Adding a string:** add the key to `locales/en/<area>.ts` and `locales/fil/<area>.ts`, use `t(...)`. The tests fail if the key is
+missing in either language, a `{placeholder}` differs, or JSX contains untranslated English.
+**Stays English on purpose:** error messages thrown by the modules/db, audit-log summary text (stored in rows, written by DB
+triggers in Supabase mode), the printed receipt, receipt PDF and CSV/PDF exports (content and file names), data users type
+(item names, notes), brand/acronyms (Isnabero, POS, PDF, CSV, GCash, TIN).
+**Filipino style:** natural business Taglish — keep common loanwords (stock, booking, receipt, cash, GCash, setup, add-on); glossary:
+Employees = Mga Empleyado, Payment Records = Mga Tala ng Bayad, Reports = Mga Ulat, Catalog = Katalogo, Inventory = Imbentaryo,
+Expenses = Mga Gastos, Schedule = Iskedyul, Void = I-void. The owner reviews wording via the review CSV (all keys, English, Filipino);
+change a phrase by editing `locales/fil/<area>.ts` only.
+**Tests:** **166** total (web 97). typecheck/lint/build green. Playwright (owner): default English, switch to Filipino, persistence
+across reload, `<html lang>`, every page in Filipino with no leftover English apart from the intentional list above, modals and
+validation messages (employees, checkout, booking, expense, stock, shift, offering), setup wizard, delete/void confirms, receipt dialog
+(chrome Filipino, receipt English), no overflow at 390px on every page, English pages unchanged.
+Known limits: error toasts coming from the data layer stay English; the printed receipt is English only; the staff role was not
+re-walked in Filipino (same components, role gating untouched); machine-checked for consistency, but wording has not been
+reviewed by a native speaker yet.
 
 ### Never Include in Prompts
 - `node_modules/` (any level) — build artifacts, never source.

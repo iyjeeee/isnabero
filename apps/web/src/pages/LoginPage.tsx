@@ -4,8 +4,11 @@ import { Store } from "lucide-react";
 import { Button, Card, CardContent, Input, Label } from "@isnabero/ui";
 import { supabase } from "@/lib/supabase";
 import { getDataSource } from "@isnabero/db";
+import { useT } from "@/i18n";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export default function LoginPage() {
+  const { t } = useT();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,7 +21,7 @@ export default function LoginPage() {
 
     if (getDataSource() !== "supabase") {
       // Shouldn't normally be reachable — mock mode never redirects here — but guard anyway.
-      setError("Login requires VITE_DATA_SOURCE=supabase with a running Supabase project.");
+      setError(t("auth.mockModeError"));
       return;
     }
 
@@ -34,7 +37,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-6">
+    <div className="relative flex min-h-screen items-center justify-center bg-background p-6">
+      <div className="absolute right-4 top-4">
+        <LanguageSwitcher className="gap-1 px-2 text-muted-foreground hover:bg-accent hover:text-foreground" />
+      </div>
       <Card className="w-full max-w-sm">
         <CardContent className="space-y-6 p-6">
           <div className="flex flex-col items-center gap-2 text-center">
@@ -43,24 +49,24 @@ export default function LoginPage() {
             </div>
             <div>
               <h1 className="font-display text-xl font-semibold">Isnabero</h1>
-              <p className="text-sm text-muted-foreground">Sign in to your business</p>
+              <p className="text-sm text-muted-foreground">{t("auth.tagline")}</p>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t("auth.email")}</Label>
               <Input id="email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("auth.password")}</Label>
               <Input id="password" type="password" required value={password} onChange={(event) => setPassword(event.target.value)} />
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Signing in…" : "Sign in"}
+              {isSubmitting ? t("auth.signingIn") : t("auth.signIn")}
             </Button>
           </form>
         </CardContent>

@@ -1,5 +1,6 @@
 import { ArrowUp, ArrowDown, Minus } from "lucide-react";
 import { cn } from "../lib/utils";
+import { useUiLabels } from "./ui-labels";
 
 export interface TrendBadgeProps {
   // percentChange: null means there's no meaningful baseline to compare against (e.g. the previous
@@ -11,9 +12,11 @@ export interface TrendBadgeProps {
 
 // TrendBadge: the one component for showing "up/down X% vs previous period" — used by Sales and
 // Booking reports, and available for any future stat that needs a period comparison.
-export function TrendBadge({ percentChange, label = "vs previous period", className }: TrendBadgeProps) {
+export function TrendBadge({ percentChange, label, className }: TrendBadgeProps) {
+  const labels = useUiLabels();
+  const text = label ?? labels.trendLabel;
   if (percentChange === null) {
-    return <span className={cn("text-xs text-muted-foreground", className)}>No data for {label}</span>;
+    return <span className={cn("text-xs text-muted-foreground", className)}>{labels.trendNoData(text)}</span>;
   }
 
   const isFlat = Math.round(percentChange) === 0;
@@ -29,7 +32,7 @@ export function TrendBadge({ percentChange, label = "vs previous period", classN
       )}
     >
       <Icon className="h-3 w-3" />
-      {Math.abs(percentChange).toFixed(0)}% {label}
+      {Math.abs(percentChange).toFixed(0)}% {text}
     </span>
   );
 }

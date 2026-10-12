@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Receipt, CalendarDays, Layers, Wallet, Search } from "lucide-react";
 import { Card, CardContent, Badge, PageHeader, EmptyState, Skeleton, StatCard, FilterBar, Input, Pagination, cn } from "@isnabero/ui";
-import { EXPENSE_CATEGORIES, getExpenseCategoryLabel, todayYmd, useExpenses, type ExpenseCategory } from "@isnabero/module-expenses";
+import { EXPENSE_CATEGORY_VALUES, todayYmd, useExpenses, type ExpenseCategory } from "@isnabero/module-expenses";
 import { supabase } from "@/lib/supabase";
 import { useBusinessStore } from "@/stores/business-store";
 import { usePermission } from "@/hooks/use-permission";
@@ -11,21 +11,18 @@ import { expenseRows } from "@/lib/export-rows";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
 import { VoidExpenseButton } from "@/components/expenses/VoidExpenseButton";
 import { computeExpenseStats } from "@/components/expenses/expense-stats";
+import { useFormat, useLabels, useT } from "@/i18n";
 
-const CATEGORY_TABS = [{ value: "all", label: "All" }, ...EXPENSE_CATEGORIES] as const;
+const CATEGORY_TABS = ["all", ...EXPENSE_CATEGORY_VALUES] as const;
 const CATEGORY_BADGE_VARIANT = { rent: "info", utilities: "warning", supplies: "default", salaries: "success", other: "secondary" } as const;
-const METHOD_LABELS = { cash: "Cash", gcash: "GCash", bank_transfer: "Bank transfer", other: "Other" } as const;
 const PAGE_SIZE = 10;
 
 const peso = (amount: number) => `₱${amount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-// Dates are calendar days (YYYY-MM-DD); format without going through a timezone-shifting Date parse
-const formatDay = (ymd: string) => {
-  const [year, month, day] = ymd.split("-").map(Number) as [number, number, number];
-  return new Date(year, month - 1, day).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-};
-
 export default function ExpensesPage() {
+  const { t } = useT();
+  const labels = useLabels();
+  const f = useFormat(); // f.date reads calendar-day strings as local days
   const businessId = useBusinessStore((state) => state.businessId) ?? "";
   const canManage = usePermission("expenses.manage");
 
@@ -51,20 +48,20 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon={Receipt} title="Expenses" description="Money your business spends — rent, utilities, supplies and more." action={
+      <PageHeader icon={Receipt} title={t("expenses.title")} description={t("expenses.description")} action={
           <div className="flex items-center gap-2">
-            <ExportButton title="Expenses" filenamePrefix="expenses" moneyColumns={["Amount"]} withDateRange hint="Uses the category filter, search and “Show voided” setting currently applied." disabled={filtered.length === 0} buildRows={(range) => expenseRows(filtered, range)} />
+            <ExportButton title="Expenses" filenamePrefix="expenses" moneyColumns={["Amount"]} withDateRange hint={t("expenses.exportHint")} disabled={filtered.length === 0} buildRows={(range) => expenseRows(filtered, range)} />
             {canManage && <AddExpenseModal businessId={businessId} />}
           </div>
         }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Spent This Month" value={peso(stats.monthTotal)} icon={CalendarDays} accent="warning" isLoading={isLoading} />
-        <StatCard label="All-Time Spend" value={peso(stats.allTimeTotal)} icon={Wallet} accent="default" isLoading={isLoading} />
+        <StatCard label={t("expenses.stats.month")} value={peso(stats.monthTotal)} icon={CalendarDays} accent="warning" isLoading={isLoading} />
+        <StatCard label={t("expenses.stats.allTime")} value={peso(stats.allTimeTotal)} icon={Wallet} accent="default" isLoading={isLoading} />
         <StatCard
-          label="Top Category This Month"
-          value={stats.topCategory ? getExpenseCategoryLabel(stats.topCategory.category) : "—"}
+          label={t("expenses.stats.topCategory")}
+          value={stats.topCategory ? labels.expenseCategory(stats.topCategory.category) : "—"}
           helpText={stats.topCategory ? peso(stats.topCategory.total) : undefined}
           icon={Layers}
           accent="info"
@@ -78,26 +75,26 @@ export default function ExpensesPage() {
           <div className="flex gap-1 overflow-x-auto rounded-lg border bg-background p-1">
             {CATEGORY_TABS.map((tab) => (
               <button
-                key={tab.value}
+                key={tab}
                 type="button"
-                onClick={() => setCategoryFilter(tab.value)}
+                onClick={() => setCategoryFilter(tab)}
                 className={cn(
                   "shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  categoryFilter === tab.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
+                  categoryFilter === tab ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
                 )}
               >
-                {tab.label}
+                {tab === "all" ? t("common.all") : labels.expenseCategory(tab)}
               </button>
             ))}
           </div>
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input type="checkbox" checked={showVoided} onChange={(event) => setShowVoided(event.target.checked)} className="h-4 w-4 rounded border-input" />
-            Show voided
+            {t("expenses.showVoided")}
           </label>
         </div>
         <div className="relative w-full sm:w-64">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search description or notes…" aria-label="Search expenses" value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
+          <Input placeholder={t("expenses.searchPlaceholder")} aria-label={t("expenses.searchLabel")} value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
         </div>
       </FilterBar>
 
@@ -112,41 +109,41 @@ export default function ExpensesPage() {
           )}
 
           {!isLoading && expenses.length === 0 && (
-            <EmptyState icon={Receipt} title="No expenses yet" description={canManage ? "Use “Add expense” to record your first one." : "Expenses recorded by an owner or admin will show up here."} className="border-0" />
+            <EmptyState icon={Receipt} title={t("expenses.empty.title")} description={canManage ? t("expenses.empty.descriptionManage") : t("expenses.empty.descriptionReadonly")} className="border-0" />
           )}
 
-          {!isLoading && expenses.length > 0 && filtered.length === 0 && <EmptyState icon={Search} title="No matches" description="Try a different search term or category." className="border-0" />}
+          {!isLoading && expenses.length > 0 && filtered.length === 0 && <EmptyState icon={Search} title={t("expenses.noMatches.title")} description={t("expenses.noMatches.description")} className="border-0" />}
 
           {!isLoading && pageItems.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/50 text-left text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3">Date</th>
-                    <th className="px-4 py-3">Category</th>
-                    <th className="px-4 py-3">Description</th>
-                    <th className="px-4 py-3">Paid with</th>
-                    <th className="px-4 py-3 text-right">Amount</th>
-                    {canManage && <th className="px-4 py-3 text-right">Actions</th>}
+                    <th className="px-4 py-3">{t("expenses.table.date")}</th>
+                    <th className="px-4 py-3">{t("expenses.table.category")}</th>
+                    <th className="px-4 py-3">{t("expenses.table.description")}</th>
+                    <th className="px-4 py-3">{t("expenses.table.method")}</th>
+                    <th className="px-4 py-3 text-right">{t("expenses.table.amount")}</th>
+                    {canManage && <th className="px-4 py-3 text-right">{t("expenses.table.actions")}</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {pageItems.map((expense) => (
                     <tr key={expense.id} className={cn("border-b transition-colors last:border-0 hover:bg-accent/50", expense.voidedAt && "opacity-50")}>
-                      <td className="whitespace-nowrap px-4 py-3">{formatDay(expense.expenseDate)}</td>
+                      <td className="whitespace-nowrap px-4 py-3">{f.date(expense.expenseDate)}</td>
                       <td className="px-4 py-3">
-                        <Badge variant={CATEGORY_BADGE_VARIANT[expense.category]}>{getExpenseCategoryLabel(expense.category)}</Badge>
+                        <Badge variant={CATEGORY_BADGE_VARIANT[expense.category]}>{labels.expenseCategory(expense.category)}</Badge>
                       </td>
                       <td className="px-4 py-3">
                         <p className="font-medium">{expense.description}</p>
                         {expense.notes && <p className="text-xs text-muted-foreground">{expense.notes}</p>}
                       </td>
-                      <td className="px-4 py-3">{METHOD_LABELS[expense.method]}</td>
+                      <td className="px-4 py-3">{labels.method(expense.method)}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-right font-medium">
                         {peso(expense.amount)}
                         {expense.voidedAt && (
                           <Badge variant="destructive" className="ml-2">
-                            Voided
+                            {t("expenses.voided")}
                           </Badge>
                         )}
                       </td>

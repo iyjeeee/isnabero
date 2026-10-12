@@ -4,8 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, Input, Textarea, Label, Select } from "@isnabero/ui";
-import { EXPENSE_CATEGORIES, MAX_DESCRIPTION_LENGTH, todayYmd, useCreateExpense } from "@isnabero/module-expenses";
+import { EXPENSE_CATEGORY_VALUES, MAX_DESCRIPTION_LENGTH, todayYmd, useCreateExpense } from "@isnabero/module-expenses";
 import { supabase } from "@/lib/supabase";
+import { useLabels, useT } from "@/i18n";
 import { useAuth } from "@/providers/AuthProvider";
 import { expenseFormSchema, type ExpenseFormValues } from "./expense-form-schema";
 
@@ -13,9 +14,13 @@ interface AddExpenseModalProps {
   businessId: string;
 }
 
+const METHODS = ["cash", "gcash", "bank_transfer", "other"] as const;
+
 const emptyValues = (): ExpenseFormValues => ({ expenseDate: todayYmd(), category: "supplies", description: "", amount: "", method: "cash", notes: "" });
 
 export function AddExpenseModal({ businessId }: AddExpenseModalProps) {
+  const { t, tm } = useT();
+  const labels = useLabels();
   const [open, setOpen] = useState(false);
   const { employee } = useAuth();
   const createExpense = useCreateExpense(supabase, businessId);
@@ -41,7 +46,7 @@ export function AddExpenseModal({ businessId }: AddExpenseModalProps) {
       },
       {
         onSuccess: () => {
-          toast.success("Expense recorded");
+          toast.success(t("expenses.modal.recorded"));
           setOpen(false);
         },
       },
@@ -52,27 +57,27 @@ export function AddExpenseModal({ businessId }: AddExpenseModalProps) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <Button onClick={() => handleOpenChange(true)}>
         <Plus className="h-4 w-4" />
-        Add expense
+        {t("expenses.modal.trigger")}
       </Button>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add expense</DialogTitle>
-          <DialogDescription>Record money your business spent. Mistakes can be voided, not edited.</DialogDescription>
+          <DialogTitle>{t("expenses.modal.title")}</DialogTitle>
+          <DialogDescription>{t("expenses.modal.description")}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="expense-date">Date</Label>
+              <Label htmlFor="expense-date">{t("expenses.modal.date")}</Label>
               <Input id="expense-date" type="date" max={todayYmd()} aria-invalid={Boolean(errors.expenseDate)} {...form.register("expenseDate")} />
-              {errors.expenseDate && <p className="text-xs text-destructive">{errors.expenseDate.message}</p>}
+              {errors.expenseDate && <p className="text-xs text-destructive">{tm(errors.expenseDate.message)}</p>}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="expense-category">Category</Label>
+              <Label htmlFor="expense-category">{t("expenses.modal.category")}</Label>
               <Select id="expense-category" {...form.register("category")}>
-                {EXPENSE_CATEGORIES.map((category) => (
-                  <option key={category.value} value={category.value}>
-                    {category.label}
+                {EXPENSE_CATEGORY_VALUES.map((category) => (
+                  <option key={category} value={category}>
+                    {labels.expenseCategory(category)}
                   </option>
                 ))}
               </Select>
@@ -80,46 +85,47 @@ export function AddExpenseModal({ businessId }: AddExpenseModalProps) {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="expense-description">Description</Label>
+            <Label htmlFor="expense-description">{t("expenses.modal.descriptionLabel")}</Label>
             <Input
               id="expense-description"
-              placeholder="e.g. Printer paper, March rent"
+              placeholder={t("expenses.modal.descriptionPlaceholder")}
               maxLength={MAX_DESCRIPTION_LENGTH}
               aria-invalid={Boolean(errors.description)}
               {...form.register("description")}
             />
-            {errors.description && <p className="text-xs text-destructive">{errors.description.message}</p>}
+            {errors.description && <p className="text-xs text-destructive">{tm(errors.description.message)}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="expense-amount">Amount (₱)</Label>
+              <Label htmlFor="expense-amount">{t("expenses.modal.amount")}</Label>
               <Input id="expense-amount" type="number" inputMode="decimal" step="0.01" min="0" aria-invalid={Boolean(errors.amount)} {...form.register("amount")} />
-              {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
+              {errors.amount && <p className="text-xs text-destructive">{tm(errors.amount.message)}</p>}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="expense-method">Paid with</Label>
+              <Label htmlFor="expense-method">{t("expenses.modal.method")}</Label>
               <Select id="expense-method" {...form.register("method")}>
-                <option value="cash">Cash</option>
-                <option value="gcash">GCash</option>
-                <option value="bank_transfer">Bank transfer</option>
-                <option value="other">Other</option>
+                {METHODS.map((method) => (
+                  <option key={method} value={method}>
+                    {labels.method(method)}
+                  </option>
+                ))}
               </Select>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="expense-notes">Notes (optional)</Label>
+            <Label htmlFor="expense-notes">{t("expenses.modal.notes")}</Label>
             <Textarea id="expense-notes" aria-invalid={Boolean(errors.notes)} {...form.register("notes")} />
-            {errors.notes && <p className="text-xs text-destructive">{errors.notes.message}</p>}
+            {errors.notes && <p className="text-xs text-destructive">{tm(errors.notes.message)}</p>}
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={createExpense.isPending}>
-              {createExpense.isPending ? "Saving…" : "Save expense"}
+              {createExpense.isPending ? t("common.saving") : t("expenses.modal.submit")}
             </Button>
           </DialogFooter>
         </form>

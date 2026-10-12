@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button, ConfirmDialog, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, Input, Label, ActionIconButton } from "@isnabero/ui";
 import { useSetLowStockThreshold, useStopTracking, type StockLevel } from "@isnabero/module-inventory";
 import { supabase } from "@/lib/supabase";
+import { useT } from "@/i18n";
 import { settingsSchema, type SettingsValues } from "./inventory-form-schema";
 
 interface ItemSettingsModalProps {
@@ -16,6 +17,7 @@ interface ItemSettingsModalProps {
 // ItemSettingsModal: change the low-stock warning level, or stop tracking the item (its history is kept).
 export function ItemSettingsModal({ businessId, level }: ItemSettingsModalProps) {
   const [open, setOpen] = useState(false);
+  const { t, tm } = useT();
   const [confirmStop, setConfirmStop] = useState(false);
   const setThreshold = useSetLowStockThreshold(supabase, businessId);
   const stopTracking = useStopTracking(supabase, businessId);
@@ -32,7 +34,7 @@ export function ItemSettingsModal({ businessId, level }: ItemSettingsModalProps)
       { offeringId: level.offeringId, threshold: Number(values.lowStockThreshold) },
       {
         onSuccess: () => {
-          toast.success("Low-stock level saved");
+          toast.success(t("inventory.settings.saved"));
           setOpen(false);
         },
       },
@@ -41,18 +43,18 @@ export function ItemSettingsModal({ businessId, level }: ItemSettingsModalProps)
 
   return (
     <>
-      <ActionIconButton action="edit" icon={Settings2} onClick={() => handleOpenChange(true)} aria-label={`Settings for ${level.offeringName}`} />
+      <ActionIconButton action="edit" icon={Settings2} onClick={() => handleOpenChange(true)} aria-label={t("inventory.settings.aria", { name: level.offeringName })} />
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{level.offeringName} settings</DialogTitle>
-            <DialogDescription>You'll see a warning when the count reaches this level. Use 0 for no warning.</DialogDescription>
+            <DialogTitle>{t("inventory.settings.title", { name: level.offeringName })}</DialogTitle>
+            <DialogDescription>{t("inventory.settings.description")}</DialogDescription>
           </DialogHeader>
           <form onSubmit={onSubmit} className="space-y-4" noValidate>
             <div className="space-y-1.5">
-              <Label htmlFor="settings-threshold">Warn me at or below</Label>
+              <Label htmlFor="settings-threshold">{t("inventory.warnAt")}</Label>
               <Input id="settings-threshold" type="number" inputMode="numeric" min="0" step="1" aria-invalid={Boolean(errors.lowStockThreshold)} {...form.register("lowStockThreshold")} />
-              {errors.lowStockThreshold && <p className="text-xs text-destructive">{errors.lowStockThreshold.message}</p>}
+              {errors.lowStockThreshold && <p className="text-xs text-destructive">{tm(errors.lowStockThreshold.message)}</p>}
             </div>
             <DialogFooter className="sm:justify-between">
               <Button
@@ -64,14 +66,14 @@ export function ItemSettingsModal({ businessId, level }: ItemSettingsModalProps)
                   setConfirmStop(true);
                 }}
               >
-                Stop tracking
+                {t("inventory.settings.stop")}
               </Button>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 <Button type="submit" disabled={setThreshold.isPending}>
-                  {setThreshold.isPending ? "Saving…" : "Save"}
+                  {setThreshold.isPending ? t("common.saving") : t("common.save")}
                 </Button>
               </div>
             </DialogFooter>
@@ -81,14 +83,14 @@ export function ItemSettingsModal({ businessId, level }: ItemSettingsModalProps)
       <ConfirmDialog
         open={confirmStop}
         onOpenChange={setConfirmStop}
-        title={`Stop tracking ${level.offeringName}?`}
-        description="Sales will no longer take from its count and it won't need restocking alerts. Its history stays in the Audit Log, and you can track it again later."
-        confirmLabel="Stop tracking"
+        title={t("inventory.settings.confirmTitle", { name: level.offeringName })}
+        description={t("inventory.settings.confirmDescription")}
+        confirmLabel={t("inventory.settings.stop")}
         isPending={stopTracking.isPending}
         onConfirm={() =>
           stopTracking.mutate(level.offeringId, {
             onSuccess: () => {
-              toast.success(`No longer tracking ${level.offeringName}`);
+              toast.success(t("inventory.settings.stopped", { name: level.offeringName }));
               setConfirmStop(false);
             },
           })

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { msg } from "@/i18n";
 import { adjustSchema, computeDelta, trackItemSchema } from "../inventory-form-schema";
 
 describe("trackItemSchema", () => {
@@ -26,6 +27,21 @@ describe("adjustSchema", () => {
     expect(adjustSchema.safeParse({ ...base, quantity: "0" }).success).toBe(false);
     expect(adjustSchema.safeParse({ ...base, kind: "damage", quantity: "0" }).success).toBe(false);
     expect(adjustSchema.safeParse({ ...base, kind: "correction", quantity: "0" }).success).toBe(true);
+  });
+});
+
+describe("validation messages", () => {
+  it("carry translatable tokens, not English text", () => {
+    const blank = trackItemSchema.safeParse({ offeringId: "", quantity: "", lowStockThreshold: "1.5" });
+    const messages = blank.success ? [] : blank.error.issues.map((issue) => issue.message);
+    expect(messages).toContain(msg("inventory.validation.chooseItem"));
+    expect(messages).toContain(msg("inventory.validation.startingQuantity.required"));
+    expect(messages).toContain(msg("inventory.validation.lowStockLevel.whole"));
+  });
+  it("passes the note length limit as a parameter", () => {
+    const long = adjustSchema.safeParse({ kind: "restock", quantity: "1", note: "x".repeat(1000) });
+    const messages = long.success ? [] : long.error.issues.map((issue) => issue.message);
+    expect(messages.some((message) => message.startsWith("i18n:inventory.validation.noteTooLong|"))).toBe(true);
   });
 });
 

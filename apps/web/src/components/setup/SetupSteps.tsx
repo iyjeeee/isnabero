@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 import { cn } from "@isnabero/ui";
+import { useT } from "@/i18n";
 
 interface SetupStepsProps {
   steps: string[];
@@ -8,8 +9,9 @@ interface SetupStepsProps {
 
 // SetupSteps: numbered progress indicator for the setup wizard — done steps show a check, labels collapse on mobile
 export function SetupSteps({ steps, current }: SetupStepsProps) {
+  const { t } = useT();
   return (
-    <ol className="flex items-center gap-2" aria-label="Setup progress">
+    <ol className="flex items-center gap-2" aria-label={t("setup.progress")}>
       {steps.map((label, index) => {
         const isDone = index < current;
         const isCurrent = index === current;

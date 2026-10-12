@@ -1,0 +1,22 @@
+export const booking = {
+  title: "Booking",
+  description: "Today and the next 30 days.",
+  exportHint: "Covers the bookings listed on this page (today and the next 30 days).",
+  stats: { today: "Today's Bookings", confirmed: "Confirmed", next: "Next Booking" },
+  searchPlaceholder: "Search by customer name…",
+  empty: { title: "No upcoming bookings", description: "Tap New Booking to reserve the first slot." },
+  noMatches: { title: "No matches", description: "Try a different search term." },
+  modal: {
+    trigger: "New Booking",
+    title: "New booking",
+    description: "Reserve a slot against a bookable package from Catalog.",
+    package: "Package",
+    packagePlaceholder: "Select a package…",
+    customerName: "Customer name",
+    startTime: "Start time",
+    confirm: "Confirm Booking",
+    booking: "Booking…",
+    fillIn: "Fill in a package, customer name, and start time first",
+    booked: "Booked {customer} for {offering}",
+  },
+};

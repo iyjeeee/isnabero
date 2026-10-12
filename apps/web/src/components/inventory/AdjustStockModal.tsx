@@ -7,6 +7,7 @@ import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescrip
 import { useAdjustStock, formatDelta, type StockLevel } from "@isnabero/module-inventory";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/providers/AuthProvider";
+import { useLabels, useT } from "@/i18n";
 import { adjustSchema, computeDelta, type AdjustValues } from "./inventory-form-schema";
 
 interface AdjustStockModalProps {
@@ -18,6 +19,8 @@ interface AdjustStockModalProps {
 // and the Audit Log. "Correction" asks for the number you counted and works out the difference.
 export function AdjustStockModal({ businessId, level }: AdjustStockModalProps) {
   const [open, setOpen] = useState(false);
+  const { t, tm } = useT();
+  const labels = useLabels();
   const { employee } = useAuth();
   const adjust = useAdjustStock(supabase, businessId);
   const form = useForm<AdjustValues>({ resolver: zodResolver(adjustSchema), defaultValues: { kind: "restock", quantity: "", note: "" } });
@@ -35,14 +38,14 @@ export function AdjustStockModal({ businessId, level }: AdjustStockModalProps) {
   const onSubmit = form.handleSubmit((values) => {
     const delta = computeDelta(values.kind, Number(values.quantity), level.quantity);
     if (delta === 0) {
-      form.setError("quantity", { message: "That's already the current count" });
+      form.setError("quantity", { message: t("inventory.adjust.sameCount") });
       return;
     }
     adjust.mutate(
       { offeringId: level.offeringId, kind: values.kind, delta, note: values.note, recordedBy: employee?.id ?? null },
       {
         onSuccess: () => {
-          toast.success(`${level.offeringName}: ${formatDelta(delta)} (now ${level.quantity + delta})`);
+          toast.success(t("inventory.adjust.toast", { name: level.offeringName, delta: formatDelta(delta), total: level.quantity + delta }));
           setOpen(false);
         },
       },
@@ -51,46 +54,46 @@ export function AdjustStockModal({ businessId, level }: AdjustStockModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <Button variant="outline" size="sm" onClick={() => handleOpenChange(true)} aria-label={`Adjust stock for ${level.offeringName}`}>
-        Adjust
+      <Button variant="outline" size="sm" onClick={() => handleOpenChange(true)} aria-label={t("inventory.adjust.aria", { name: level.offeringName })}>
+        {t("inventory.adjust.button")}
       </Button>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Adjust {level.offeringName}</DialogTitle>
-          <DialogDescription>Currently {level.quantity} in stock. Every change is saved with your reason.</DialogDescription>
+          <DialogTitle>{t("inventory.adjust.title", { name: level.offeringName })}</DialogTitle>
+          <DialogDescription>{t("inventory.adjust.description", { quantity: level.quantity })}</DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="adjust-kind">What happened</Label>
+              <Label htmlFor="adjust-kind">{t("inventory.adjust.whatHappened")}</Label>
               <Select id="adjust-kind" {...form.register("kind")}>
                 {MANUAL_STOCK_KINDS.map((option) => (
                   <option key={option.value} value={option.value}>
-                    {option.label}
+                    {labels.stockKind(option.value)}
                   </option>
                 ))}
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="adjust-quantity">{kind === "correction" ? "Counted quantity" : "Quantity"}</Label>
+              <Label htmlFor="adjust-quantity">{kind === "correction" ? t("inventory.adjust.countedQuantity") : t("ui.quantity")}</Label>
               <Input id="adjust-quantity" type="number" inputMode="numeric" min="0" step="1" aria-invalid={Boolean(errors.quantity)} {...form.register("quantity")} />
-              {errors.quantity && <p className="text-xs text-destructive">{errors.quantity.message}</p>}
+              {errors.quantity && <p className="text-xs text-destructive">{tm(errors.quantity.message)}</p>}
             </div>
           </div>
           <p className="text-sm text-muted-foreground" role="status">
-            {preview === null ? "Enter a quantity to see the new count." : preview < 0 ? `That would leave ${preview} — not allowed.` : `New count: ${preview}`}
+            {preview === null ? t("inventory.adjust.previewEmpty") : preview < 0 ? t("inventory.adjust.previewNegative", { count: preview }) : t("inventory.adjust.previewNew", { count: preview })}
           </p>
           <div className="space-y-1.5">
-            <Label htmlFor="adjust-note">Reason</Label>
-            <Input id="adjust-note" placeholder="e.g. Delivery from supplier, spoiled overnight" aria-invalid={Boolean(errors.note)} {...form.register("note")} />
-            {errors.note && <p className="text-xs text-destructive">{errors.note.message}</p>}
+            <Label htmlFor="adjust-note">{t("inventory.adjust.reason")}</Label>
+            <Input id="adjust-note" placeholder={t("inventory.adjust.reasonPlaceholder")} aria-invalid={Boolean(errors.note)} {...form.register("note")} />
+            {errors.note && <p className="text-xs text-destructive">{tm(errors.note.message)}</p>}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={adjust.isPending}>
-              {adjust.isPending ? "Saving…" : "Save adjustment"}
+              {adjust.isPending ? t("common.saving") : t("inventory.adjust.save")}
             </Button>
           </DialogFooter>
         </form>

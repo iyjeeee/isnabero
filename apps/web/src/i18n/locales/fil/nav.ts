@@ -1,0 +1,25 @@
+import type { Dictionary } from "../../translate";
+
+export const nav: Dictionary["nav"] = {
+  core: "Pangunahin",
+  modules: "Mga module",
+  noModules: "Wala pang naka-enable na module.",
+  selectBusiness: "Pumili ng negosyo",
+  dashboard: "Dashboard",
+  payments: "Mga Tala ng Bayad",
+  employees: "Mga Empleyado",
+  reports: "Mga Ulat",
+  audit: "Audit Log",
+  setup: "Pag-setup ng Negosyo",
+  theme: "Tema",
+  language: "Wika",
+  signOut: "Mag-sign out",
+  signOutMock: "Ang pag-sign out ay may saysay lang sa Supabase mode — walang totoong session ang mock mode.",
+  collapse: "I-collapse",
+  collapseSidebar: "I-collapse ang sidebar",
+  expandSidebar: "I-expand ang sidebar",
+  openMenu: "Buksan ang menu",
+  closeMenu: "Isara ang menu",
+  switchToDark: "Lumipat sa dark mode",
+  switchToLight: "Lumipat sa light mode",
+};

@@ -3,6 +3,7 @@ import { Badge, cn } from "@isnabero/ui";
 import { formatClock, formatClockShort, formatHours, type Shift } from "@isnabero/module-scheduling";
 import type { EmployeeView } from "@/lib/repositories/repository";
 import type { WeekStats } from "./schedule-stats";
+import { useFormat, useLabels, useT } from "@/i18n";
 
 interface WeekGridProps {
   days: string[]; // 7 YYYY-MM-DD, Monday first
@@ -16,14 +17,13 @@ interface WeekGridProps {
   onEdit: (shift: Shift) => void;
 }
 
-const dayParts = (ymd: string) => {
-  const date = new Date(`${ymd}T00:00:00`);
-  return { weekday: date.toLocaleDateString("en-PH", { weekday: "short" }), short: date.toLocaleDateString("en-PH", { month: "short", day: "numeric" }) };
-};
-
 // WeekGrid: employees down the side, Monday–Sunday across. Scrolls sideways inside its card on small screens (the first
 // column stays put). Owners/admins get click-to-edit shifts and an add button per cell; staff just read.
 export function WeekGrid({ days, today, employees, shifts, stats, currentEmployeeId, canManage, onAdd, onEdit }: WeekGridProps) {
+  const { t } = useT();
+  const labels = useLabels();
+  const f = useFormat();
+  const dayParts = (ymd: string) => ({ weekday: f.weekday(ymd), short: f.monthDay(ymd) });
   const shiftsFor = (employeeId: string, day: string) => shifts.filter((shift) => shift.employeeId === employeeId && shift.shiftDate === day);
 
   return (
@@ -32,7 +32,7 @@ export function WeekGrid({ days, today, employees, shifts, stats, currentEmploye
         <thead className="border-b bg-muted/50 text-left text-muted-foreground">
           <tr>
             <th scope="col" className="sticky left-0 z-10 w-40 bg-muted px-4 py-3 font-medium">
-              Employee
+              {t("schedule.grid.employee")}
             </th>
             {days.map((day) => {
               const { weekday, short } = dayParts(day);
@@ -42,12 +42,12 @@ export function WeekGrid({ days, today, employees, shifts, stats, currentEmploye
                   <div className="whitespace-nowrap">
                     {weekday} <span className="font-normal">{short}</span>
                   </div>
-                  <div className="text-xs font-normal">{working === 0 ? "No one" : `${working} working`}</div>
+                  <div className="text-xs font-normal">{working === 0 ? t("schedule.grid.noOne") : t("schedule.grid.working", { count: working })}</div>
                 </th>
               );
             })}
             <th scope="col" className="w-20 px-4 py-3 text-right font-medium">
-              Hours
+              {t("schedule.grid.hours")}
             </th>
           </tr>
         </thead>
@@ -57,9 +57,9 @@ export function WeekGrid({ days, today, employees, shifts, stats, currentEmploye
               <th scope="row" className="sticky left-0 z-10 bg-card px-4 py-3 text-left font-medium">
                 <div className="flex flex-wrap items-center gap-2">
                   {employee.fullName}
-                  {employee.id === currentEmployeeId && <Badge variant="info">You</Badge>}
+                  {employee.id === currentEmployeeId && <Badge variant="info">{t("schedule.grid.you")}</Badge>}
                 </div>
-                <div className="text-xs font-normal capitalize text-muted-foreground">{employee.role}</div>
+                <div className="text-xs font-normal text-muted-foreground">{labels.role(employee.role)}</div>
               </th>
               {days.map((day) => {
                 const cellShifts = shiftsFor(employee.id, day);
@@ -80,7 +80,7 @@ export function WeekGrid({ days, today, employees, shifts, stats, currentEmploye
                             key={shift.id}
                             type="button"
                             onClick={() => onEdit(shift)}
-                            aria-label={`Edit ${employee.fullName}'s shift on ${dayParts(day).weekday} ${dayParts(day).short}, ${label}`}
+                            aria-label={t("schedule.grid.editAria", { name: employee.fullName, day: `${dayParts(day).weekday} ${dayParts(day).short}`, time: label })}
                             title={shift.note ? `${label} — ${shift.note}` : label}
                             className="rounded-md bg-primary/10 px-2 py-1 text-left text-xs text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           >
@@ -96,7 +96,7 @@ export function WeekGrid({ days, today, employees, shifts, stats, currentEmploye
                         <button
                           type="button"
                           onClick={() => onAdd(employee.id, day)}
-                          aria-label={`Add shift for ${employee.fullName} on ${dayParts(day).weekday} ${dayParts(day).short}`}
+                          aria-label={t("schedule.grid.addAria", { name: employee.fullName, day: `${dayParts(day).weekday} ${dayParts(day).short}` })}
                           className="flex h-6 items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           <Plus className="h-3.5 w-3.5" />

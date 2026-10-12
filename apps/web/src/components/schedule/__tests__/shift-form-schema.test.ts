@@ -1,10 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { shiftFormSchema } from "../shift-form-schema";
+import { en } from "@/i18n/locales/en";
+import { decodeMessage, translate, type Dictionary } from "@/i18n/translate";
 
 const valid = { employeeId: "e1", shiftDate: "2026-10-12", startTime: "09:00", endTime: "17:00", note: "" };
+// messages carry i18n tokens; resolve them to English text
+const english = (message: string) => {
+  const decoded = decodeMessage(message);
+  return decoded ? translate(en as Dictionary, en as Dictionary, decoded.key, decoded.params) : message;
+};
 const messages = (values: object) => {
   const result = shiftFormSchema.safeParse(values);
-  return result.success ? [] : result.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`);
+  return result.success ? [] : result.error.issues.map((issue) => `${issue.path.join(".")}: ${english(issue.message)}`);
 };
 
 describe("shiftFormSchema", () => {

@@ -8,6 +8,7 @@ import { useOfferings } from "@isnabero/module-catalog";
 import { useStartTracking, type StockLevel } from "@isnabero/module-inventory";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/providers/AuthProvider";
+import { useT } from "@/i18n";
 import { trackItemSchema, type TrackItemValues } from "./inventory-form-schema";
 
 interface TrackItemModalProps {
@@ -19,6 +20,7 @@ interface TrackItemModalProps {
 // out (a booking uses a time slot, not stock).
 export function TrackItemModal({ businessId, tracked }: TrackItemModalProps) {
   const [open, setOpen] = useState(false);
+  const { t, tm } = useT();
   const { employee } = useAuth();
   const { data: offerings = [] } = useOfferings(supabase, businessId);
   const startTracking = useStartTracking(supabase, businessId);
@@ -38,7 +40,7 @@ export function TrackItemModal({ businessId, tracked }: TrackItemModalProps) {
       { offeringId: values.offeringId, quantity: Number(values.quantity), lowStockThreshold: Number(values.lowStockThreshold), recordedBy: employee?.id ?? null },
       {
         onSuccess: () => {
-          toast.success("Now tracking stock");
+          toast.success(t("inventory.track.toast"));
           setOpen(false);
         },
       },
@@ -49,44 +51,44 @@ export function TrackItemModal({ businessId, tracked }: TrackItemModalProps) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <Button onClick={() => handleOpenChange(true)}>
         <Plus className="h-4 w-4" />
-        Track an item
+        {t("inventory.track.button")}
       </Button>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Track an item</DialogTitle>
-          <DialogDescription>Choose a catalog item and enter how many you have right now. Sales will take from this count.</DialogDescription>
+          <DialogTitle>{t("inventory.track.title")}</DialogTitle>
+          <DialogDescription>{t("inventory.track.description")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
           <div className="space-y-1.5">
-            <Label htmlFor="track-offering">Item</Label>
+            <Label htmlFor="track-offering">{t("inventory.track.item")}</Label>
             <Select id="track-offering" aria-invalid={Boolean(errors.offeringId)} {...form.register("offeringId")}>
-              <option value="">{choices.length === 0 ? "Every item is already tracked" : "Choose an item…"}</option>
+              <option value="">{choices.length === 0 ? t("inventory.track.allTracked") : t("inventory.track.choose")}</option>
               {choices.map((offering) => (
                 <option key={offering.id} value={offering.id}>
                   {offering.name}
                 </option>
               ))}
             </Select>
-            {errors.offeringId && <p className="text-xs text-destructive">{errors.offeringId.message}</p>}
+            {errors.offeringId && <p className="text-xs text-destructive">{tm(errors.offeringId.message)}</p>}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="track-quantity">In stock now</Label>
+              <Label htmlFor="track-quantity">{t("inventory.track.inStockNow")}</Label>
               <Input id="track-quantity" type="number" inputMode="numeric" min="0" step="1" aria-invalid={Boolean(errors.quantity)} {...form.register("quantity")} />
-              {errors.quantity && <p className="text-xs text-destructive">{errors.quantity.message}</p>}
+              {errors.quantity && <p className="text-xs text-destructive">{tm(errors.quantity.message)}</p>}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="track-threshold">Warn me at or below</Label>
+              <Label htmlFor="track-threshold">{t("inventory.warnAt")}</Label>
               <Input id="track-threshold" type="number" inputMode="numeric" min="0" step="1" aria-invalid={Boolean(errors.lowStockThreshold)} {...form.register("lowStockThreshold")} />
-              {errors.lowStockThreshold && <p className="text-xs text-destructive">{errors.lowStockThreshold.message}</p>}
+              {errors.lowStockThreshold && <p className="text-xs text-destructive">{tm(errors.lowStockThreshold.message)}</p>}
             </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={startTracking.isPending || choices.length === 0}>
-              {startTracking.isPending ? "Saving…" : "Start tracking"}
+              {startTracking.isPending ? t("common.saving") : t("inventory.track.start")}
             </Button>
           </DialogFooter>
         </form>

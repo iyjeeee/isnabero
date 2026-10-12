@@ -25,6 +25,7 @@ import { useBusiness } from "@/hooks/use-business";
 import { useCan } from "@/hooks/use-permission";
 import { getModuleDefinition } from "@/lib/module-registry";
 import type { Permission } from "@/lib/permissions";
+import { useT, useFormat } from "@/i18n";
 import { useDashboardStats } from "@/hooks/use-dashboard-stats";
 import { StockBadge } from "@/components/inventory/StockBadge";
 import { getCoreRepository } from "@/lib/repositories/get-repository";
@@ -34,10 +35,10 @@ import { getCoreRepository } from "@/lib/repositories/get-repository";
 // `tint` picks the same semantic accent family as StatCard so the tiles feel like one system.
 // A module's own role gate (MODULE_REGISTRY permission) also hides its quick action from roles without access.
 const QUICK_ACTIONS = [
-  { label: "Ring up a sale", description: "Open the POS screen", path: "/app/pos", icon: ShoppingCart, moduleKey: "pos" as const, tint: "success" as const },
-  { label: "Add to Catalog", description: "New item, bundle or add-on", path: "/app/catalog", icon: LayoutGrid, moduleKey: "catalog" as const, tint: "default" as const },
-  { label: "New booking", description: "Schedule a customer", path: "/app/booking", icon: CalendarClock, moduleKey: "booking" as const, tint: "info" as const },
-  { label: "Record an expense", description: "Rent, supplies, utilities…", path: "/app/expenses", icon: Receipt, moduleKey: "expenses" as const, tint: "warning" as const },
+  { path: "/app/pos", icon: ShoppingCart, moduleKey: "pos" as const, tint: "success" as const },
+  { path: "/app/catalog", icon: LayoutGrid, moduleKey: "catalog" as const, tint: "default" as const },
+  { path: "/app/booking", icon: CalendarClock, moduleKey: "booking" as const, tint: "info" as const },
+  { path: "/app/expenses", icon: Receipt, moduleKey: "expenses" as const, tint: "warning" as const },
 ];
 
 // SOURCE_MODULE_ICON: small icon per payment source so Recent Activity reads at a glance instead of
@@ -55,6 +56,8 @@ const QUICK_ACTION_TINT: Record<string, string> = {
 };
 
 export default function DashboardPage() {
+  const { t } = useT();
+  const format = useFormat();
   const businessId = useBusinessStore((state) => state.businessId);
   const { data: stats, isLoading: statsLoading } = useDashboardStats(businessId);
   const { data: enabledModules = [] } = useBusinessModules(businessId);
@@ -74,11 +77,11 @@ export default function DashboardPage() {
 
   // `to` makes an unfinished step a link, only when that page is reachable for this role / module set
   const sellPath = enabledModules.includes("pos") ? "/app/pos" : enabledModules.includes("booking") ? "/app/booking" : undefined;
-  const checklist: Array<{ label: string; done: boolean; to?: string }> = [
-    { label: "Finish business setup", done: Boolean(business?.setupCompletedAt), to: can("business.configure") ? "/app/setup" : undefined },
-    { label: "Add your first catalog offering", done: offerings.length > 0, to: enabledModules.includes("catalog") ? "/app/catalog" : undefined },
-    { label: "Record your first sale or booking", done: recentPayments.length > 0, to: sellPath },
-    { label: "Add a teammate", done: (stats?.activeEmployeesCount ?? 0) > 1, to: can("employees.manage") ? "/app/employees" : undefined },
+  const checklist: Array<{ id: string; label: string; done: boolean; to?: string }> = [
+    { id: "setup", label: t("dashboard.checklist.setup"), done: Boolean(business?.setupCompletedAt), to: can("business.configure") ? "/app/setup" : undefined },
+    { id: "catalog", label: t("dashboard.checklist.catalog"), done: offerings.length > 0, to: enabledModules.includes("catalog") ? "/app/catalog" : undefined },
+    { id: "firstSale", label: t("dashboard.checklist.firstSale"), done: recentPayments.length > 0, to: sellPath },
+    { id: "teammate", label: t("dashboard.checklist.teammate"), done: (stats?.activeEmployeesCount ?? 0) > 1, to: can("employees.manage") ? "/app/employees" : undefined },
   ];
   const checklistDone = checklist.filter((step) => step.done).length;
   const checklistPercent = Math.round((checklistDone / checklist.length) * 100);
@@ -86,20 +89,22 @@ export default function DashboardPage() {
     const permission: Permission | undefined = getModuleDefinition(action.moduleKey)?.permission;
     return enabledModules.includes(action.moduleKey) && (!permission || can(permission));
   });
-  const greeting = new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 18 ? "Good afternoon" : "Good evening";
+  const hour = new Date().getHours();
+  const greeting = t(hour < 12 ? "dashboard.greeting.morning" : hour < 18 ? "dashboard.greeting.afternoon" : "dashboard.greeting.evening");
+  const sourceLabel = (source: string) => (source === "pos" ? t("payments.source.pos") : source === "booking" ? t("payments.source.booking") : source);
 
   return (
     <div className="space-y-6">
       <PageHeader
         icon={LayoutDashboard}
-        title="Dashboard"
-        description={`${greeting} — here's today's activity across every enabled module.`}
+        title={t("dashboard.title")}
+        description={t("dashboard.description", { greeting })}
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard label="Today's Sales" value={`₱${(stats?.todaySalesTotal ?? 0).toFixed(2)}`} icon={Wallet} accent="success" isLoading={statsLoading} />
-        <StatCard label="Upcoming Bookings" value={stats?.upcomingBookingsCount ?? 0} icon={CalendarClock} accent="info" isLoading={statsLoading} />
-        <StatCard label="Active Employees" value={stats?.activeEmployeesCount ?? 0} icon={Users} accent="default" isLoading={statsLoading} />
+        <StatCard label={t("dashboard.stats.todaySales")} value={`₱${(stats?.todaySalesTotal ?? 0).toFixed(2)}`} icon={Wallet} accent="success" isLoading={statsLoading} />
+        <StatCard label={t("dashboard.stats.upcomingBookings")} value={stats?.upcomingBookingsCount ?? 0} icon={CalendarClock} accent="info" isLoading={statsLoading} />
+        <StatCard label={t("dashboard.stats.activeEmployees")} value={stats?.activeEmployeesCount ?? 0} icon={Users} accent="default" isLoading={statsLoading} />
       </div>
 
       {inventoryOn && stockAlerts.length > 0 && (
@@ -107,10 +112,10 @@ export default function DashboardPage() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="flex items-center gap-2 text-base">
               <TriangleAlert className="h-4 w-4 text-warning" />
-              Stock alerts
+              {t("dashboard.stockAlerts.title")}
             </CardTitle>
             <Link to="/app/inventory" className="text-sm font-medium text-primary hover:underline">
-              Open Inventory
+              {t("dashboard.stockAlerts.openInventory")}
             </Link>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-x-6 gap-y-2">
@@ -128,11 +133,11 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <Card className="lg:col-span-1 animate-slide-up">
           <CardHeader>
-            <CardTitle className="text-base">Quick Actions</CardTitle>
+            <CardTitle className="text-base">{t("dashboard.quickActions.title")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2.5">
             {availableActions.length === 0 && (
-              <p className="text-sm text-muted-foreground">Enable a module to see quick actions here.</p>
+              <p className="text-sm text-muted-foreground">{t("dashboard.quickActions.empty")}</p>
             )}
             {availableActions.map((action) => (
               <Link
@@ -144,8 +149,8 @@ export default function DashboardPage() {
                   <action.icon className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{action.label}</p>
-                  <p className="truncate text-xs text-muted-foreground">{action.description}</p>
+                  <p className="text-sm font-medium">{t(`dashboard.quickActions.${action.moduleKey}.label`)}</p>
+                  <p className="truncate text-xs text-muted-foreground">{t(`dashboard.quickActions.${action.moduleKey}.description`)}</p>
                 </div>
                 <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-primary" />
               </Link>
@@ -156,7 +161,7 @@ export default function DashboardPage() {
         {/* Getting Started checklist */}
         <Card className="lg:col-span-1 animate-slide-up">
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-base">Getting Started</CardTitle>
+            <CardTitle className="text-base">{t("dashboard.checklist.title")}</CardTitle>
             <Badge variant={checklistDone === checklist.length ? "success" : "secondary"}>
               {checklistDone}/{checklist.length}
             </Badge>
@@ -170,7 +175,7 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-2.5 pt-1">
               {checklist.map((step) => (
-                <div key={step.label} className="flex items-center gap-2.5 text-sm">
+                <div key={step.id} className="flex items-center gap-2.5 text-sm">
                   {step.done ? (
                     <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
                   ) : (
@@ -189,7 +194,7 @@ export default function DashboardPage() {
             {checklistDone === checklist.length && (
               <div className="flex items-center gap-1.5 rounded-md bg-success/10 px-2.5 py-1.5 text-xs font-medium text-success">
                 <Sparkles className="h-3.5 w-3.5" />
-                All set up — you're ready to go!
+                {t("dashboard.checklist.allDone")}
               </div>
             )}
           </CardContent>
@@ -198,12 +203,12 @@ export default function DashboardPage() {
         {/* Recent Activity */}
         <Card className="lg:col-span-1 animate-slide-up">
           <CardHeader>
-            <CardTitle className="text-base">Recent Activity</CardTitle>
+            <CardTitle className="text-base">{t("dashboard.activity.title")}</CardTitle>
           </CardHeader>
           <CardContent>
-            {paymentsLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+            {paymentsLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
             {!paymentsLoading && recentPayments.length === 0 && (
-              <EmptyState icon={Receipt} title="No activity yet" description="Sales and paid bookings will show up here." className="border-0 py-6" />
+              <EmptyState icon={Receipt} title={t("dashboard.activity.emptyTitle")} description={t("dashboard.activity.emptyDescription")} className="border-0 py-6" />
             )}
             <div className="space-y-1">
               {recentPayments.slice(0, 5).map((record) => {
@@ -214,8 +219,8 @@ export default function DashboardPage() {
                       <SourceIcon className="h-3.5 w-3.5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium capitalize">{record.sourceModule}</p>
-                      <p className="text-xs text-muted-foreground">{record.createdAt.toLocaleString()}</p>
+                      <p className="truncate font-medium">{sourceLabel(record.sourceModule)}</p>
+                      <p className="text-xs text-muted-foreground">{format.dateTime(record.createdAt)}</p>
                     </div>
                     <p className="shrink-0 font-semibold">₱{record.amount.toFixed(2)}</p>
                   </div>

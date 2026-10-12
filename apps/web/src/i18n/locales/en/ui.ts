@@ -1,0 +1,15 @@
+export const ui = {
+  close: "Close",
+  cancel: "Cancel",
+  confirm: "Confirm",
+  pleaseWait: "Please wait…",
+  prev: "Prev",
+  next: "Next",
+  quantity: "Quantity",
+  trendLabel: "vs previous period",
+  trendNoData: "No data for {label}",
+  decreaseQuantity: "Decrease quantity",
+  increaseQuantity: "Increase quantity",
+  showingRange: "Showing {start}-{end} of {total}",
+  pageOf: "Page {page} of {total}",
+};

@@ -1,5 +1,6 @@
 import { Minus, Plus } from "lucide-react";
 import { cn } from "../lib/utils";
+import { useUiLabels } from "./ui-labels";
 
 export interface QuantityStepperProps {
   value: number;
@@ -13,6 +14,7 @@ export interface QuantityStepperProps {
 // future Inventory/Booking use) — use this instead of a raw number input so touch targets and keyboard
 // entry behave identically everywhere.
 export function QuantityStepper({ value, onChange, min = 0, max = 999, className }: QuantityStepperProps) {
+  const labels = useUiLabels();
   const clamp = (next: number) => Math.min(max, Math.max(min, next));
   return (
     <div className={cn("flex items-center gap-1 rounded-md border bg-background p-0.5", className)}>
@@ -21,7 +23,7 @@ export function QuantityStepper({ value, onChange, min = 0, max = 999, className
         onClick={() => onChange(clamp(value - 1))}
         disabled={value <= min}
         className="flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
-        aria-label="Decrease quantity"
+        aria-label={labels.decreaseQuantity}
       >
         <Minus className="h-3 w-3" />
       </button>
@@ -30,14 +32,14 @@ export function QuantityStepper({ value, onChange, min = 0, max = 999, className
         value={value}
         onChange={(event) => onChange(clamp(Number(event.target.value) || 0))}
         className="h-6 w-9 bg-transparent text-center text-sm font-medium tabular-nums focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-        aria-label="Quantity"
+        aria-label={labels.quantity}
       />
       <button
         type="button"
         onClick={() => onChange(clamp(value + 1))}
         disabled={value >= max}
         className="flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
-        aria-label="Increase quantity"
+        aria-label={labels.increaseQuantity}
       >
         <Plus className="h-3 w-3" />
       </button>

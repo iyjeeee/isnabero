@@ -1,0 +1,36 @@
+import type { Dictionary } from "../../translate";
+
+export const pos: Dictionary["pos"] = {
+  page: {
+    title: "POS / Kahera",
+    description: "I-tap ang item para idagdag sa kasalukuyang benta.",
+    searchPlaceholder: "Maghanap ng item…",
+    nothingTitle: "Walang maibebenta",
+    nothingDescription: "Magdagdag ng offering sa Katalogo, o markahang available ang mga mayroon na.",
+    outOfStock: "Ubos na ang stock",
+    left: "{count} na lang",
+    saleCompleted: "Tapos na ang benta — ₱{total}",
+    outOfStockToast: "Ubos na ang stock ng {name}.",
+    onlyLeftToast: "{count} {name} na lang ang stock.",
+  },
+  cart: {
+    title: "Kasalukuyang Benta",
+    items: "1 item|{count} item",
+    emptyTitle: "Walang laman ang cart",
+    emptyDescription: "I-tap ang item sa kaliwa para idagdag.",
+    each: "₱{price} bawat isa",
+    remove: "Alisin ang {name}",
+    total: "Kabuuan",
+  },
+  checkout: {
+    button: "Checkout — ₱{total}",
+    title: "Tapusin ang benta",
+    description: "Piliin kung paano nagbayad ang customer.",
+    totalDue: "Kabuuang babayaran",
+    method: "Paraan ng pagbabayad",
+    referenceCode: "Reference code",
+    referencePlaceholder: "hal. GCash ref number",
+    processing: "Pinoproseso…",
+    confirm: "Kumpirmahin ang bayad",
+  },
+};

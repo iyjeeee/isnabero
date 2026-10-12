@@ -18,15 +18,16 @@ import {
 } from "@isnabero/ui";
 import { getDataSource } from "@isnabero/db";
 import { supabase } from "@/lib/supabase";
+import { msg, useLabels, useT } from "@/i18n";
 import { useCreateEmployee } from "@/hooks/use-create-employee";
 import { useQueryClient } from "@tanstack/react-query";
 
 const baseEmployeeFields = {
-  fullName: z.string().trim().min(1, "Name is required"),
+  fullName: z.string().trim().min(1, msg("employees.form.nameRequired")),
   role: z.enum(["owner", "admin", "staff"]),
 };
 // Email is only used by the real invite flow (supabase mode); mock mode creates a local record without one
-const inviteFormSchema = z.object({ ...baseEmployeeFields, email: z.string().email("Enter a valid email") });
+const inviteFormSchema = z.object({ ...baseEmployeeFields, email: z.string().email(msg("employees.form.emailInvalid")) });
 const mockFormSchema = z.object({ ...baseEmployeeFields, email: z.string().optional() });
 
 type EmployeeFormValues = z.infer<typeof inviteFormSchema>;
@@ -36,6 +37,8 @@ interface AddEmployeeModalProps {
 }
 
 export function AddEmployeeModal({ businessId }: AddEmployeeModalProps) {
+  const { t, tm } = useT();
+  const labels = useLabels();
   const [open, setOpen] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
   const createEmployee = useCreateEmployee(businessId);
@@ -59,10 +62,10 @@ export function AddEmployeeModal({ businessId }: AddEmployeeModalProps) {
       });
       setIsInviting(false);
       if (error) {
-        toast.error(`Couldn't invite ${values.fullName}: ${error.message}`);
+        toast.error(t("employees.add.inviteFailed", { name: values.fullName, error: error.message }));
         return;
       }
-      toast.success(`Invited ${values.fullName} — they'll get an email to set their password`);
+      toast.success(t("employees.add.invited", { name: values.fullName }));
       queryClient.invalidateQueries({ queryKey: ["employees", businessId] });
       queryClient.invalidateQueries({ queryKey: ["dashboard_stats", businessId] });
       form.reset();
@@ -75,7 +78,7 @@ export function AddEmployeeModal({ businessId }: AddEmployeeModalProps) {
       { fullName: values.fullName, role: values.role },
       {
         onSuccess: () => {
-          toast.success(`${values.fullName} added to the team`);
+          toast.success(t("employees.add.added", { name: values.fullName }));
           form.reset();
           setOpen(false);
         },
@@ -89,52 +92,52 @@ export function AddEmployeeModal({ businessId }: AddEmployeeModalProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <Button onClick={() => setOpen(true)}>
         <UserPlus className="h-4 w-4" />
-        Add Employee
+        {t("employees.add.button")}
       </Button>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isSupabaseMode ? "Invite employee" : "Add employee"}</DialogTitle>
+          <DialogTitle>{isSupabaseMode ? t("employees.add.inviteTitle") : t("employees.add.addTitle")}</DialogTitle>
           <DialogDescription>
-            {isSupabaseMode
-              ? "Sends a real invite email so this person can set their own password and sign in."
-              : "Mock mode: creates a local record only — no real login is created."}
+            {isSupabaseMode ? t("employees.add.inviteDescription") : t("employees.add.addDescription")}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="fullName">Full name</Label>
-            <Input id="fullName" placeholder="e.g. Maria Santos" {...form.register("fullName")} />
+            <Label htmlFor="fullName">{t("employees.form.fullName")}</Label>
+            <Input id="fullName" placeholder={t("employees.form.fullNamePlaceholder")} {...form.register("fullName")} />
             {form.formState.errors.fullName && (
-              <p className="text-xs text-destructive">{form.formState.errors.fullName.message}</p>
+              <p className="text-xs text-destructive">{tm(form.formState.errors.fullName.message)}</p>
             )}
           </div>
 
           {isSupabaseMode && (
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="maria@example.com" {...form.register("email")} />
+              <Label htmlFor="email">{t("auth.email")}</Label>
+              <Input id="email" type="email" placeholder={t("employees.form.emailPlaceholder")} {...form.register("email")} />
               {form.formState.errors.email && (
-                <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
+                <p className="text-xs text-destructive">{tm(form.formState.errors.email.message)}</p>
               )}
             </div>
           )}
 
           <div className="space-y-1.5">
-            <Label htmlFor="role">Role</Label>
+            <Label htmlFor="role">{t("employees.form.role")}</Label>
             <Select id="role" {...form.register("role")}>
-              <option value="staff">Staff</option>
-              <option value="admin">Admin</option>
-              <option value="owner">Owner</option>
+              <option value="staff">{labels.role("staff")}</option>
+              <option value="admin">{labels.role("admin")}</option>
+              <option value="owner">{labels.role("owner")}</option>
             </Select>
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? (isSupabaseMode ? "Sending invite…" : "Adding…") : isSupabaseMode ? "Send invite" : "Add employee"}
+              {isPending
+                ? isSupabaseMode ? t("employees.add.pendingInvite") : t("employees.add.pendingAdd")
+                : isSupabaseMode ? t("employees.add.submitInvite") : t("employees.add.submitAdd")}
             </Button>
           </DialogFooter>
         </form>

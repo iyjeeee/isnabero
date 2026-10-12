@@ -14,10 +14,14 @@ import { shiftRows } from "@/lib/export-rows";
 import { WeekGrid } from "@/components/schedule/WeekGrid";
 import { ShiftModal, type ShiftEditorState } from "@/components/schedule/ShiftModal";
 import { computeWeekStats } from "@/components/schedule/schedule-stats";
+import { useFormat, useT } from "@/i18n";
 
-const formatDay = (ymd: string) => new Date(`${ymd}T00:00:00`).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+// Export titles are document content, so they stay English whatever the app language is
+const exportDay = (ymd: string) => new Date(`${ymd}T00:00:00`).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
 
 export default function SchedulePage() {
+  const { t } = useT();
+  const f = useFormat();
   const businessId = useBusinessStore((state) => state.businessId) ?? "";
   const canManage = usePermission("schedule.manage");
   const { employee: currentEmployee } = useAuth();
@@ -37,15 +41,16 @@ export default function SchedulePage() {
   const stats = useMemo(() => computeWeekStats(shifts), [shifts]);
   const isLoading = employeesLoading || shiftsLoading;
   const isThisWeek = weekStart === weekStartOf(today);
-  const weekLabel = `${formatDay(days[0] as string)} – ${formatDay(days[6] as string)}, ${(days[6] as string).slice(0, 4)}`;
+  const weekLabel = `${f.monthDay(days[0] as string)} – ${f.monthDay(days[6] as string)}, ${(days[6] as string).slice(0, 4)}`;
+  const exportWeekLabel = `${exportDay(days[0] as string)} – ${exportDay(days[6] as string)}, ${(days[6] as string).slice(0, 4)}`;
 
   const handleCopy = () =>
     copyWeek.mutate(
       { fromWeekStart: addDays(weekStart, -7), toWeekStart: weekStart },
       {
         onSuccess: ({ created, skipped }) => {
-          if (created === 0 && skipped === 0) toast.info("Last week has no shifts to copy.");
-          else toast.success(`Copied ${created} shift${created === 1 ? "" : "s"} from last week${skipped ? ` (${skipped} skipped: already scheduled)` : ""}`);
+          if (created === 0 && skipped === 0) toast.info(t("schedule.copy.none"));
+          else toast.success(t(skipped ? "schedule.copy.doneSkipped" : "schedule.copy.done", { count: created, skipped }));
         },
       },
     );
@@ -54,13 +59,13 @@ export default function SchedulePage() {
     <div className="space-y-6">
       <PageHeader
         icon={CalendarDays}
-        title="Staff Schedule"
-        description={canManage ? "Plan who works when. Click a shift to edit it." : "Who is working this week."}
+        title={t("schedule.title")}
+        description={canManage ? t("schedule.descriptionManage") : t("schedule.descriptionReadonly")}
         action={
           <ExportButton
-            title={`Schedule ${weekLabel}`}
+            title={`Schedule ${exportWeekLabel}`}
             filenamePrefix={`schedule-${weekStart}`}
-            hint="Exports the week shown."
+            hint={t("schedule.exportHint")}
             disabled={shifts.length === 0}
             buildRows={() => shiftRows(shifts, new Map(employees.map((item) => [item.id, item.fullName])), {})}
           />
@@ -68,21 +73,21 @@ export default function SchedulePage() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Shifts This Week" value={stats.shiftCount} icon={CalendarCheck} accent="default" isLoading={isLoading} />
-        <StatCard label="Hours Scheduled" value={formatHours(stats.totalMinutes)} icon={Clock} accent="info" isLoading={isLoading} />
-        <StatCard label="Staff Scheduled" value={`${stats.staffScheduled} of ${employees.length}`} icon={Users} accent="success" isLoading={isLoading} />
+        <StatCard label={t("schedule.stats.shifts")} value={stats.shiftCount} icon={CalendarCheck} accent="default" isLoading={isLoading} />
+        <StatCard label={t("schedule.stats.hours")} value={formatHours(stats.totalMinutes)} icon={Clock} accent="info" isLoading={isLoading} />
+        <StatCard label={t("schedule.stats.staff")} value={t("schedule.stats.staffOf", { count: stats.staffScheduled, total: employees.length })} icon={Users} accent="success" isLoading={isLoading} />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" aria-label="Previous week" onClick={() => setWeekStart(addDays(weekStart, -7))}>
+          <Button variant="outline" size="icon" aria-label={t("schedule.week.previous")} onClick={() => setWeekStart(addDays(weekStart, -7))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon" aria-label="Next week" onClick={() => setWeekStart(addDays(weekStart, 7))}>
+          <Button variant="outline" size="icon" aria-label={t("schedule.week.next")} onClick={() => setWeekStart(addDays(weekStart, 7))}>
             <ChevronRight className="h-4 w-4" />
           </Button>
           <Button variant="outline" disabled={isThisWeek} onClick={() => setWeekStart(weekStartOf(today))}>
-            This week
+            {t("schedule.week.thisWeek")}
           </Button>
           <h2 className="ml-1 font-display text-base font-semibold" aria-live="polite">
             {weekLabel}
@@ -92,9 +97,9 @@ export default function SchedulePage() {
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleCopy} disabled={copyWeek.isPending}>
               <Copy className="h-4 w-4" />
-              {copyWeek.isPending ? "Copying…" : "Copy last week"}
+              {copyWeek.isPending ? t("schedule.copy.copying") : t("schedule.copy.button")}
             </Button>
-            <Button onClick={() => setEditor({ mode: "add", date: days.includes(today) ? today : (days[0] as string) })}>Add shift</Button>
+            <Button onClick={() => setEditor({ mode: "add", date: days.includes(today) ? today : (days[0] as string) })}>{t("schedule.addShift")}</Button>
           </div>
         )}
       </div>
@@ -108,7 +113,7 @@ export default function SchedulePage() {
               ))}
             </div>
           )}
-          {!isLoading && employees.length === 0 && <EmptyState icon={Users} title="No employees yet" description="Add employees first, then plan their shifts here." className="border-0" />}
+          {!isLoading && employees.length === 0 && <EmptyState icon={Users} title={t("schedule.empty.title")} description={t("schedule.empty.description")} className="border-0" />}
           {!isLoading && employees.length > 0 && (
             <>
               <WeekGrid
@@ -122,7 +127,7 @@ export default function SchedulePage() {
                 onAdd={(employeeId, date) => setEditor({ mode: "add", employeeId, date })}
                 onEdit={(shift) => setEditor({ mode: "edit", shift })}
               />
-              {shifts.length === 0 && <p className="border-t px-4 py-3 text-sm text-muted-foreground">No shifts this week{canManage ? " — add one, or copy last week." : "."}</p>}
+              {shifts.length === 0 && <p className="border-t px-4 py-3 text-sm text-muted-foreground">{canManage ? t("schedule.noShiftsManage") : t("schedule.noShifts")}</p>}
             </>
           )}
         </CardContent>

@@ -7,18 +7,20 @@ import { useBusinessStore } from "@/stores/business-store";
 import { ExportButton } from "@/components/ExportButton";
 import { bookingRows } from "@/lib/export-rows";
 import { NewBookingModal } from "@/components/booking/NewBookingModal";
+import { useFormat, useT } from "@/i18n";
 
 const UPCOMING_DAYS = 30;
 
-// formatBookingTime: "09:30 AM" for today, "Tue, Oct 6 · 09:30 AM" for later days
-function formatBookingTime(value: Date | string): string {
-  const date = new Date(value);
-  const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  if (date.toDateString() === new Date().toDateString()) return time;
-  return `${date.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} · ${time}`;
-}
-
 export default function BookingPage() {
+  const { t } = useT();
+  const f = useFormat();
+  // formatBookingTime: "9:30 AM" for today, "Tue, Oct 6 · 9:30 AM" for later days (in the chosen language)
+  const formatBookingTime = (value: Date | string): string => {
+    const date = new Date(value);
+    const time = f.time(date);
+    if (date.toDateString() === new Date().toDateString()) return time;
+    return `${f.weekday(date)}, ${f.monthDay(date)} · ${time}`;
+  };
   const businessId = useBusinessStore((state) => state.businessId) ?? "";
 
   // Window = start of today through the next UPCOMING_DAYS days, so a booking made for tomorrow shows up
@@ -47,20 +49,20 @@ export default function BookingPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon={CalendarClock} title="Booking" description="Today and the next 30 days."
+      <PageHeader icon={CalendarClock} title={t("booking.title")} description={t("booking.description")}
         action={
           <div className="flex items-center gap-2">
-            <ExportButton title="Bookings" filenamePrefix="bookings" withDateRange hint="Covers the bookings listed on this page (today and the next 30 days)." disabled={filteredBookings.length === 0} buildRows={(range) => bookingRows(filteredBookings, range)} />
+            <ExportButton title="Bookings" filenamePrefix="bookings" withDateRange hint={t("booking.exportHint")} disabled={filteredBookings.length === 0} buildRows={(range) => bookingRows(filteredBookings, range)} />
             <NewBookingModal businessId={businessId} />
           </div>
         }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Today's Bookings" value={todayCount} icon={CalendarClock} accent="default" isLoading={isLoading} />
-        <StatCard label="Confirmed" value={confirmedCount} icon={CalendarCheck2} accent="success" isLoading={isLoading} />
+        <StatCard label={t("booking.stats.today")} value={todayCount} icon={CalendarClock} accent="default" isLoading={isLoading} />
+        <StatCard label={t("booking.stats.confirmed")} value={confirmedCount} icon={CalendarCheck2} accent="success" isLoading={isLoading} />
         <StatCard
-          label="Next Booking"
+          label={t("booking.stats.next")}
           value={nextBooking ? formatBookingTime(nextBooking.startTime) : "—"}
           icon={Clock}
           accent="info"
@@ -72,7 +74,7 @@ export default function BookingPage() {
         <FilterBar className="sm:justify-start">
           <div className="relative w-full sm:w-72">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search by customer name…" value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
+            <Input placeholder={t("booking.searchPlaceholder")} value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
           </div>
         </FilterBar>
       )}
@@ -86,10 +88,10 @@ export default function BookingPage() {
           </div>
         )}
         {!isLoading && bookings.length === 0 && (
-          <EmptyState icon={CalendarClock} title="No upcoming bookings" description="Tap New Booking to reserve the first slot." />
+          <EmptyState icon={CalendarClock} title={t("booking.empty.title")} description={t("booking.empty.description")} />
         )}
         {!isLoading && bookings.length > 0 && filteredBookings.length === 0 && (
-          <EmptyState icon={Search} title="No matches" description="Try a different search term." />
+          <EmptyState icon={Search} title={t("booking.noMatches.title")} description={t("booking.noMatches.description")} />
         )}
         {filteredBookings.map((booking) => (
           <Card key={booking.id} interactive>

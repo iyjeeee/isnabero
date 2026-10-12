@@ -5,6 +5,7 @@ import { useStockLevels } from "@isnabero/module-inventory";
 import { Card, CardContent, Button, Badge, PageHeader, EmptyState, Skeleton, Input, FilterBar, Pagination, cn } from "@isnabero/ui";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { useT, useLabels } from "@/i18n";
 import { useBusinessStore } from "@/stores/business-store";
 import { usePagination } from "@/hooks/use-pagination";
 import { ExportButton } from "@/components/ExportButton";
@@ -21,15 +22,12 @@ const TYPE_TILE_TINT = {
   bundle: "bg-info/10 text-info",
   addon: "bg-secondary text-secondary-foreground",
 } as const;
-const TYPE_TABS = [
-  { value: "all", label: "All" },
-  { value: "item", label: "Items" },
-  { value: "bundle", label: "Bundles" },
-  { value: "addon", label: "Add-ons" },
-] as const;
+const TYPE_TABS = ["all", "item", "bundle", "addon"] as const;
 const PAGE_SIZE = 9;
 
 export default function CatalogPage() {
+  const { t } = useT();
+  const labels = useLabels();
   const businessId = useBusinessStore((state) => state.businessId) ?? "";
   const { data: offerings = [], isLoading } = useOfferings(supabase, businessId);
   const toggleAvailability = useToggleOfferingAvailability(supabase, businessId);
@@ -37,7 +35,7 @@ export default function CatalogPage() {
   const stockByOffering = new Map(stockLevels.map((level) => [level.offeringId, level]));
 
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<(typeof TYPE_TABS)[number]["value"]>("all");
+  const [typeFilter, setTypeFilter] = useState<(typeof TYPE_TABS)[number]>("all");
 
   const filteredOfferings = useMemo(() => {
     return offerings.filter((offering) => {
@@ -52,7 +50,7 @@ export default function CatalogPage() {
   const handleToggle = (offeringId: string, isAvailable: boolean, name: string) => {
     toggleAvailability.mutate(
       { offeringId, isAvailable },
-      { onSuccess: () => toast.success(isAvailable ? `${name} marked available` : `${name} marked sold out`) },
+      { onSuccess: () => toast.success(t(isAvailable ? "catalog.page.markedAvailable" : "catalog.page.markedSoldOut", { name })) },
     );
   };
 
@@ -60,8 +58,8 @@ export default function CatalogPage() {
     <div className="space-y-6">
       <PageHeader
         icon={LayoutGrid}
-        title="Catalog"
-        description="Items, bundles, and add-ons shared across POS and Booking."
+        title={t("catalog.page.title")}
+        description={t("catalog.page.description")}
         action={
           <div className="flex items-center gap-2">
             <ExportButton title="Catalog" filenamePrefix="catalog" moneyColumns={["Price"]} disabled={filteredOfferings.length === 0} buildRows={() => offeringRows(filteredOfferings)} />
@@ -75,20 +73,20 @@ export default function CatalogPage() {
           <div className="flex gap-1 rounded-lg border bg-background p-1">
             {TYPE_TABS.map((tab) => (
               <button
-                key={tab.value}
-                onClick={() => setTypeFilter(tab.value)}
+                key={tab}
+                onClick={() => setTypeFilter(tab)}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  typeFilter === tab.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
+                  typeFilter === tab ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
                 )}
               >
-                {tab.label}
+                {t(`catalog.tabs.${tab}`)}
               </button>
             ))}
           </div>
           <div className="relative w-full sm:w-64">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search offerings…" value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
+            <Input placeholder={t("catalog.page.searchPlaceholder")} value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
           </div>
         </FilterBar>
       )}
@@ -110,14 +108,14 @@ export default function CatalogPage() {
       {!isLoading && offerings.length === 0 && (
         <EmptyState
           icon={PackageOpen}
-          title="No offerings yet"
-          description="Add your first item, bundle, or add-on — it'll be available to POS and Booking right away."
+          title={t("catalog.page.emptyTitle")}
+          description={t("catalog.page.emptyDescription")}
           action={<CreateOfferingModal businessId={businessId} />}
         />
       )}
 
       {!isLoading && offerings.length > 0 && filteredOfferings.length === 0 && (
-        <EmptyState icon={Search} title="No matches" description="Try a different search term or filter." />
+        <EmptyState icon={Search} title={t("catalog.page.noMatchesTitle")} description={t("catalog.page.noMatchesDescription")} />
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -134,7 +132,7 @@ export default function CatalogPage() {
                     <div className="min-w-0 pt-0.5">
                       <p className="truncate font-semibold leading-tight">{offering.name}</p>
                       <Badge variant={TYPE_BADGE_VARIANT[offering.type]} className="mt-1.5 capitalize">
-                        {offering.type}
+                        {labels.offeringType(offering.type)}
                       </Badge>
                     </div>
                   </div>
@@ -160,7 +158,7 @@ export default function CatalogPage() {
                 <div className="mt-auto flex items-center justify-between border-t pt-3">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Badge variant={offering.isAvailable ? "success" : "destructive"}>
-                      {offering.isAvailable ? "Available" : "Sold out"}
+                      {offering.isAvailable ? t("catalog.page.available") : t("catalog.page.soldOut")}
                     </Badge>
                     {stockByOffering.has(offering.id) && <StockBadge level={stockByOffering.get(offering.id)!} />}
                   </div>
@@ -169,7 +167,7 @@ export default function CatalogPage() {
                     size="sm"
                     onClick={() => handleToggle(offering.id, !offering.isAvailable, offering.name)}
                   >
-                    {offering.isAvailable ? "Mark sold out" : "Mark available"}
+                    {offering.isAvailable ? t("catalog.page.markSoldOut") : t("catalog.page.markAvailable")}
                   </Button>
                 </div>
               </CardContent>

@@ -6,6 +6,7 @@ import { useBusinessStore } from "@/stores/business-store";
 import { getCoreRepository } from "@/lib/repositories/get-repository";
 import { usePermission } from "@/hooks/use-permission";
 import { usePagination } from "@/hooks/use-pagination";
+import { useT, useFormat, useLabels } from "@/i18n";
 import { paymentRows } from "@/lib/export-rows";
 import { Card, CardContent, Badge, PageHeader, EmptyState, Skeleton, StatCard, FilterBar, Input, Pagination, ActionIconButton, cn } from "@isnabero/ui";
 import { ExportButton } from "@/components/ExportButton";
@@ -13,16 +14,13 @@ import { VoidPaymentRecordButton } from "@/components/payments/VoidPaymentRecord
 import { ReceiptDialog } from "@/components/receipt/ReceiptDialog";
 
 const METHOD_BADGE_VARIANT = { cash: "success", gcash: "info", bank_transfer: "default", other: "secondary" } as const;
-const METHOD_TABS = [
-  { value: "all", label: "All" },
-  { value: "cash", label: "Cash" },
-  { value: "gcash", label: "GCash" },
-  { value: "bank_transfer", label: "Bank" },
-  { value: "other", label: "Other" },
-] as const;
+const METHOD_TABS = ["all", "cash", "gcash", "bank_transfer", "other"] as const;
 const PAGE_SIZE = 10;
 
 export default function PaymentsPage() {
+  const { t } = useT();
+  const format = useFormat();
+  const labels = useLabels();
   const businessId = useBusinessStore((state) => state.businessId) ?? "";
   const repository = getCoreRepository(supabase);
   const canManage = usePermission("payments.void");
@@ -37,7 +35,7 @@ export default function PaymentsPage() {
   });
 
   const [search, setSearch] = useState("");
-  const [methodFilter, setMethodFilter] = useState<(typeof METHOD_TABS)[number]["value"]>("all");
+  const [methodFilter, setMethodFilter] = useState<(typeof METHOD_TABS)[number]>("all");
 
   const filteredRecords = useMemo(() => {
     return records.filter((record) => {
@@ -57,21 +55,23 @@ export default function PaymentsPage() {
   const totalAmount = activeRecords.reduce((sum, record) => sum + record.amount, 0);
   const averageAmount = activeRecords.length > 0 ? totalAmount / activeRecords.length : 0;
 
+  const sourceLabel = (source: string) => (source === "pos" ? t("payments.source.pos") : source === "booking" ? t("payments.source.booking") : source);
+
   return (
     <div className="space-y-6">
       <PageHeader
         icon={Wallet}
-        title="Payment Records"
-        description="Every transaction, regardless of which module created it."
+        title={t("payments.title")}
+        description={t("payments.description")}
         action={
-          <ExportButton title="Payment Records" filenamePrefix="payment-records" moneyColumns={["Amount"]} withDateRange hint="Uses the method filter and search currently applied." disabled={filteredRecords.length === 0} buildRows={(range) => paymentRows(filteredRecords, range)} />
+          <ExportButton title="Payment Records" filenamePrefix="payment-records" moneyColumns={["Amount"]} withDateRange hint={t("payments.exportHint")} disabled={filteredRecords.length === 0} buildRows={(range) => paymentRows(filteredRecords, range)} />
         }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Total Transactions" value={activeRecords.length} icon={Receipt} accent="default" isLoading={isLoading} />
-        <StatCard label="Total Collected" value={`₱${totalAmount.toFixed(2)}`} icon={Wallet} accent="success" isLoading={isLoading} />
-        <StatCard label="Average Transaction" value={`₱${averageAmount.toFixed(2)}`} icon={TrendingUp} accent="info" isLoading={isLoading} />
+        <StatCard label={t("payments.stats.totalTransactions")} value={activeRecords.length} icon={Receipt} accent="default" isLoading={isLoading} />
+        <StatCard label={t("payments.stats.totalCollected")} value={`₱${totalAmount.toFixed(2)}`} icon={Wallet} accent="success" isLoading={isLoading} />
+        <StatCard label={t("payments.stats.averageTransaction")} value={`₱${averageAmount.toFixed(2)}`} icon={TrendingUp} accent="info" isLoading={isLoading} />
       </div>
 
       {/* Always rendered: the "Show voided" toggle lives here, so hiding the bar when every record is voided
@@ -81,25 +81,25 @@ export default function PaymentsPage() {
           <div className="flex gap-1 overflow-x-auto rounded-lg border bg-background p-1">
             {METHOD_TABS.map((tab) => (
               <button
-                key={tab.value}
-                onClick={() => setMethodFilter(tab.value)}
+                key={tab}
+                onClick={() => setMethodFilter(tab)}
                 className={cn(
                   "shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  methodFilter === tab.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
+                  methodFilter === tab ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
                 )}
               >
-                {tab.label}
+                {tab === "all" ? t("common.all") : tab === "bank_transfer" ? t("payments.filters.bank") : labels.method(tab)}
               </button>
             ))}
           </div>
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input type="checkbox" checked={showVoided} onChange={(event) => setShowVoided(event.target.checked)} className="h-4 w-4 rounded border-input" />
-            Show voided
+            {t("payments.filters.showVoided")}
           </label>
         </div>
         <div className="relative w-full sm:w-64">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search reference or source…" value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
+          <Input placeholder={t("payments.filters.searchPlaceholder")} value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
         </div>
       </FilterBar>
 
@@ -114,33 +114,33 @@ export default function PaymentsPage() {
           )}
 
           {!isLoading && records.length === 0 && (
-            <EmptyState icon={Wallet} title="No transactions yet" description="Sales from POS and paid bookings will show up here." className="border-0" />
+            <EmptyState icon={Wallet} title={t("payments.empty.title")} description={t("payments.empty.description")} className="border-0" />
           )}
 
           {!isLoading && records.length > 0 && filteredRecords.length === 0 && (
-            <EmptyState icon={Search} title="No matches" description="Try a different search term or method filter." className="border-0" />
+            <EmptyState icon={Search} title={t("payments.empty.noMatchTitle")} description={t("payments.empty.noMatchDescription")} className="border-0" />
           )}
 
           {!isLoading && pageItems.length > 0 && (
             <table className="w-full text-sm">
               <thead className="border-b bg-muted/50 text-left text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Source</th>
-                  <th className="px-4 py-3">Method</th>
-                  <th className="px-4 py-3">Reference</th>
-                  <th className="px-4 py-3 text-right">Amount</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-4 py-3">{t("common.date")}</th>
+                  <th className="px-4 py-3">{t("payments.table.source")}</th>
+                  <th className="px-4 py-3">{t("payments.table.method")}</th>
+                  <th className="px-4 py-3">{t("payments.table.reference")}</th>
+                  <th className="px-4 py-3 text-right">{t("payments.table.amount")}</th>
+                  <th className="px-4 py-3 text-right">{t("common.actions")}</th>
                 </tr>
               </thead>
               <tbody>
                 {pageItems.map((record) => (
                   <tr key={record.id} className={cn("border-b transition-colors last:border-0 hover:bg-accent/50", record.voidedAt && "opacity-50")}>
-                    <td className="px-4 py-3">{record.createdAt.toLocaleString()}</td>
-                    <td className="px-4 py-3 capitalize">{record.sourceModule}</td>
+                    <td className="px-4 py-3">{format.dateTime(record.createdAt)}</td>
+                    <td className="px-4 py-3">{sourceLabel(record.sourceModule)}</td>
                     <td className="px-4 py-3">
-                      <Badge variant={METHOD_BADGE_VARIANT[record.method as keyof typeof METHOD_BADGE_VARIANT] ?? "secondary"} className="capitalize">
-                        {record.method.replace("_", " ")}
+                      <Badge variant={METHOD_BADGE_VARIANT[record.method as keyof typeof METHOD_BADGE_VARIANT] ?? "secondary"}>
+                        {labels.method(record.method)}
                       </Badge>
                     </td>
                     <td className="px-4 py-3">{record.referenceCode ?? "—"}</td>
@@ -148,14 +148,14 @@ export default function PaymentsPage() {
                       ₱{record.amount.toFixed(2)}
                       {record.voidedAt && (
                         <Badge variant="destructive" className="ml-2">
-                          Voided
+                          {labels.orderStatus("voided")}
                         </Badge>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
                         {record.sourceModule === "pos" && (
-                          <ActionIconButton icon={ReceiptText} aria-label={`View receipt for ${record.createdAt.toLocaleString()}`} title="View receipt" onClick={() => setReceiptPaymentId(record.id)} />
+                          <ActionIconButton icon={ReceiptText} aria-label={t("payments.viewReceiptFor", { date: format.dateTime(record.createdAt) })} title={t("payments.viewReceipt")} onClick={() => setReceiptPaymentId(record.id)} />
                         )}
                         {canManage && !record.voidedAt && (
                           <VoidPaymentRecordButton businessId={businessId} recordId={record.id} amountLabel={`₱${record.amount.toFixed(2)}`} />

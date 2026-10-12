@@ -1,0 +1,41 @@
+import type { Dictionary } from "../../translate";
+
+export const reports: Dictionary["reports"] = {
+  title: "Mga Ulat",
+  description: "Performance ng benta, booking, at katalogo ng negosyong ito.",
+  empty: "Mag-enable ng module tulad ng POS, Booking, o Katalogo para makita ang ulat nito dito.",
+  last14Days: "— nakaraang 14 na araw",
+  date: "Petsa: {date}",
+  sales: {
+    title: "Ulat ng Benta",
+    totalRevenue: "Kabuuang Kita",
+    transactions: "Mga Transaksyon",
+    average: "(karaniwan {amount})",
+    voided: "Na-void",
+    dailyRevenue: "Kita kada araw",
+    revenue: "Kita",
+    byMethod: "Ayon sa paraan ng bayad",
+    noSales: "Walang benta sa panahong ito.",
+  },
+  booking: {
+    title: "Ulat ng Booking",
+    thisPeriod: "Sa Panahong Ito",
+    upcoming: "Paparating",
+    completed: "Tapos na",
+    cancelled: "Kinansela",
+    perDay: "Mga booking kada araw",
+    bookings: "Mga Booking",
+    byStatus: "Ayon sa status (lahat ng panahon)",
+    none: "Wala pang booking.",
+  },
+  catalog: {
+    title: "Ulat ng Katalogo",
+    totalOfferings: "Kabuuang Offering",
+    available: "Available",
+    soldOut: "Ubos na",
+    topSelling: "Pinakamabentang offering (ayon sa dami)",
+    noSales: "Wala pang naitalang benta sa POS.",
+    qtySold: "Nabentang dami",
+    revenue: "Kita",
+  },
+};

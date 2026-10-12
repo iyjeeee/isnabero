@@ -6,6 +6,7 @@ import { AuthProvider } from "@/providers/AuthProvider";
 import { PageFallback } from "@/components/PageFallback";
 import { RouteGuard } from "@/components/RouteGuard";
 import { SetupGate } from "@/components/SetupGate";
+import { UiLabelsBridge } from "@/providers/UiLabelsBridge";
 
 // Route-based code splitting: each page becomes its own chunk, loaded on first visit instead of all
 // bundled into the initial download. Cuts the single large bundle down considerably on first paint.
@@ -25,6 +26,7 @@ const SetupPage = lazy(() => import("@/pages/SetupPage"));
 
 export default function App() {
   return (
+    <UiLabelsBridge>
     <AuthProvider>
       <Suspense fallback={<PageFallback />}>
         <Routes>
@@ -59,5 +61,6 @@ export default function App() {
         </Routes>
       </Suspense>
     </AuthProvider>
+    </UiLabelsBridge>
   );
 }

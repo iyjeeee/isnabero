@@ -7,6 +7,7 @@ import { getCoreRepository } from "@/lib/repositories/get-repository";
 import { usePermission } from "@/hooks/use-permission";
 import { useAuth } from "@/providers/AuthProvider";
 import { usePagination } from "@/hooks/use-pagination";
+import { useFormat, useLabels, useT } from "@/i18n";
 import { Card, CardContent, Badge, PageHeader, EmptyState, Skeleton, StatCard, FilterBar, Input, Pagination, cn } from "@isnabero/ui";
 import { ExportButton } from "@/components/ExportButton";
 import { employeeRows } from "@/lib/export-rows";
@@ -15,15 +16,13 @@ import { EditEmployeeModal } from "@/components/employees/EditEmployeeModal";
 import { DeleteEmployeeButton } from "@/components/employees/DeleteEmployeeButton";
 
 const ROLE_BADGE_VARIANT = { owner: "default", admin: "info", staff: "secondary" } as const;
-const ROLE_TABS = [
-  { value: "all", label: "All" },
-  { value: "owner", label: "Owner" },
-  { value: "admin", label: "Admin" },
-  { value: "staff", label: "Staff" },
-] as const;
+const ROLE_TABS = ["all", "owner", "admin", "staff"] as const;
 const PAGE_SIZE = 10;
 
 export default function EmployeesPage() {
+  const { t } = useT();
+  const format = useFormat();
+  const labels = useLabels();
   const businessId = useBusinessStore((state) => state.businessId) ?? "";
   const repository = getCoreRepository(supabase);
   // Managing staff (adding/editing/removing) is restricted to owner/admin — staff can view the list
@@ -38,7 +37,7 @@ export default function EmployeesPage() {
   });
 
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<(typeof ROLE_TABS)[number]["value"]>("all");
+  const [roleFilter, setRoleFilter] = useState<(typeof ROLE_TABS)[number]>("all");
 
   const filteredEmployees = useMemo(() => {
     return employees.filter((employee) => {
@@ -57,8 +56,8 @@ export default function EmployeesPage() {
     <div className="space-y-6">
       <PageHeader
         icon={Users}
-        title="Employees"
-        description="Staff accounts and roles for this business."
+        title={t("nav.employees")}
+        description={t("employees.description")}
         action={
           canManage ? (
             <div className="flex items-center gap-2">
@@ -70,9 +69,9 @@ export default function EmployeesPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Total Employees" value={employees.length} icon={Users} accent="default" isLoading={isLoading} />
-        <StatCard label="Owners" value={ownerCount} icon={ShieldCheck} accent="info" isLoading={isLoading} />
-        <StatCard label="Staff & Admins" value={staffCount} icon={UserCog} accent="success" isLoading={isLoading} />
+        <StatCard label={t("employees.stats.total")} value={employees.length} icon={Users} accent="default" isLoading={isLoading} />
+        <StatCard label={t("employees.stats.owners")} value={ownerCount} icon={ShieldCheck} accent="info" isLoading={isLoading} />
+        <StatCard label={t("employees.stats.staffAdmins")} value={staffCount} icon={UserCog} accent="success" isLoading={isLoading} />
       </div>
 
       {employees.length > 0 && (
@@ -80,20 +79,20 @@ export default function EmployeesPage() {
           <div className="flex gap-1 rounded-lg border bg-background p-1">
             {ROLE_TABS.map((tab) => (
               <button
-                key={tab.value}
-                onClick={() => setRoleFilter(tab.value)}
+                key={tab}
+                onClick={() => setRoleFilter(tab)}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  roleFilter === tab.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
+                  roleFilter === tab ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
                 )}
               >
-                {tab.label}
+                {tab === "all" ? t("common.all") : labels.role(tab)}
               </button>
             ))}
           </div>
           <div className="relative w-full sm:w-64">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search employees…" value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
+            <Input placeholder={t("employees.searchPlaceholder")} value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
           </div>
         </FilterBar>
       )}
@@ -111,24 +110,24 @@ export default function EmployeesPage() {
           {!isLoading && employees.length === 0 && (
             <EmptyState
               icon={Users}
-              title="No employees added yet"
-              description="Add your team so they can be assigned to sales and bookings."
+              title={t("employees.empty.title")}
+              description={t("employees.empty.description")}
               className="border-0"
             />
           )}
 
           {!isLoading && employees.length > 0 && filteredEmployees.length === 0 && (
-            <EmptyState icon={Search} title="No matches" description="Try a different search term or role filter." className="border-0" />
+            <EmptyState icon={Search} title={t("employees.noMatches.title")} description={t("employees.noMatches.description")} className="border-0" />
           )}
 
           {!isLoading && pageItems.length > 0 && (
             <table className="w-full text-sm">
               <thead className="border-b bg-muted/50 text-left text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Role</th>
-                  <th className="px-4 py-3">Added</th>
-                  {canManage && <th className="px-4 py-3 text-right">Actions</th>}
+                  <th className="px-4 py-3">{t("common.name")}</th>
+                  <th className="px-4 py-3">{t("employees.table.role")}</th>
+                  <th className="px-4 py-3">{t("employees.table.added")}</th>
+                  {canManage && <th className="px-4 py-3 text-right">{t("common.actions")}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -137,10 +136,10 @@ export default function EmployeesPage() {
                     <td className="px-4 py-3 font-medium">{employee.fullName}</td>
                     <td className="px-4 py-3">
                       <Badge variant={ROLE_BADGE_VARIANT[employee.role as keyof typeof ROLE_BADGE_VARIANT] ?? "secondary"} className="capitalize">
-                        {employee.role}
+                        {labels.role(employee.role)}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3">{employee.createdAt.toLocaleDateString()}</td>
+                    <td className="px-4 py-3">{format.date(employee.createdAt)}</td>
                     {canManage && (
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">

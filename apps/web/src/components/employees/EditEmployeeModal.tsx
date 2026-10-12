@@ -17,11 +17,12 @@ import {
   Select,
   ActionIconButton,
 } from "@isnabero/ui";
+import { msg, useLabels, useT } from "@/i18n";
 import { useUpdateEmployee } from "@/hooks/use-update-employee";
 import type { EmployeeView } from "@/lib/repositories/repository";
 
 const employeeFormSchema = z.object({
-  fullName: z.string().min(1, "Name is required"),
+  fullName: z.string().min(1, msg("employees.form.nameRequired")),
   role: z.enum(["owner", "admin", "staff"]),
 });
 
@@ -33,6 +34,8 @@ interface EditEmployeeModalProps {
 }
 
 export function EditEmployeeModal({ businessId, employee }: EditEmployeeModalProps) {
+  const { t, tm } = useT();
+  const labels = useLabels();
   const [open, setOpen] = useState(false);
   const updateEmployee = useUpdateEmployee(businessId);
 
@@ -46,7 +49,7 @@ export function EditEmployeeModal({ businessId, employee }: EditEmployeeModalPro
       { employeeId: employee.id, input: values },
       {
         onSuccess: () => {
-          toast.success(`${values.fullName} updated`);
+          toast.success(t("employees.edit.updated", { name: values.fullName }));
           setOpen(false);
         },
       },
@@ -55,37 +58,37 @@ export function EditEmployeeModal({ businessId, employee }: EditEmployeeModalPro
 
   return (
     <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (next) form.reset({ fullName: employee.fullName, role: employee.role as EmployeeFormValues["role"] }); }}>
-      <ActionIconButton action="edit" icon={Pencil} onClick={() => setOpen(true)} aria-label={`Edit ${employee.fullName}`} />
+      <ActionIconButton action="edit" icon={Pencil} onClick={() => setOpen(true)} aria-label={t("employees.edit.aria", { name: employee.fullName })} />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit employee</DialogTitle>
-          <DialogDescription>Update this employee's name or role.</DialogDescription>
+          <DialogTitle>{t("employees.edit.title")}</DialogTitle>
+          <DialogDescription>{t("employees.edit.description")}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="edit-fullName">Full name</Label>
+            <Label htmlFor="edit-fullName">{t("employees.form.fullName")}</Label>
             <Input id="edit-fullName" {...form.register("fullName")} />
             {form.formState.errors.fullName && (
-              <p className="text-xs text-destructive">{form.formState.errors.fullName.message}</p>
+              <p className="text-xs text-destructive">{tm(form.formState.errors.fullName.message)}</p>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="edit-role">Role</Label>
+            <Label htmlFor="edit-role">{t("employees.form.role")}</Label>
             <Select id="edit-role" {...form.register("role")}>
-              <option value="staff">Staff</option>
-              <option value="admin">Admin</option>
-              <option value="owner">Owner</option>
+              <option value="staff">{labels.role("staff")}</option>
+              <option value="admin">{labels.role("admin")}</option>
+              <option value="owner">{labels.role("owner")}</option>
             </Select>
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={updateEmployee.isPending}>
-              {updateEmployee.isPending ? "Saving…" : "Save changes"}
+              {updateEmployee.isPending ? t("common.saving") : t("employees.edit.submit")}
             </Button>
           </DialogFooter>
         </form>

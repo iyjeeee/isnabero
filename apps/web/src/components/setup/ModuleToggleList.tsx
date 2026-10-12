@@ -1,4 +1,5 @@
 import { Badge, Switch } from "@isnabero/ui";
+import { useT } from "@/i18n";
 import { MODULE_REGISTRY, dependentsOf, normalizeModules, type ModuleKey } from "@/lib/module-registry";
 
 interface ModuleToggleListProps {
@@ -9,6 +10,7 @@ interface ModuleToggleListProps {
 // ModuleToggleList: one switch per registered module. Turning a module on also turns on what it needs (POS/Booking
 // need Catalog); a module that another selected module needs is locked on and says why.
 export function ModuleToggleList({ selected, onChange }: ModuleToggleListProps) {
+  const { t } = useT();
   const toggle = (key: ModuleKey, on: boolean) => {
     onChange(on ? normalizeModules([...selected, key]) : selected.filter((item) => item !== key));
   };
@@ -26,12 +28,12 @@ export function ModuleToggleList({ selected, onChange }: ModuleToggleListProps) 
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="font-medium">{module.label}</p>
-                {locked && <Badge variant="secondary">Needed by {dependents.map((item) => item.label).join(", ")}</Badge>}
+                <p className="font-medium">{t(`modules.${module.key}.label`)}</p>
+                {locked && <Badge variant="secondary">{t("setup.modules.neededBy", { modules: dependents.map((item) => t(`modules.${item.key}.label`)).join(", ") })}</Badge>}
               </div>
-              <p className="text-sm text-muted-foreground">{module.description}</p>
+              <p className="text-sm text-muted-foreground">{t(`modules.${module.key}.description`)}</p>
             </div>
-            <Switch checked={isOn} disabled={locked} onCheckedChange={(on) => toggle(module.key, on)} aria-label={`${module.label} module`} />
+            <Switch checked={isOn} disabled={locked} onCheckedChange={(on) => toggle(module.key, on)} aria-label={t("setup.modules.switchAria", { module: t(`modules.${module.key}.label`) })} />
           </li>
         );
       })}

@@ -6,11 +6,13 @@ import { useSidebarStore } from "@/stores/sidebar-store";
 import { useBusinessStore } from "@/stores/business-store";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PageFallback } from "@/components/PageFallback";
+import { useT } from "@/i18n";
 
 export function AppLayout() {
   const setMobileOpen = useSidebarStore((state) => state.setMobileOpen);
   const businessName = useBusinessStore((state) => state.businessName);
   const { pathname } = useLocation();
+  const { t } = useT();
 
   return (
     // h-screen + overflow-hidden (NOT min-h-screen) is required here: it constrains this container to
@@ -29,7 +31,7 @@ export function AppLayout() {
         <div className="flex shrink-0 items-center gap-3 border-b bg-card px-4 py-3 md:hidden">
           <button
             onClick={() => setMobileOpen(true)}
-            aria-label="Open menu"
+            aria-label={t("nav.openMenu")}
             className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           >
             <Menu className="h-5 w-5" />

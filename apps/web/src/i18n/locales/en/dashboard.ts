@@ -1,0 +1,28 @@
+export const dashboard = {
+  title: "Dashboard",
+  description: "{greeting} — here's today's activity across every enabled module.",
+  greeting: { morning: "Good morning", afternoon: "Good afternoon", evening: "Good evening" },
+  stats: { todaySales: "Today's Sales", upcomingBookings: "Upcoming Bookings", activeEmployees: "Active Employees" },
+  stockAlerts: { title: "Stock alerts", openInventory: "Open Inventory" },
+  quickActions: {
+    title: "Quick Actions",
+    empty: "Enable a module to see quick actions here.",
+    pos: { label: "Ring up a sale", description: "Open the POS screen" },
+    catalog: { label: "Add to Catalog", description: "New item, bundle or add-on" },
+    booking: { label: "New booking", description: "Schedule a customer" },
+    expenses: { label: "Record an expense", description: "Rent, supplies, utilities…" },
+  },
+  checklist: {
+    title: "Getting Started",
+    setup: "Finish business setup",
+    catalog: "Add your first catalog offering",
+    firstSale: "Record your first sale or booking",
+    teammate: "Add a teammate",
+    allDone: "All set up — you're ready to go!",
+  },
+  activity: {
+    title: "Recent Activity",
+    emptyTitle: "No activity yet",
+    emptyDescription: "Sales and paid bookings will show up here.",
+  },
+};

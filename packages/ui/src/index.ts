@@ -18,3 +18,4 @@ export * from "./components/quantity-stepper";
 export * from "./components/trend-badge";
 export * from "./components/switch";
 export * from "./lib/utils";
+export * from "./components/ui-labels";

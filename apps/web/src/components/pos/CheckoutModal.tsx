@@ -1,15 +1,11 @@
 import { useState } from "react";
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, Input, Label, Select } from "@isnabero/ui";
 import type { CartLine } from "@isnabero/module-pos";
+import { useT, useLabels } from "@/i18n";
 
-const PAYMENT_METHODS = [
-  { value: "cash", label: "Cash" },
-  { value: "gcash", label: "GCash" },
-  { value: "bank_transfer", label: "Bank Transfer" },
-  { value: "other", label: "Other" },
-] as const;
+const PAYMENT_METHODS = ["cash", "gcash", "bank_transfer", "other"] as const;
 
-type PaymentMethod = (typeof PAYMENT_METHODS)[number]["value"];
+type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 interface CheckoutModalProps {
   lines: CartLine[];
@@ -19,6 +15,8 @@ interface CheckoutModalProps {
 }
 
 export function CheckoutModal({ lines, total, isPending, onConfirm }: CheckoutModalProps) {
+  const { t } = useT();
+  const labels = useLabels();
   const [open, setOpen] = useState(false);
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [referenceCode, setReferenceCode] = useState("");
@@ -36,26 +34,26 @@ export function CheckoutModal({ lines, total, isPending, onConfirm }: CheckoutMo
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <Button className="w-full" disabled={lines.length === 0 || isPending} onClick={() => setOpen(true)}>
-        Checkout — ₱{total.toFixed(2)}
+        {t("pos.checkout.button", { total: total.toFixed(2) })}
       </Button>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Complete sale</DialogTitle>
-          <DialogDescription>Select how the customer paid.</DialogDescription>
+          <DialogTitle>{t("pos.checkout.title")}</DialogTitle>
+          <DialogDescription>{t("pos.checkout.description")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2">
-            <span className="text-sm text-muted-foreground">Total due</span>
+            <span className="text-sm text-muted-foreground">{t("pos.checkout.totalDue")}</span>
             <span className="font-semibold">₱{total.toFixed(2)}</span>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="method">Payment method</Label>
+            <Label htmlFor="method">{t("pos.checkout.method")}</Label>
             <Select id="method" value={method} onChange={(event) => setMethod(event.target.value as PaymentMethod)}>
               {PAYMENT_METHODS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+                <option key={option} value={option}>
+                  {labels.method(option)}
                 </option>
               ))}
             </Select>
@@ -63,10 +61,10 @@ export function CheckoutModal({ lines, total, isPending, onConfirm }: CheckoutMo
 
           {needsReference && (
             <div className="space-y-1.5">
-              <Label htmlFor="referenceCode">Reference code</Label>
+              <Label htmlFor="referenceCode">{t("pos.checkout.referenceCode")}</Label>
               <Input
                 id="referenceCode"
-                placeholder="e.g. GCash ref number"
+                placeholder={t("pos.checkout.referencePlaceholder")}
                 value={referenceCode}
                 onChange={(event) => setReferenceCode(event.target.value)}
               />
@@ -76,10 +74,10 @@ export function CheckoutModal({ lines, total, isPending, onConfirm }: CheckoutMo
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button onClick={handleConfirm} disabled={isPending || (needsReference && !referenceCode)}>
-            {isPending ? "Processing…" : "Confirm payment"}
+            {isPending ? t("pos.checkout.processing") : t("pos.checkout.confirm")}
           </Button>
         </DialogFooter>
       </DialogContent>

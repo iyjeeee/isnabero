@@ -6,6 +6,7 @@ import { useStockLevels, type StockLevel } from "@isnabero/module-inventory";
 import { Card, CardContent, PageHeader, EmptyState, Skeleton, Input, FilterBar, QuantityStepper, Badge, cn } from "@isnabero/ui";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { useT } from "@/i18n";
 import { useBusinessStore } from "@/stores/business-store";
 import { useAuth } from "@/providers/AuthProvider";
 import { CheckoutModal } from "@/components/pos/CheckoutModal";
@@ -21,6 +22,7 @@ const TYPE_TILE_TINT = {
 } as const;
 
 export default function PosPage() {
+  const { t } = useT();
   const businessId = useBusinessStore((state) => state.businessId) ?? "";
   const { data: offerings = [], isLoading } = useOfferings(supabase, businessId);
   const { lines, addOffering, updateQuantity, removeLine, clear, total } = useCartStore();
@@ -36,7 +38,7 @@ export default function PosPage() {
       { businessId, employeeId: employee?.id ?? null, lines, method, referenceCode },
       {
         onSuccess: (result) => {
-          toast.success(`Sale completed — ₱${total().toFixed(2)}`);
+          toast.success(t("pos.page.saleCompleted", { total: total().toFixed(2) }));
           clear();
           setReceiptOrderId(result.orderId);
         },
@@ -49,7 +51,7 @@ export default function PosPage() {
     const stock = stockByOffering.get(offering.id);
     const inCart = lines.find((line) => line.offering.id === offering.id)?.quantity ?? 0;
     if (stock && inCart >= stock.quantity) {
-      toast.error(stock.quantity <= 0 ? `${offering.name} is out of stock.` : `Only ${stock.quantity} ${offering.name} left in stock.`);
+      toast.error(stock.quantity <= 0 ? t("pos.page.outOfStockToast", { name: offering.name }) : t("pos.page.onlyLeftToast", { count: stock.quantity, name: offering.name }));
       return;
     }
     addOffering(offering);
@@ -62,7 +64,7 @@ export default function PosPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon={ShoppingCart} title="POS / Cashier" description="Tap an item to add it to the current sale." />
+      <PageHeader icon={ShoppingCart} title={t("pos.page.title")} description={t("pos.page.description")} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
@@ -70,7 +72,7 @@ export default function PosPage() {
             <FilterBar className="sm:justify-start">
               <div className="relative w-full sm:w-72">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="Search items…" value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
+                <Input placeholder={t("pos.page.searchPlaceholder")} value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
               </div>
             </FilterBar>
           )}
@@ -84,7 +86,7 @@ export default function PosPage() {
           )}
 
           {!isLoading && availableOfferings.length === 0 && (
-            <EmptyState icon={ShoppingCart} title="Nothing available to sell" description="Add offerings in Catalog, or mark existing ones available." />
+            <EmptyState icon={ShoppingCart} title={t("pos.page.nothingTitle")} description={t("pos.page.nothingDescription")} />
           )}
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -108,7 +110,7 @@ export default function PosPage() {
                   </div>
                   {stock && (
                     <Badge variant={stock.status === "out" ? "destructive" : stock.status === "low" ? "warning" : "secondary"}>
-                      {stock.status === "out" ? "Out of stock" : `${stock.quantity} left`}
+                      {stock.status === "out" ? t("pos.page.outOfStock") : t("pos.page.left", { count: stock.quantity })}
                     </Badge>
                   )}
                 </button>
@@ -122,13 +124,13 @@ export default function PosPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                <p className="font-semibold">Current Sale</p>
+                <p className="font-semibold">{t("pos.cart.title")}</p>
               </div>
-              {lines.length > 0 && <Badge variant="secondary">{lines.length} {lines.length === 1 ? "item" : "items"}</Badge>}
+              {lines.length > 0 && <Badge variant="secondary">{t("pos.cart.items", { count: lines.length })}</Badge>}
             </div>
 
             {lines.length === 0 && (
-              <EmptyState icon={Receipt} title="Cart is empty" description="Tap an item on the left to add it." className="border-0 py-8" />
+              <EmptyState icon={Receipt} title={t("pos.cart.emptyTitle")} description={t("pos.cart.emptyDescription")} className="border-0 py-8" />
             )}
 
             {lines.length > 0 && (
@@ -137,7 +139,7 @@ export default function PosPage() {
                   <div key={line.offering.id} className="flex items-center justify-between gap-2 rounded-md py-2 text-sm">
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{line.offering.name}</p>
-                      <p className="text-xs text-muted-foreground">₱{Number(line.offering.price).toFixed(2)} each</p>
+                      <p className="text-xs text-muted-foreground">{t("pos.cart.each", { price: Number(line.offering.price).toFixed(2) })}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
                       {/* min=1: clearing the box to retype must not drop the line — removal is the X button */}
@@ -145,7 +147,7 @@ export default function PosPage() {
                       <button
                         onClick={() => removeLine(line.offering.id)}
                         className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                        aria-label={`Remove ${line.offering.name}`}
+                        aria-label={t("pos.cart.remove", { name: line.offering.name })}
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -157,7 +159,7 @@ export default function PosPage() {
 
             <div className="space-y-1 border-t pt-3">
               <div className="flex items-center justify-between text-lg font-bold">
-                <span>Total</span>
+                <span>{t("pos.cart.total")}</span>
                 <span className="font-display text-primary">₱{total().toFixed(2)}</span>
               </div>
             </div>

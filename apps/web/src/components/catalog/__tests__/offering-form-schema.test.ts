@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { msg } from "@/i18n";
 import { offeringFormSchema } from "../offering-form-schema";
 
 const base = { name: "Bundle A", type: "bundle" as const, price: "499", inclusions: [] };
@@ -25,5 +26,12 @@ describe("offeringFormSchema", () => {
     expect(offeringFormSchema.safeParse({ ...base, durationMinutes: "-5" }).success).toBe(false);
     expect(offeringFormSchema.safeParse({ ...base, durationMinutes: "1.5" }).success).toBe(false);
     expect(offeringFormSchema.safeParse({ ...base, name: "   " }).success).toBe(false);
+  });
+
+  it("reports validation errors as message tokens", () => {
+    const blankName = offeringFormSchema.safeParse({ ...base, name: "   " });
+    expect(blankName.success ? [] : blankName.error.issues.map((issue) => issue.message)).toContain(msg("catalog.validation.nameRequired"));
+    const badDuration = offeringFormSchema.safeParse({ ...base, durationMinutes: "1.5" });
+    expect(badDuration.success ? [] : badDuration.error.issues.map((issue) => issue.message)).toContain(msg("catalog.validation.durationInt"));
   });
 });
