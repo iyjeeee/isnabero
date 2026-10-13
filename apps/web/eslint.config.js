@@ -17,6 +17,11 @@ export default tseslint.config(
     },
   },
   {
+    // the service worker runs in a worker scope, not the page
+    files: ["public/sw.js"],
+    languageOptions: { globals: globals.serviceworker },
+  },
+  {
     // PostgREST rows are untyped until Supabase types are generated — `any` is tolerated only in these mappers
     files: ["src/lib/repositories/supabase-*.ts"],
     rules: { "@typescript-eslint/no-explicit-any": "off" },

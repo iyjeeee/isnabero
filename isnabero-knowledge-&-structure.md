@@ -786,6 +786,12 @@ deliver a ready-to-extract ZIP with only changed/created files.
   audit-action coverage, translate/msg/detect), `__tests__/hardcoded-text.test.ts` (AST scan of every TSX for untranslated JSX
   text, text attributes, toasts and literals in JSX expressions).
 
+**`src/lib/offline/` — Offline read cache (Round 25)**
+- `query-persistence.ts` (save/restore the TanStack Query cache to localStorage `isnabero-offline-cache`, 24 h max age, version-checked,
+  `claimCacheForUser`, `clearOfflineCache`, debounced `startQueryPersistence`), `serialize.ts` (JSON that keeps `Date` objects),
+  `register-service-worker.ts` (production only); `public/sw.js` (app-shell service worker); `components/OfflineBanner.tsx`,
+  `components/OfflineCacheGuard.tsx`, `hooks/use-online-status.ts`; strings in the `offline` namespace.
+
 **`src/hooks/` — Data Hooks (app-level, not module-specific)**
 - `src/hooks/use-business-modules.ts` — `useBusinessModules(businessId)`:
   calls `CoreRepository.listEnabledModules`. Include when debugging "module
@@ -1474,7 +1480,7 @@ skipped), Audit "Shifts" entries, no page overflow at 390px, staff read-only wit
 Known limits: no time-off/availability, no overnight shifts, no shift swaps or publishing/notifications; the Supabase
 repository has not been run against a real Supabase/PostgREST.
 
-### Round 24: Language toggle (English + Filipino) — CURRENT
+### Round 24: Language toggle (English + Filipino)
 Batch 3 item 6 (next: Offline resilience → visuals/design pass → Supabase last).
 **Behaviour:** a language button (EN/FIL) sits next to the theme toggle in the sidebar footer and on the login page. The choice is
 remembered (`isnabero-language`); first visit follows the browser (fil/tl → Filipino, otherwise English). Dates, weekdays and times
@@ -1500,6 +1506,31 @@ validation messages (employees, checkout, booking, expense, stock, shift, offeri
 Known limits: error toasts coming from the data layer stay English; the printed receipt is English only; the staff role was not
 re-walked in Filipino (same components, role gating untouched); machine-checked for consistency, but wording has not been
 reviewed by a native speaker yet.
+
+### Round 25: Offline resilience (read-only) — CURRENT
+Batch 3 item 7, the last batch-3 feature (next: visuals/design pass → Supabase last).
+**What it does:** when the browser goes offline an amber banner says so and that selling, saving and other changes are paused; coming
+back shows a "Back online" toast and React Query refetches. Every change (all go through `useMutation`) is refused up front by the
+global `MutationCache.onMutate` in `main.tsx` with a clear toast, instead of queuing (stock and receipt numbers are assigned by the
+server, so queued sales would be wrong). Reading still works: successful query data is saved to localStorage (debounced) and restored
+on start-up, so reloading the page offline still shows the last data; an offline reload also needs the app itself, which a small
+service worker (`public/sw.js`, production builds only) provides — navigation is network-first with the last `index.html` as fallback,
+hashed `/assets/*` are cache-first, other origins (the Supabase API) are never touched.
+**Details that matter:** `onlineManager.setOnline(navigator.onLine)` at start (React Query assumes online until it sees an event);
+`gcTime` is 24 h so earlier pages stay in memory; queries with data are saved even if a background refetch failed; mutations use
+`networkMode: "always"` so they never pause silently. The saved cache belongs to one user: `OfflineCacheGuard` wipes it on sign-out
+or when a different user signs in, and it is ignored after 24 h or on a version change. Storage errors (private mode, full) are swallowed.
+**Switch:** always on in Supabase mode; in mock mode only with `VITE_OFFLINE_CACHE=true` (mock data lives in memory and re-seeds on
+reload, so it would only confuse); see `.env.example`.
+**Tests:** **175** total (web 106). typecheck/lint/build green (eslint now knows the service-worker globals for `public/sw.js`). Unit:
+Date round-trip, save/restore, only data-bearing queries, max-age/version expiry, corrupt/blocked storage, user switch and sign-out
+wipe. Playwright on a production build (`vite preview`): service worker active, banner only when offline, change refused with toast and
+not applied, **reload while offline renders the app and the cached data** (a record that only existed in the pre-reload session),
+navigating to other lazy pages offline, banner in Filipino, no overflow at 390px, back-online toast, live refetch replaces cached data.
+Known limits: not tried against a real Supabase (a session whose token expired while offline may need a connection to refresh — the
+app then shows the login page); pages never opened before going offline stay on their loading skeleton; no offline selling or queued
+changes (a larger, separate step); the service worker has no update prompt (a new build is picked up on the next online load);
+Google Fonts are not cached (system fonts are used offline).
 
 ### Never Include in Prompts
 - `node_modules/` (any level) — build artifacts, never source.

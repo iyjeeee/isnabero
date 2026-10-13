@@ -21,6 +21,7 @@ import { inventory } from "./inventory";
 import { audit } from "./audit";
 import { exports } from "./exports";
 import { app } from "./app";
+import { offline } from "./offline";
 
 export const en = {
   common,
@@ -46,4 +47,5 @@ export const en = {
   audit,
   exports,
   app,
+  offline,
 };

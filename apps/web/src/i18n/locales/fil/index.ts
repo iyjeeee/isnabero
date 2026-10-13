@@ -22,6 +22,7 @@ import { inventory } from "./inventory";
 import { audit } from "./audit";
 import { exports } from "./exports";
 import { app } from "./app";
+import { offline } from "./offline";
 
 export const fil: Dictionary = {
   common,
@@ -47,4 +48,5 @@ export const fil: Dictionary = {
   audit,
   exports,
   app,
+  offline,
 };

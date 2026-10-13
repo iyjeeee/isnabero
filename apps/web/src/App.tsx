@@ -6,6 +6,7 @@ import { AuthProvider } from "@/providers/AuthProvider";
 import { PageFallback } from "@/components/PageFallback";
 import { RouteGuard } from "@/components/RouteGuard";
 import { SetupGate } from "@/components/SetupGate";
+import { OfflineCacheGuard } from "@/components/OfflineCacheGuard";
 import { UiLabelsBridge } from "@/providers/UiLabelsBridge";
 
 // Route-based code splitting: each page becomes its own chunk, loaded on first visit instead of all
@@ -28,6 +29,7 @@ export default function App() {
   return (
     <UiLabelsBridge>
     <AuthProvider>
+      <OfflineCacheGuard />
       <Suspense fallback={<PageFallback />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

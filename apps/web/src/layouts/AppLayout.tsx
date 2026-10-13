@@ -7,6 +7,7 @@ import { useBusinessStore } from "@/stores/business-store";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PageFallback } from "@/components/PageFallback";
 import { useT } from "@/i18n";
+import { OfflineBanner } from "@/components/OfflineBanner";
 
 export function AppLayout() {
   const setMobileOpen = useSidebarStore((state) => state.setMobileOpen);
@@ -41,6 +42,8 @@ export function AppLayout() {
             <p className="truncate font-display text-sm font-semibold">{businessName ?? "Isnabero"}</p>
           </div>
         </div>
+
+        <OfflineBanner />
 
         <div className="flex-1 overflow-y-auto">
           <div className="w-full animate-fade-in px-4 py-6 sm:px-6 sm:py-8 lg:px-10 xl:px-14">
