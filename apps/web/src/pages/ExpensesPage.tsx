@@ -12,12 +12,13 @@ import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
 import { VoidExpenseButton } from "@/components/expenses/VoidExpenseButton";
 import { computeExpenseStats } from "@/components/expenses/expense-stats";
 import { useFormat, useLabels, useT } from "@/i18n";
+import { formatPeso } from "@/lib/money";
 
 const CATEGORY_TABS = ["all", ...EXPENSE_CATEGORY_VALUES] as const;
 const CATEGORY_BADGE_VARIANT = { rent: "info", utilities: "warning", supplies: "default", salaries: "success", other: "secondary" } as const;
 const PAGE_SIZE = 10;
 
-const peso = (amount: number) => `₱${amount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const peso = formatPeso;
 
 export default function ExpensesPage() {
   const { t } = useT();

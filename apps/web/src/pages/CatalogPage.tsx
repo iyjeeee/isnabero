@@ -12,6 +12,7 @@ import { ExportButton } from "@/components/ExportButton";
 import { offeringRows } from "@/lib/export-rows";
 import { StockBadge } from "@/components/inventory/StockBadge";
 import { CreateOfferingModal } from "@/components/catalog/CreateOfferingModal";
+import { formatPeso } from "@/lib/money";
 
 const TYPE_BADGE_VARIANT = { item: "default", bundle: "info", addon: "secondary" } as const;
 // TYPE_ICON/TYPE_TILE_TINT: give every offering card a type-specific icon tile instead of a bare name —
@@ -136,7 +137,7 @@ export default function CatalogPage() {
                       </Badge>
                     </div>
                   </div>
-                  <p className="shrink-0 font-display text-lg font-bold text-primary">₱{Number(offering.price).toFixed(2)}</p>
+                  <p className="shrink-0 font-display text-lg font-bold text-primary">{formatPeso(offering.price)}</p>
                 </div>
 
                 {offering.description && <p className="text-sm text-muted-foreground">{offering.description}</p>}

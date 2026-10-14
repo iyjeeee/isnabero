@@ -9,6 +9,7 @@ import { CHART_COLORS, METHOD_COLORS } from "@/lib/chart-colors";
 import { ExportButton } from "@/components/ExportButton";
 import { salesReportRows } from "@/lib/export-rows";
 import { computePercentChange } from "@/lib/percent-change";
+import { formatPeso } from "@/lib/money";
 
 interface SalesReportSectionProps {
   businessId: string;
@@ -44,7 +45,7 @@ export function SalesReportSection({ businessId }: SalesReportSectionProps) {
                 <Wallet className="h-4 w-4 text-success" />
                 <div>
                   <p className="text-xs text-muted-foreground">{t("reports.sales.totalRevenue")}</p>
-                  <p className="font-semibold">₱{data.totalRevenue.toFixed(2)}</p>
+                  <p className="font-semibold">{formatPeso(data.totalRevenue)}</p>
                   <TrendBadge percentChange={computePercentChange(data.totalRevenue, data.previousPeriodRevenue)} className="mt-0.5" />
                 </div>
               </div>
@@ -53,7 +54,7 @@ export function SalesReportSection({ businessId }: SalesReportSectionProps) {
                 <div>
                   <p className="text-xs text-muted-foreground">{t("reports.sales.transactions")}</p>
                   <p className="font-semibold">
-                    {data.transactionCount} <span className="text-xs font-normal text-muted-foreground">{t("reports.sales.average", { amount: `₱${data.averageSale.toFixed(2)}` })}</span>
+                    {data.transactionCount} <span className="text-xs font-normal text-muted-foreground">{t("reports.sales.average", { amount: formatPeso(data.averageSale) })}</span>
                   </p>
                 </div>
               </div>
@@ -79,7 +80,7 @@ export function SalesReportSection({ businessId }: SalesReportSectionProps) {
                       className="fill-muted-foreground"
                     />
                     <YAxis tick={{ fontSize: 11 }} className="fill-muted-foreground" width={40} />
-                    <Tooltip formatter={(value: number) => [`₱${value.toFixed(2)}`, t("reports.sales.revenue")]} labelFormatter={(label) => t("reports.date", { date: format.date(String(label)) })} />
+                    <Tooltip formatter={(value: number) => [formatPeso(value), t("reports.sales.revenue")]} labelFormatter={(label) => t("reports.date", { date: format.date(String(label)) })} />
                     <Bar dataKey="value" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -97,7 +98,7 @@ export function SalesReportSection({ businessId }: SalesReportSectionProps) {
                           <Cell key={entry.label} fill={METHOD_COLORS[entry.label] ?? CHART_COLORS[4]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value: number) => `₱${value.toFixed(2)}`} />
+                      <Tooltip formatter={(value: number) => formatPeso(value)} />
                       <Legend wrapperStyle={{ fontSize: 12 }} />
                     </PieChart>
                   </ResponsiveContainer>

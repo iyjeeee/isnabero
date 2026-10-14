@@ -792,6 +792,9 @@ deliver a ready-to-extract ZIP with only changed/created files.
   `register-service-worker.ts` (production only); `public/sw.js` (app-shell service worker); `components/OfflineBanner.tsx`,
   `components/OfflineCacheGuard.tsx`, `hooks/use-online-status.ts`; strings in the `offline` namespace.
 
+- `src/lib/money.ts` — `formatPeso` / `formatAmount`: the one way pesos are shown (₱18,713.00). Use it instead of `toFixed(2)`.
+- `src/hooks/use-offline-unavailable.ts` + `components/OfflineUnavailable.tsx` — shown instead of a page whose data was never loaded while offline.
+
 **`src/hooks/` — Data Hooks (app-level, not module-specific)**
 - `src/hooks/use-business-modules.ts` — `useBusinessModules(businessId)`:
   calls `CoreRepository.listEnabledModules`. Include when debugging "module
@@ -1507,7 +1510,7 @@ Known limits: error toasts coming from the data layer stay English; the printed 
 re-walked in Filipino (same components, role gating untouched); machine-checked for consistency, but wording has not been
 reviewed by a native speaker yet.
 
-### Round 25: Offline resilience (read-only) — CURRENT
+### Round 25: Offline resilience (read-only)
 Batch 3 item 7, the last batch-3 feature (next: visuals/design pass → Supabase last).
 **What it does:** when the browser goes offline an amber banner says so and that selling, saving and other changes are paused; coming
 back shows a "Back online" toast and React Query refetches. Every change (all go through `useMutation`) is refused up front by the
@@ -1531,6 +1534,25 @@ Known limits: not tried against a real Supabase (a session whose token expired w
 app then shows the login page); pages never opened before going offline stay on their loading skeleton; no offline selling or queued
 changes (a larger, separate step); the service worker has no update prompt (a new build is picked up on the next online load);
 Google Fonts are not cached (system fonts are used offline).
+
+### Round 26: Offline follow-up + design pass — CURRENT
+Batch 3 is finished; this round is the agreed visuals/design pass (next: Supabase setup, last).
+**Offline follow-up (found by the owner's screenshot):** offline with nothing loaded, pages used to show misleading zeros/empty states. Now
+`useOfflineUnavailable` (queries that are paused with no data) swaps the page for "This page isn't available offline" (the page stays
+mounted but hidden so it resumes on reconnect), and the receipt dialog says an unopened receipt isn't available offline instead of "not
+found". What works offline: opened pages, search/filters/pagination, theme/language, CSV/PDF export of loaded data, building a POS cart,
+printing/PDF of receipts opened before. What does not: every change (refused with a toast), never-opened pages/receipts, sign-in/out.
+**Design pass (screenshot audit of all 12 pages × light/dark/mobile):** the app was already consistent, so the pass fixed concrete
+problems instead of restyling: (1) **money formatting** — Payments, Dashboard, Reports, POS, Catalog showed `₱18713.00` while Expenses
+showed `₱25,501.00`; all now go through `lib/money.ts` (tested); (2) **StatCard** no longer truncates long values (the Booking
+"Next booking" date was cut to "Wed, Oct 14 · 12…"; it wraps now), centres its content when a row stretches, and is more compact below
+`sm` (smaller icon/padding/value) so three stat cards take less of a phone screen. Not changed on purpose: payment-method badge colours
+match the chart colours (bank transfer = brand maroon); the sidebar and design tokens are untouched.
+**Tests:** **177** total (web 108). typecheck/lint/build green. Playwright: offline "page not available" notice (never-opened page) vs
+cached page vs back online, receipt dialog offline (unopened → message, opened before → works), booking stat row alignment, full page
+screenshots before/after in light, dark and 390px.
+Known limits: the design pass is a consistency/bug audit by screenshot, not a visual redesign; say which pages or components to restyle
+further.
 
 ### Never Include in Prompts
 - `node_modules/` (any level) — build artifacts, never source.

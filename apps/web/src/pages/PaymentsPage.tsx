@@ -12,6 +12,7 @@ import { Card, CardContent, Badge, PageHeader, EmptyState, Skeleton, StatCard, F
 import { ExportButton } from "@/components/ExportButton";
 import { VoidPaymentRecordButton } from "@/components/payments/VoidPaymentRecordButton";
 import { ReceiptDialog } from "@/components/receipt/ReceiptDialog";
+import { formatPeso } from "@/lib/money";
 
 const METHOD_BADGE_VARIANT = { cash: "success", gcash: "info", bank_transfer: "default", other: "secondary" } as const;
 const METHOD_TABS = ["all", "cash", "gcash", "bank_transfer", "other"] as const;
@@ -70,8 +71,8 @@ export default function PaymentsPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label={t("payments.stats.totalTransactions")} value={activeRecords.length} icon={Receipt} accent="default" isLoading={isLoading} />
-        <StatCard label={t("payments.stats.totalCollected")} value={`₱${totalAmount.toFixed(2)}`} icon={Wallet} accent="success" isLoading={isLoading} />
-        <StatCard label={t("payments.stats.averageTransaction")} value={`₱${averageAmount.toFixed(2)}`} icon={TrendingUp} accent="info" isLoading={isLoading} />
+        <StatCard label={t("payments.stats.totalCollected")} value={formatPeso(totalAmount)} icon={Wallet} accent="success" isLoading={isLoading} />
+        <StatCard label={t("payments.stats.averageTransaction")} value={formatPeso(averageAmount)} icon={TrendingUp} accent="info" isLoading={isLoading} />
       </div>
 
       {/* Always rendered: the "Show voided" toggle lives here, so hiding the bar when every record is voided
@@ -145,7 +146,7 @@ export default function PaymentsPage() {
                     </td>
                     <td className="px-4 py-3">{record.referenceCode ?? "—"}</td>
                     <td className="px-4 py-3 text-right font-medium">
-                      ₱{record.amount.toFixed(2)}
+                      {formatPeso(record.amount)}
                       {record.voidedAt && (
                         <Badge variant="destructive" className="ml-2">
                           {labels.orderStatus("voided")}
@@ -158,7 +159,7 @@ export default function PaymentsPage() {
                           <ActionIconButton icon={ReceiptText} aria-label={t("payments.viewReceiptFor", { date: format.dateTime(record.createdAt) })} title={t("payments.viewReceipt")} onClick={() => setReceiptPaymentId(record.id)} />
                         )}
                         {canManage && !record.voidedAt && (
-                          <VoidPaymentRecordButton businessId={businessId} recordId={record.id} amountLabel={`₱${record.amount.toFixed(2)}`} />
+                          <VoidPaymentRecordButton businessId={businessId} recordId={record.id} amountLabel={formatPeso(record.amount)} />
                         )}
                       </div>
                     </td>

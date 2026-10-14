@@ -8,12 +8,15 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PageFallback } from "@/components/PageFallback";
 import { useT } from "@/i18n";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { OfflineUnavailable } from "@/components/OfflineUnavailable";
+import { useOfflineUnavailable } from "@/hooks/use-offline-unavailable";
 
 export function AppLayout() {
   const setMobileOpen = useSidebarStore((state) => state.setMobileOpen);
   const businessName = useBusinessStore((state) => state.businessName);
   const { pathname } = useLocation();
   const { t } = useT();
+  const offlineUnavailable = useOfflineUnavailable();
 
   return (
     // h-screen + overflow-hidden (NOT min-h-screen) is required here: it constrains this container to
@@ -49,9 +52,13 @@ export function AppLayout() {
           <div className="w-full animate-fade-in px-4 py-6 sm:px-6 sm:py-8 lg:px-10 xl:px-14">
             <ErrorBoundary resetKey={pathname}>
               {/* Suspense here (not only in App.tsx) so the sidebar stays mounted while a lazy page chunk loads */}
-              <Suspense fallback={<PageFallback />}>
-                <Outlet />
-              </Suspense>
+              {offlineUnavailable && <OfflineUnavailable />}
+              {/* stays mounted (just hidden) so its queries resume the moment the connection returns */}
+              <div hidden={offlineUnavailable}>
+                <Suspense fallback={<PageFallback />}>
+                  <Outlet />
+                </Suspense>
+              </div>
             </ErrorBoundary>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { getReportsRepository } from "@/lib/repositories/get-reports-repository";
 import { useT } from "@/i18n";
 import { CHART_COLORS } from "@/lib/chart-colors";
+import { formatPeso } from "@/lib/money";
 
 interface CatalogReportSectionProps {
   businessId: string;
@@ -67,7 +68,7 @@ export function CatalogReportSection({ businessId }: CatalogReportSectionProps) 
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-border" />
                       <XAxis type="number" tick={{ fontSize: 11 }} className="fill-muted-foreground" allowDecimals={false} />
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} className="fill-muted-foreground" width={110} />
-                      <Tooltip formatter={(value: number, key: string) => (key === "quantitySold" ? [value, t("reports.catalog.qtySold")] : [`₱${value.toFixed(2)}`, t("reports.catalog.revenue")])} />
+                      <Tooltip formatter={(value: number, key: string) => (key === "quantitySold" ? [value, t("reports.catalog.qtySold")] : [formatPeso(value), t("reports.catalog.revenue")])} />
                       <Bar dataKey="quantitySold" fill={CHART_COLORS[0]} radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, Input, Label, Select } from "@isnabero/ui";
 import type { CartLine } from "@isnabero/module-pos";
 import { useT, useLabels } from "@/i18n";
+import { formatAmount, formatPeso } from "@/lib/money";
 
 const PAYMENT_METHODS = ["cash", "gcash", "bank_transfer", "other"] as const;
 
@@ -34,7 +35,7 @@ export function CheckoutModal({ lines, total, isPending, onConfirm }: CheckoutMo
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <Button className="w-full" disabled={lines.length === 0 || isPending} onClick={() => setOpen(true)}>
-        {t("pos.checkout.button", { total: total.toFixed(2) })}
+        {t("pos.checkout.button", { total: formatAmount(total) })}
       </Button>
       <DialogContent>
         <DialogHeader>
@@ -45,7 +46,7 @@ export function CheckoutModal({ lines, total, isPending, onConfirm }: CheckoutMo
         <div className="space-y-4">
           <div className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2">
             <span className="text-sm text-muted-foreground">{t("pos.checkout.totalDue")}</span>
-            <span className="font-semibold">₱{total.toFixed(2)}</span>
+            <span className="font-semibold">{formatPeso(total)}</span>
           </div>
 
           <div className="space-y-1.5">

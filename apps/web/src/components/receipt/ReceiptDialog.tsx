@@ -20,7 +20,7 @@ interface ReceiptDialogProps {
 // <body> (see .receipt-print-root in index.css) so only the receipt reaches the printer, never the app around it.
 export function ReceiptDialog({ businessId, reference, onClose }: ReceiptDialogProps) {
   const { t } = useT();
-  const { data: receipt, isLoading, isError } = useReceipt(supabase, businessId, reference);
+  const { data: receipt, isLoading, isError, isPaused } = useReceipt(supabase, businessId, reference);
   const [pdfPending, setPdfPending] = useState(false);
 
   const handlePdf = async () => {
@@ -44,7 +44,8 @@ export function ReceiptDialog({ businessId, reference, onClose }: ReceiptDialogP
         </DialogHeader>
 
         {isLoading && <Skeleton className="h-72 w-full" />}
-        {(isError || (!isLoading && !receipt)) && <p className="py-6 text-center text-sm text-muted-foreground">{t("receipt.dialog.notFound")}</p>}
+        {!receipt && isPaused && <p className="py-6 text-center text-sm text-muted-foreground">{t("offline.receiptUnavailable")}</p>}
+        {(isError || (!isLoading && !receipt)) && !isPaused && <p className="py-6 text-center text-sm text-muted-foreground">{t("receipt.dialog.notFound")}</p>}
         {receipt && (
           <div className="rounded-md border bg-neutral-100 p-3 dark:bg-neutral-800">
             <ReceiptSheet receipt={receipt} className="shadow-sm" />

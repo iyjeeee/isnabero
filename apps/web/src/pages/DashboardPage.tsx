@@ -29,6 +29,7 @@ import { useT, useFormat } from "@/i18n";
 import { useDashboardStats } from "@/hooks/use-dashboard-stats";
 import { StockBadge } from "@/components/inventory/StockBadge";
 import { getCoreRepository } from "@/lib/repositories/get-repository";
+import { formatPeso } from "@/lib/money";
 
 // QUICK_ACTIONS: shortcuts to the most common next step per module — kept in sync manually with
 // MODULE_REGISTRY since each action has bespoke copy, unlike the sidebar's generic nav entries.
@@ -102,7 +103,7 @@ export default function DashboardPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard label={t("dashboard.stats.todaySales")} value={`₱${(stats?.todaySalesTotal ?? 0).toFixed(2)}`} icon={Wallet} accent="success" isLoading={statsLoading} />
+        <StatCard label={t("dashboard.stats.todaySales")} value={formatPeso(stats?.todaySalesTotal ?? 0)} icon={Wallet} accent="success" isLoading={statsLoading} />
         <StatCard label={t("dashboard.stats.upcomingBookings")} value={stats?.upcomingBookingsCount ?? 0} icon={CalendarClock} accent="info" isLoading={statsLoading} />
         <StatCard label={t("dashboard.stats.activeEmployees")} value={stats?.activeEmployeesCount ?? 0} icon={Users} accent="default" isLoading={statsLoading} />
       </div>
@@ -222,7 +223,7 @@ export default function DashboardPage() {
                       <p className="truncate font-medium">{sourceLabel(record.sourceModule)}</p>
                       <p className="text-xs text-muted-foreground">{format.dateTime(record.createdAt)}</p>
                     </div>
-                    <p className="shrink-0 font-semibold">₱{record.amount.toFixed(2)}</p>
+                    <p className="shrink-0 font-semibold">{formatPeso(record.amount)}</p>
                   </div>
                 );
               })}

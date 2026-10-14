@@ -11,6 +11,7 @@ import { useBusinessStore } from "@/stores/business-store";
 import { useAuth } from "@/providers/AuthProvider";
 import { CheckoutModal } from "@/components/pos/CheckoutModal";
 import { ReceiptDialog } from "@/components/receipt/ReceiptDialog";
+import { formatAmount, formatPeso } from "@/lib/money";
 
 // TYPE_ICON/TYPE_TILE_TINT: same type-accent mapping as Catalog, so an item keeps the same visual
 // identity whether you're editing it there or tapping it here to ring up a sale.
@@ -38,7 +39,7 @@ export default function PosPage() {
       { businessId, employeeId: employee?.id ?? null, lines, method, referenceCode },
       {
         onSuccess: (result) => {
-          toast.success(t("pos.page.saleCompleted", { total: total().toFixed(2) }));
+          toast.success(t("pos.page.saleCompleted", { total: formatAmount(total()) }));
           clear();
           setReceiptOrderId(result.orderId);
         },
@@ -106,7 +107,7 @@ export default function PosPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="truncate font-medium leading-tight">{offering.name}</p>
-                    <p className="mt-0.5 text-sm font-semibold text-primary">₱{Number(offering.price).toFixed(2)}</p>
+                    <p className="mt-0.5 text-sm font-semibold text-primary">{formatPeso(offering.price)}</p>
                   </div>
                   {stock && (
                     <Badge variant={stock.status === "out" ? "destructive" : stock.status === "low" ? "warning" : "secondary"}>
@@ -139,7 +140,7 @@ export default function PosPage() {
                   <div key={line.offering.id} className="flex items-center justify-between gap-2 rounded-md py-2 text-sm">
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{line.offering.name}</p>
-                      <p className="text-xs text-muted-foreground">{t("pos.cart.each", { price: Number(line.offering.price).toFixed(2) })}</p>
+                      <p className="text-xs text-muted-foreground">{t("pos.cart.each", { price: formatAmount(line.offering.price) })}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
                       {/* min=1: clearing the box to retype must not drop the line — removal is the X button */}
@@ -160,7 +161,7 @@ export default function PosPage() {
             <div className="space-y-1 border-t pt-3">
               <div className="flex items-center justify-between text-lg font-bold">
                 <span>{t("pos.cart.total")}</span>
-                <span className="font-display text-primary">₱{total().toFixed(2)}</span>
+                <span className="font-display text-primary">{formatPeso(total())}</span>
               </div>
             </div>
             <CheckoutModal lines={lines} total={total()} isPending={checkout.isPending} onConfirm={handleCheckout} />

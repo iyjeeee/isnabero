@@ -8,7 +8,7 @@ import { cn } from "../lib/utils";
 // Each tile carries a soft diagonal gradient wash (rather than a flat tint) so the stat row reads as
 // designed rather than a bare list of numbers — still fully token-driven, no hardcoded colors.
 const statIconVariants = cva(
-  "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br shadow-sm ring-1 transition-transform duration-200 group-hover:scale-105",
+  "flex h-10 w-10 shrink-0 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-gradient-to-br shadow-sm ring-1 transition-transform duration-200 group-hover:scale-105",
   {
     variants: {
       accent: {
@@ -36,7 +36,7 @@ export interface StatCardProps extends VariantProps<typeof statIconVariants> {
 export function StatCard({ label, value, icon: Icon, accent, isLoading, helpText, className }: StatCardProps) {
   return (
     <Card interactive className={cn("group overflow-hidden", className)}>
-      <CardContent className="flex items-center gap-4 p-5">
+      <CardContent className="flex h-full items-center gap-3 p-4 sm:gap-4 sm:p-5">
         <div className={cn(statIconVariants({ accent }))}>
           <Icon className="h-5 w-5" />
         </div>
@@ -45,7 +45,7 @@ export function StatCard({ label, value, icon: Icon, accent, isLoading, helpText
           {isLoading ? (
             <div className="mt-1.5 h-7 w-20 animate-pulse rounded-md bg-muted" />
           ) : (
-            <p className="truncate font-display text-2xl font-bold tracking-tight">{value}</p>
+            <p className="break-words font-display text-xl font-bold leading-tight sm:text-2xl tracking-tight">{value}</p>
           )}
           {!isLoading && helpText && <p className="mt-0.5 truncate text-xs text-muted-foreground">{helpText}</p>}
         </div>
