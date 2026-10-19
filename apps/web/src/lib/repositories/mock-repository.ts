@@ -1,5 +1,5 @@
-import { mockDb, delay, genId, recordAudit, auditRows, auditPeso, DEMO_OWNER_USER_ID } from "@isnabero/db";
-import { LAST_OWNER_MESSAGE, normalizeBusinessName, normalizeReceiptDetails } from "./repository";
+import { mockDb, delay, genId, recordAudit, auditRows, auditPeso, voidMockSale, DEMO_OWNER_USER_ID } from "@isnabero/db";
+import { LAST_OWNER_MESSAGE, normalizeBusinessName, normalizeReceiptDetails, summarizeLines } from "./repository";
 import type {
   BusinessView,
   SaveBusinessSetupInput,
@@ -13,6 +13,7 @@ import type {
   ListPaymentRecordsOptions,
   AuditLogEntry,
   ListAuditLogOptions,
+  Membership,
 } from "./repository";
 import { MODULE_REGISTRY, normalizeModules, type ModuleKey } from "@/lib/module-registry";
 
@@ -96,15 +97,25 @@ export const mockCoreRepository: CoreRepository = {
       .filter((record) => record.businessId === businessId)
       .filter((record) => options?.includeVoided || !record.voidedAt)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-      .map((record) => ({
-        id: record.id,
-        sourceModule: record.sourceModule,
-        method: record.method,
-        referenceCode: record.referenceCode,
-        amount: Number(record.amount),
-        createdAt: record.createdAt,
-        voidedAt: record.voidedAt,
-      }));
+      .map((record) => {
+        const order = mockDb.posOrders.find((item) => item.paymentRecordId === record.id);
+        const booking = mockDb.bookings.find((item) => item.paymentRecordId === record.id);
+        const offeringName = (id: string) => mockDb.offerings.find((item) => item.id === id)?.name ?? "Item";
+        const lines = order ? mockDb.posOrderItems.filter((item) => item.orderId === order.id) : [];
+        return {
+          id: record.id,
+          sourceModule: record.sourceModule,
+          method: record.method,
+          referenceCode: record.referenceCode,
+          amount: Number(record.amount),
+          createdAt: record.createdAt,
+          voidedAt: record.voidedAt,
+          summary: order ? summarizeLines(lines.map((line) => ({ name: offeringName(line.offeringId), quantity: line.quantity }))) : booking ? offeringName(booking.offeringId) : null,
+          receiptNumber: order?.receiptNumber ?? null,
+          cashierName: (order?.employeeId && mockDb.employees.find((item) => item.id === order.employeeId)?.fullName) || null,
+          customerName: booking?.customerName ?? null,
+        };
+      });
   },
 
   async voidPaymentRecord(businessId, recordId): Promise<void> {
@@ -113,6 +124,7 @@ export const mockCoreRepository: CoreRepository = {
     if (record && !record.voidedAt) {
       record.voidedAt = new Date();
       recordAudit({ businessId, action: "payment.voided", entityId: record.id, summary: `Voided ${auditPeso(record.amount)} ${record.sourceModule} payment (${record.method})` });
+      if (record.sourceModule === "pos") voidMockSale(record.id); // the sale is cancelled: its items go back on the shelf
     }
   },
 
@@ -175,6 +187,14 @@ export const mockCoreRepository: CoreRepository = {
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, options?.limit ?? 500)
       .map((row) => ({ ...row }));
+  },
+
+  async getMembership(userId): Promise<Membership | null> {
+    await delay(100);
+    const employee = mockDb.employees.find((item) => item.userId === userId || userId === DEMO_OWNER_USER_ID);
+    const business = employee && mockDb.businesses.find((item) => item.id === employee.businessId);
+    if (!employee || !business) return null;
+    return { business: { id: business.id, name: business.name }, employee: { id: employee.id, fullName: employee.fullName, role: employee.role, createdAt: employee.createdAt } };
   },
 
   async getCurrentEmployee(businessId, userId): Promise<EmployeeView | null> {

@@ -10,6 +10,8 @@ import { useFormat, useLabels, useT, type TranslationKey } from "@/i18n";
 import { usePagination } from "@/hooks/use-pagination";
 import { auditLogRows } from "@/lib/export-rows";
 import { ExportButton } from "@/components/ExportButton";
+import { AuditDetailDialog } from "@/components/details/AuditDetailDialog";
+import { OPEN_CLASS, openProps } from "@/components/details/open-props";
 
 const ENTITY_TABS = [
   { value: "all", labelKey: "common.all" },
@@ -49,6 +51,7 @@ export default function AuditLogPage() {
     refetchOnMount: "always", // other pages' mutations don't invalidate this query, so always show the latest
   });
 
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [entityFilter, setEntityFilter] = useState<"all" | AuditEntity>("all");
 
@@ -120,13 +123,13 @@ export default function AuditLogPage() {
                 </thead>
                 <tbody>
                   {pageItems.map((entry) => (
-                    <tr key={entry.id} className="border-b transition-colors last:border-0 hover:bg-accent/50">
+                    <tr key={entry.id} {...openProps(() => setDetailId(entry.id))} title={t("details.open", { name: labels.auditAction(entry.action) })} className={cn("border-b transition-colors last:border-0 hover:bg-accent/50", OPEN_CLASS)}>
                       <td className="whitespace-nowrap px-4 py-3">{format.dateTime(entry.createdAt)}</td>
                       <td className="px-4 py-3">{entry.actorName}</td>
                       <td className="px-4 py-3">
                         <Badge variant={ENTITY_BADGE_VARIANT[entry.entityType as AuditEntity] ?? "secondary"}>{labels.auditAction(entry.action)}</Badge>
                       </td>
-                      <td className="px-4 py-3">{entry.summary}</td>
+                      <td className="max-w-md px-4 py-3"><p className="line-clamp-2">{entry.summary}</p></td>
                     </tr>
                   ))}
                 </tbody>
@@ -140,6 +143,7 @@ export default function AuditLogPage() {
           )}
         </CardContent>
       </Card>
+      <AuditDetailDialog entry={entries.find((entry) => entry.id === detailId) ?? null} onClose={() => setDetailId(null)} />
     </div>
   );
 }

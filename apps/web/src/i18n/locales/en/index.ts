@@ -22,6 +22,7 @@ import { audit } from "./audit";
 import { exports } from "./exports";
 import { app } from "./app";
 import { offline } from "./offline";
+import { details } from "./details";
 
 export const en = {
   common,
@@ -48,4 +49,5 @@ export const en = {
   exports,
   app,
   offline,
+  details,
 };

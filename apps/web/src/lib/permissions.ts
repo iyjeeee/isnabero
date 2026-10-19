@@ -5,7 +5,7 @@ export type Role = "owner" | "admin" | "staff";
 
 // PERMISSIONS: permission -> roles allowed. Add a new capability here first, then gate with usePermission.
 export const PERMISSIONS = {
-  "business.configure": ["owner"], // setup wizard, business name, module toggles
+  "business.configure": ["owner", "admin"], // setup wizard, business name, module toggles, receipt details
   "employees.manage": ["owner", "admin"], // add / edit / remove employees
   "payments.void": ["owner", "admin"], // void a payment record
   "expenses.view": ["owner", "admin"], // see the Expenses page

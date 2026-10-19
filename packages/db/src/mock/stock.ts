@@ -1,5 +1,6 @@
 import { InsufficientStockError, type StockKind } from "../inventory";
 import { mockDb, genId } from "./store";
+import { recordAudit } from "./audit";
 
 export interface StockMove {
   businessId: string;
@@ -46,4 +47,18 @@ export function applyStockMove(move: StockMove): void {
     recordedBy: move.recordedBy ?? null,
     createdAt: new Date(),
   });
+}
+
+// voidMockSale: mock twin of the payment_records void trigger (migration 0010) — marks the POS order behind a voided payment
+// as voided and returns its tracked items to stock once. Supabase repositories must NOT call this.
+export function voidMockSale(paymentRecordId: string): void {
+  const order = mockDb.posOrders.find((item) => item.paymentRecordId === paymentRecordId);
+  if (!order || order.status === "voided") return;
+  order.status = "voided";
+  for (const line of mockDb.posOrderItems.filter((item) => item.orderId === order.id)) {
+    if (!mockDb.stockItems.some((row) => row.offeringId === line.offeringId && row.businessId === order.businessId)) continue; // untracked
+    const note = `Sale #${order.receiptNumber} voided`;
+    applyStockMove({ businessId: order.businessId, offeringId: line.offeringId, delta: line.quantity, kind: "return", note, referenceId: order.id });
+    recordAudit({ businessId: order.businessId, action: "stock.adjusted", entityId: line.offeringId, summary: `Adjusted "${offeringName(line.offeringId)}" +${line.quantity} (return): ${note}` });
+  }
 }

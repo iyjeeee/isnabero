@@ -6,14 +6,14 @@ export const payments: Dictionary["payments"] = {
   exportHint: "Gagamitin ang kasalukuyang method filter at hinahanap.",
   source: { pos: "POS", booking: "Booking" },
   stats: { totalTransactions: "Kabuuang Transaksyon", totalCollected: "Kabuuang Nakolekta", averageTransaction: "Karaniwang Transaksyon" },
-  filters: { bank: "Bank transfer", showVoided: "Ipakita ang na-void", searchPlaceholder: "Hanapin ang reference o source…" },
+  filters: { bank: "Bank transfer", showVoided: "Ipakita ang na-void", searchPlaceholder: "Maghanap ng item, customer, kahera, o reference…" },
   empty: {
     title: "Wala pang transaksyon",
     description: "Dito lalabas ang mga benta mula sa POS at bayad na booking.",
     noMatchTitle: "Walang tugma",
     noMatchDescription: "Subukan ang ibang hinahanap o method filter.",
   },
-  table: { source: "Pinagmulan", method: "Paraan", reference: "Reference", amount: "Halaga" },
+  table: { details: "Detalye", source: "Pinagmulan", method: "Paraan", reference: "Reference", amount: "Halaga" },
   viewReceipt: "Tingnan ang receipt",
   viewReceiptFor: "Tingnan ang receipt noong {date}",
   void: {

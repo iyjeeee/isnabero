@@ -11,4 +11,8 @@ export interface CatalogRepository {
   listOfferings(businessId: string): Promise<OfferingWithInclusions[]>;
   createOfferingWithInclusions(businessId: string, input: CreateOfferingInput): Promise<OfferingWithInclusions>;
   toggleAvailability(offeringId: string, isAvailable: boolean): Promise<void>;
+  // updateOffering: edits the details and replaces the inclusions (bundles only) in one go; availability has its own toggle
+  updateOffering(businessId: string, offeringId: string, input: CreateOfferingInput): Promise<OfferingWithInclusions>;
+  // deleteOffering: throws OfferingInUseError when sales or bookings reference it (mark it sold out instead)
+  deleteOffering(businessId: string, offeringId: string): Promise<void>;
 }

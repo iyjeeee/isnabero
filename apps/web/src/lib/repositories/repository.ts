@@ -8,6 +8,11 @@ export interface PaymentRecordView {
   amount: number;
   createdAt: Date;
   voidedAt: Date | null;
+  // what the payment was for — filled from the POS order or booking behind it (all null when neither exists)
+  summary: string | null; // e.g. "2 × Sisig, Iced tea" or "Photo booth package"
+  receiptNumber: number | null; // POS sales only
+  cashierName: string | null; // POS sales only
+  customerName: string | null; // bookings only
 }
 
 export interface EmployeeView {
@@ -15,6 +20,12 @@ export interface EmployeeView {
   fullName: string;
   role: string;
   createdAt: Date;
+}
+
+// Membership: which business a signed-in user belongs to, and their employee row there
+export interface Membership {
+  business: { id: string; name: string };
+  employee: EmployeeView;
 }
 
 export interface DashboardStats {
@@ -136,7 +147,7 @@ export interface CoreRepository {
   // saveBusinessSetup: setup wizard save — renames the business, sets every registered module on/off, and stamps
   // setupCompletedAt the first time only (re-running the wizard later keeps the original date).
   saveBusinessSetup(businessId: string, input: SaveBusinessSetupInput): Promise<BusinessView>;
-  // saveReceiptDetails: owner-only (business.configure); updates only the receipt fields, not the name or modules
+  // saveReceiptDetails: owner/admin (business.configure); updates only the receipt fields, not the name or modules
   saveReceiptDetails(businessId: string, input: ReceiptDetailsInput): Promise<BusinessView>;
   listEnabledModules(businessId: string): Promise<ModuleKey[]>;
   listPaymentRecords(businessId: string, options?: ListPaymentRecordsOptions): Promise<PaymentRecordView[]>;
@@ -154,7 +165,16 @@ export interface CoreRepository {
   // foundation for role checks (see usePermission). Returns null if the user has no employee record for
   // this business (shouldn't normally happen once the invite flow is fully wired up).
   getCurrentEmployee(businessId: string, userId: string): Promise<EmployeeView | null>;
+  // getMembership: the business a user belongs to (their oldest employee row), or null when they belong to none.
+  // Used after login to pick the business instead of assuming one; multi-business switching isn't built yet.
+  getMembership(userId: string): Promise<Membership | null>;
   getDashboardStats(businessId: string): Promise<DashboardStats>;
   // listAuditLog: read-only by design — the log is written by triggers / recordAudit, never by the app UI.
   listAuditLog(businessId: string, options?: ListAuditLogOptions): Promise<AuditLogEntry[]>;
+}
+
+// summarizeLines: "2 × Sisig, Iced tea" — a short, human line for what a sale contained (a quantity of 1 is left implicit)
+export function summarizeLines(lines: { name: string; quantity: number }[]): string | null {
+  if (lines.length === 0) return null;
+  return lines.map((line) => (line.quantity > 1 ? `${line.quantity} × ${line.name}` : line.name)).join(", ");
 }

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { LAST_OWNER_MESSAGE, normalizeBusinessName, normalizeReceiptDetails } from "./repository";
+import { LAST_OWNER_MESSAGE, normalizeBusinessName, normalizeReceiptDetails, summarizeLines } from "./repository";
 import type {
   BusinessView,
   SaveBusinessSetupInput,
@@ -13,10 +13,45 @@ import type {
   ListPaymentRecordsOptions,
   AuditLogEntry,
   ListAuditLogOptions,
+  Membership,
 } from "./repository";
+import { fetchAllRows } from "./paginate";
 import { MODULE_REGISTRY, normalizeModules, type ModuleKey } from "@/lib/module-registry";
 
 const BUSINESS_COLUMNS = "id, name, slug, setup_completed_at, address, tin, contact_number, receipt_footer";
+
+type PaymentDetail = { summary: string | null; receiptNumber: number | null; cashierName: string | null; customerName: string | null };
+
+// fetchPaymentDetails: what each payment was for (POS order lines / booking), in chunks so the id list never blows the URL limit.
+// Best-effort: if the lookup fails the payments still list, just without the extra detail.
+async function fetchPaymentDetails(supabase: SupabaseClient, paymentIds: string[]): Promise<Map<string, PaymentDetail>> {
+  const details = new Map<string, PaymentDetail>();
+  try {
+    for (let start = 0; start < paymentIds.length; start += 100) {
+      const ids = paymentIds.slice(start, start + 100);
+      const [orders, bookings] = await Promise.all([
+        supabase.from("pos_orders").select("payment_record_id, receipt_number, cashier:employees(full_name), items:pos_order_items(quantity, offering:offerings(name))").in("payment_record_id", ids),
+        supabase.from("bookings").select("payment_record_id, customer_name, offering:offerings(name)").in("payment_record_id", ids),
+      ]);
+      if (orders.error) throw orders.error;
+      if (bookings.error) throw bookings.error;
+      for (const order of (orders.data ?? []) as any[]) {
+        details.set(order.payment_record_id, {
+          summary: summarizeLines((order.items ?? []).map((item: any) => ({ name: item.offering?.name ?? "Item", quantity: item.quantity }))),
+          receiptNumber: order.receipt_number,
+          cashierName: order.cashier?.full_name ?? null,
+          customerName: null,
+        });
+      }
+      for (const booking of (bookings.data ?? []) as any[]) {
+        details.set(booking.payment_record_id, { summary: booking.offering?.name ?? null, receiptNumber: null, cashierName: null, customerName: booking.customer_name });
+      }
+    }
+  } catch (error) {
+    console.warn("Payment details unavailable", error);
+  }
+  return details;
+}
 
 export function createSupabaseCoreRepository(supabase: SupabaseClient): CoreRepository {
   // assertNotLastOwner: throws if `employeeId` is currently the business's only owner
@@ -94,11 +129,13 @@ export function createSupabaseCoreRepository(supabase: SupabaseClient): CoreRepo
     },
 
     async listPaymentRecords(businessId, options?: ListPaymentRecordsOptions): Promise<PaymentRecordView[]> {
-      let query = supabase.from("payment_records").select("*").eq("business_id", businessId);
-      if (!options?.includeVoided) query = query.is("voided_at", null);
-      const { data, error } = await query.order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []).map((row: any) => ({
+      const rows = await fetchAllRows<any>((from, to) => {
+        let query = supabase.from("payment_records").select("*").eq("business_id", businessId);
+        if (!options?.includeVoided) query = query.is("voided_at", null);
+        return query.order("created_at", { ascending: false }).order("id").range(from, to);
+      });
+      const details = await fetchPaymentDetails(supabase, rows.map((row: any) => row.id));
+      return rows.map((row: any) => ({
         id: row.id,
         sourceModule: row.source_module,
         method: row.method,
@@ -106,6 +143,10 @@ export function createSupabaseCoreRepository(supabase: SupabaseClient): CoreRepo
         amount: Number(row.amount),
         createdAt: new Date(row.created_at),
         voidedAt: row.voided_at ? new Date(row.voided_at) : null,
+        summary: details.get(row.id)?.summary ?? null,
+        receiptNumber: details.get(row.id)?.receiptNumber ?? null,
+        cashierName: details.get(row.id)?.cashierName ?? null,
+        customerName: details.get(row.id)?.customerName ?? null,
       }));
     },
 
@@ -192,6 +233,21 @@ export function createSupabaseCoreRepository(supabase: SupabaseClient): CoreRepo
       if (error) throw error;
       if (!data) return null;
       return { id: data.id, fullName: data.full_name, role: data.role, createdAt: new Date(data.created_at) };
+    },
+
+    async getMembership(userId): Promise<Membership | null> {
+      // RLS already limits employees to the user's own businesses; oldest row first so the pick is stable
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id, full_name, role, created_at, business:businesses(id, name)")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      const business = data?.business as unknown as { id: string; name: string } | null | undefined;
+      if (!data || !business) return null;
+      return { business: { id: business.id, name: business.name }, employee: { id: data.id, fullName: data.full_name, role: data.role, createdAt: new Date(data.created_at) } };
     },
 
     async getDashboardStats(businessId): Promise<DashboardStats> {

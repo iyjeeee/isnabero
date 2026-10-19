@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CatalogRepository, CreateOfferingInput } from "./repository";
 import type { OfferingWithInclusions } from "./types";
+import { OfferingInUseError } from "./rules";
 
 // mapInclusionRow: offering_inclusions row (snake_case, as returned by PostgREST) -> camelCase type
 function mapInclusionRow(row: any) {
@@ -75,6 +76,36 @@ export function createSupabaseCatalogRepository(supabase: SupabaseClient): Catal
     async toggleAvailability(offeringId, isAvailable) {
       const { error } = await supabase.from("offerings").update({ is_available: isAvailable }).eq("id", offeringId);
       if (error) throw error;
+    },
+
+    // One database function edits the offering and swaps its inclusions in a single transaction and writes the audit row
+    async updateOffering(businessId, offeringId, input: CreateOfferingInput) {
+      const type = input.offering.type ?? "item";
+      const { error } = await supabase.rpc("update_offering", {
+        p_offering: offeringId,
+        p_name: input.offering.name,
+        p_description: input.offering.description ?? null,
+        p_type: type,
+        p_price: Number(input.offering.price),
+        p_duration: input.offering.durationMinutes ?? null,
+        p_inclusions: type === "bundle" ? input.inclusions : [],
+      });
+      if (error) throw error;
+      const { data, error: readError } = await supabase
+        .from("offerings")
+        .select("*, inclusions:offering_inclusions(*)")
+        .eq("id", offeringId)
+        .eq("business_id", businessId)
+        .single();
+      if (readError) throw readError;
+      return mapOfferingRow(data);
+    },
+
+    // The audit row comes from the offerings delete trigger (migration 0012)
+    async deleteOffering(businessId, offeringId) {
+      const { data, error } = await supabase.from("offerings").delete().eq("id", offeringId).eq("business_id", businessId).select("id");
+      if (error) throw error.code === "23503" ? new OfferingInUseError() : error; // 23503 = foreign_key_violation (sales/bookings reference it)
+      if ((data ?? []).length === 0) throw new Error("Offering not found");
     },
   };
 }

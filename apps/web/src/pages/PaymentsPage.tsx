@@ -13,6 +13,9 @@ import { ExportButton } from "@/components/ExportButton";
 import { VoidPaymentRecordButton } from "@/components/payments/VoidPaymentRecordButton";
 import { ReceiptDialog } from "@/components/receipt/ReceiptDialog";
 import { formatPeso } from "@/lib/money";
+import { formatReceiptNumber } from "@isnabero/module-pos";
+import { PaymentDetailDialog } from "@/components/details/PaymentDetailDialog";
+import { OPEN_CLASS, openProps } from "@/components/details/open-props";
 
 const METHOD_BADGE_VARIANT = { cash: "success", gcash: "info", bank_transfer: "default", other: "secondary" } as const;
 const METHOD_TABS = ["all", "cash", "gcash", "bank_transfer", "other"] as const;
@@ -28,6 +31,7 @@ export default function PaymentsPage() {
 
   const [showVoided, setShowVoided] = useState(false);
   const [receiptPaymentId, setReceiptPaymentId] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const { data: records = [], isLoading } = useQuery({
     queryKey: ["payment_records", businessId, showVoided],
@@ -43,8 +47,7 @@ export default function PaymentsPage() {
       const matchesMethod = methodFilter === "all" || record.method === methodFilter;
       const matchesSearch =
         search === "" ||
-        (record.referenceCode ?? "").toLowerCase().includes(search.toLowerCase()) ||
-        record.sourceModule.toLowerCase().includes(search.toLowerCase());
+        [record.referenceCode, record.sourceModule, record.summary, record.customerName, record.cashierName].some((value) => (value ?? "").toLowerCase().includes(search.toLowerCase()));
       return matchesMethod && matchesSearch;
     });
   }, [records, search, methodFilter]);
@@ -128,6 +131,7 @@ export default function PaymentsPage() {
                 <tr>
                   <th className="px-4 py-3">{t("common.date")}</th>
                   <th className="px-4 py-3">{t("payments.table.source")}</th>
+                  <th className="px-4 py-3">{t("payments.table.details")}</th>
                   <th className="px-4 py-3">{t("payments.table.method")}</th>
                   <th className="px-4 py-3">{t("payments.table.reference")}</th>
                   <th className="px-4 py-3 text-right">{t("payments.table.amount")}</th>
@@ -136,9 +140,17 @@ export default function PaymentsPage() {
               </thead>
               <tbody>
                 {pageItems.map((record) => (
-                  <tr key={record.id} className={cn("border-b transition-colors last:border-0 hover:bg-accent/50", record.voidedAt && "opacity-50")}>
-                    <td className="px-4 py-3">{format.dateTime(record.createdAt)}</td>
+                  <tr key={record.id} {...openProps(() => setDetailId(record.id))} title={t("details.open", { name: format.dateTime(record.createdAt) })} className={cn("border-b transition-colors last:border-0 hover:bg-accent/50", OPEN_CLASS, record.voidedAt && "opacity-50")}>
+                    <td className="whitespace-nowrap px-4 py-3">{format.dateTime(record.createdAt)}</td>
                     <td className="px-4 py-3">{sourceLabel(record.sourceModule)}</td>
+                    <td className="max-w-[16rem] px-4 py-3">
+                      <p className="truncate font-medium">{record.summary ?? "—"}</p>
+                      {(record.customerName || record.receiptNumber) && (
+                        <p className="truncate text-xs text-muted-foreground">
+                          {record.customerName ?? [`#${formatReceiptNumber(record.receiptNumber!)}`, record.cashierName].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <Badge variant={METHOD_BADGE_VARIANT[record.method as keyof typeof METHOD_BADGE_VARIANT] ?? "secondary"}>
                         {labels.method(record.method)}
@@ -175,6 +187,7 @@ export default function PaymentsPage() {
           )}
         </CardContent>
       </Card>
+      <PaymentDetailDialog record={records.find((record) => record.id === detailId) ?? null} onClose={() => setDetailId(null)} onViewReceipt={setReceiptPaymentId} />
       <ReceiptDialog businessId={businessId} reference={receiptPaymentId ? { paymentRecordId: receiptPaymentId } : null} onClose={() => setReceiptPaymentId(null)} />
     </div>
   );

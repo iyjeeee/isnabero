@@ -14,6 +14,8 @@ import { employeeRows } from "@/lib/export-rows";
 import { AddEmployeeModal } from "@/components/employees/AddEmployeeModal";
 import { EditEmployeeModal } from "@/components/employees/EditEmployeeModal";
 import { DeleteEmployeeButton } from "@/components/employees/DeleteEmployeeButton";
+import { EmployeeDetailDialog } from "@/components/details/EmployeeDetailDialog";
+import { OPEN_CLASS, openProps } from "@/components/details/open-props";
 
 const ROLE_BADGE_VARIANT = { owner: "default", admin: "info", staff: "secondary" } as const;
 const ROLE_TABS = ["all", "owner", "admin", "staff"] as const;
@@ -36,6 +38,7 @@ export default function EmployeesPage() {
     enabled: Boolean(businessId),
   });
 
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<(typeof ROLE_TABS)[number]>("all");
 
@@ -132,8 +135,11 @@ export default function EmployeesPage() {
               </thead>
               <tbody>
                 {pageItems.map((employee) => (
-                  <tr key={employee.id} className="border-b transition-colors last:border-0 hover:bg-accent/50">
-                    <td className="px-4 py-3 font-medium">{employee.fullName}</td>
+                  <tr key={employee.id} {...openProps(() => setDetailId(employee.id))} title={t("details.open", { name: employee.fullName })} className={cn("border-b transition-colors last:border-0 hover:bg-accent/50", OPEN_CLASS)}>
+                    <td className="px-4 py-3 font-medium">
+                      {employee.fullName}
+                      {employee.id === currentEmployee?.id && <Badge variant="outline" className="ml-2">{t("details.you")}</Badge>}
+                    </td>
                     <td className="px-4 py-3">
                       <Badge variant={ROLE_BADGE_VARIANT[employee.role as keyof typeof ROLE_BADGE_VARIANT] ?? "secondary"} className="capitalize">
                         {labels.role(employee.role)}
@@ -162,6 +168,7 @@ export default function EmployeesPage() {
           )}
         </CardContent>
       </Card>
+      <EmployeeDetailDialog employee={employees.find((employee) => employee.id === detailId) ?? null} isYou={detailId === currentEmployee?.id} onClose={() => setDetailId(null)} />
     </div>
   );
 }

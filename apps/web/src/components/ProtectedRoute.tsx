@@ -1,10 +1,11 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useT } from "@/i18n";
 import { useAuth } from "@/providers/AuthProvider";
+import { NoBusinessAccess } from "@/components/NoBusinessAccess";
 
 export function ProtectedRoute() {
   const { t } = useT();
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, noBusiness } = useAuth();
 
   if (loading) {
     return (
@@ -17,6 +18,8 @@ export function ProtectedRoute() {
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
+
+  if (noBusiness) return <NoBusinessAccess />;
 
   return <Outlet />;
 }

@@ -12,7 +12,10 @@ import { ExportButton } from "@/components/ExportButton";
 import { offeringRows } from "@/lib/export-rows";
 import { StockBadge } from "@/components/inventory/StockBadge";
 import { CreateOfferingModal } from "@/components/catalog/CreateOfferingModal";
+import { OfferingActions } from "@/components/catalog/OfferingActions";
 import { formatPeso } from "@/lib/money";
+import { OfferingDetailDialog } from "@/components/details/OfferingDetailDialog";
+import { OPEN_CLASS, openProps } from "@/components/details/open-props";
 
 const TYPE_BADGE_VARIANT = { item: "default", bundle: "info", addon: "secondary" } as const;
 // TYPE_ICON/TYPE_TILE_TINT: give every offering card a type-specific icon tile instead of a bare name —
@@ -35,6 +38,7 @@ export default function CatalogPage() {
   const { data: stockLevels = [] } = useStockLevels(supabase, businessId);
   const stockByOffering = new Map(stockLevels.map((level) => [level.offeringId, level]));
 
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<(typeof TYPE_TABS)[number]>("all");
 
@@ -123,7 +127,7 @@ export default function CatalogPage() {
         {pageItems.map((offering) => {
           const TypeIcon = TYPE_ICON[offering.type];
           return (
-            <Card key={offering.id} interactive className={cn("flex flex-col", !offering.isAvailable && "opacity-70")}>
+            <Card key={offering.id} interactive {...openProps(() => setDetailId(offering.id))} title={t("details.open", { name: offering.name })} className={cn("flex flex-col", OPEN_CLASS, !offering.isAvailable && "opacity-70")}>
               <CardContent className="flex flex-1 flex-col gap-3 p-5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex min-w-0 items-start gap-3">
@@ -156,20 +160,23 @@ export default function CatalogPage() {
                   </div>
                 )}
 
-                <div className="mt-auto flex items-center justify-between border-t pt-3">
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t pt-3">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Badge variant={offering.isAvailable ? "success" : "destructive"}>
                       {offering.isAvailable ? t("catalog.page.available") : t("catalog.page.soldOut")}
                     </Badge>
                     {stockByOffering.has(offering.id) && <StockBadge level={stockByOffering.get(offering.id)!} />}
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleToggle(offering.id, !offering.isAvailable, offering.name)}
-                  >
-                    {offering.isAvailable ? t("catalog.page.markSoldOut") : t("catalog.page.markAvailable")}
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggle(offering.id, !offering.isAvailable, offering.name)}
+                    >
+                      {offering.isAvailable ? t("catalog.page.markSoldOut") : t("catalog.page.markAvailable")}
+                    </Button>
+                    <OfferingActions businessId={businessId} offering={offering} />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -178,6 +185,7 @@ export default function CatalogPage() {
       </div>
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} totalItems={totalItems} pageSize={PAGE_SIZE} />
+      <OfferingDetailDialog offering={offerings.find((offering) => offering.id === detailId) ?? null} stock={detailId ? stockByOffering.get(detailId) : undefined} onClose={() => setDetailId(null)} />
     </div>
   );
 }

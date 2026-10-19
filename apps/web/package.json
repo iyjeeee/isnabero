@@ -9,7 +9,9 @@
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "e2e": "playwright test",
+    "e2e:live": "E2E_LIVE=1 playwright test --project=supabase"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -18,8 +20,8 @@
     "@isnabero/module-catalog": "workspace:*",
     "@isnabero/module-expenses": "workspace:*",
     "@isnabero/module-inventory": "workspace:*",
-    "@isnabero/module-scheduling": "workspace:*",
     "@isnabero/module-pos": "workspace:*",
+    "@isnabero/module-scheduling": "workspace:*",
     "@isnabero/ui": "workspace:*",
     "@supabase/supabase-js": "^2.46.1",
     "@tanstack/react-query": "^5.59.16",
@@ -38,6 +40,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "@playwright/test": "1.56.0",
+    "@types/node": "^22.20.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",

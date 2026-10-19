@@ -1,9 +1,10 @@
 import type { Dictionary } from "../../translate";
 
 export const nav: Dictionary["nav"] = {
-  core: "Pangunahin",
-  modules: "Mga module",
-  noModules: "Wala pang naka-enable na module.",
+  groups: { sales: "Benta", products: "Produkto at Stock", team: "Team", finance: "Pera at Ulat" },
+  mainNavigation: "Pangunahing nabigasyon",
+  demoMode: "Sample na data",
+  demoModeHint: "Hindi naka-connect sa Supabase — sample data ito at nare-reset kapag nag-reload.",
   selectBusiness: "Pumili ng negosyo",
   dashboard: "Dashboard",
   payments: "Mga Tala ng Bayad",
@@ -14,7 +15,7 @@ export const nav: Dictionary["nav"] = {
   theme: "Tema",
   language: "Wika",
   signOut: "Mag-sign out",
-  signOutMock: "Ang pag-sign out ay may saysay lang sa Supabase mode — walang totoong session ang mock mode.",
+  signOutMock: "Nasa demo mode ka, kaya walang login na masa-sign out. Para gamitin ang Supabase project mo, i-set ang VITE_DATA_SOURCE=supabase sa apps/web/.env.local at i-restart ang dev server.",
   collapse: "I-collapse",
   collapseSidebar: "I-collapse ang sidebar",
   expandSidebar: "I-expand ang sidebar",

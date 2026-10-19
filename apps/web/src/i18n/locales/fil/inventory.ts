@@ -58,7 +58,7 @@ export const inventory: Dictionary["inventory"] = {
     title: "I-adjust ang {name}",
     description: "Kasalukuyang {quantity} sa stock. Sine-save ang bawat pagbabago kasama ang dahilan mo.",
     whatHappened: "Ano ang nangyari",
-    countedQuantity: "Bilang na nabilang",
+    countedQuantity: "Aktuwal na bilang",
     previewEmpty: "Maglagay ng dami para makita ang bagong bilang.",
     previewNegative: "Magiging {count} ito — hindi puwede.",
     previewNew: "Bagong bilang: {count}",
@@ -96,7 +96,7 @@ export const inventory: Dictionary["inventory"] = {
     },
     chooseItem: "Pumili ng item",
     addReason: "Maglagay ng maikling dahilan",
-    noteTooLong: "Gawing wala pang {max} character",
+    noteTooLong: "Hindi dapat lumampas sa {max} na karakter",
     atLeastOne: "Maglagay ng kahit 1",
   },
 };

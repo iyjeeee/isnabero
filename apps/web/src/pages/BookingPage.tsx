@@ -1,18 +1,25 @@
 import { useMemo, useState } from "react";
 import { CalendarClock, Clock, User, CalendarCheck2, Search } from "lucide-react";
-import { useBookings } from "@isnabero/module-booking";
-import { Card, CardContent, PageHeader, EmptyState, Skeleton, StatCard, FilterBar, Input } from "@isnabero/ui";
+import { isEditable, useBookings } from "@isnabero/module-booking";
+import { Badge, Card, CardContent, PageHeader, EmptyState, Skeleton, StatCard, FilterBar, Input, cn } from "@isnabero/ui";
 import { supabase } from "@/lib/supabase";
 import { useBusinessStore } from "@/stores/business-store";
 import { ExportButton } from "@/components/ExportButton";
 import { bookingRows } from "@/lib/export-rows";
 import { NewBookingModal } from "@/components/booking/NewBookingModal";
-import { useFormat, useT } from "@/i18n";
+import { BookingActions } from "@/components/booking/BookingActions";
+import { useFormat, useLabels, useT } from "@/i18n";
+import { formatPeso } from "@/lib/money";
+import { BookingDetailDialog } from "@/components/details/BookingDetailDialog";
+import { OPEN_CLASS, openProps } from "@/components/details/open-props";
+
+const STATUS_VARIANT = { pending: "warning", confirmed: "info", completed: "success", cancelled: "destructive" } as const;
 
 const UPCOMING_DAYS = 30;
 
 export default function BookingPage() {
   const { t } = useT();
+  const labels = useLabels();
   const f = useFormat();
   // formatBookingTime: "9:30 AM" for today, "Tue, Oct 6 · 9:30 AM" for later days (in the chosen language)
   const formatBookingTime = (value: Date | string): string => {
@@ -22,6 +29,7 @@ export default function BookingPage() {
     return `${f.weekday(date)}, ${f.monthDay(date)} · ${time}`;
   };
   const businessId = useBusinessStore((state) => state.businessId) ?? "";
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   // Window = start of today through the next UPCOMING_DAYS days, so a booking made for tomorrow shows up
   // right after it's created instead of vanishing (the page used to cover today only).
@@ -43,9 +51,9 @@ export default function BookingPage() {
     [bookings, search],
   );
 
-  const todayCount = bookings.filter((booking) => new Date(booking.startTime).toDateString() === new Date().toDateString()).length;
+  const todayCount = bookings.filter((booking) => booking.status !== "cancelled" && new Date(booking.startTime).toDateString() === new Date().toDateString()).length;
   const confirmedCount = bookings.filter((booking) => booking.status === "confirmed").length;
-  const nextBooking = bookings.find((booking) => new Date(booking.startTime) >= new Date());
+  const nextBooking = bookings.find((booking) => isEditable(booking.status) && new Date(booking.startTime) >= new Date());
 
   return (
     <div className="space-y-6">
@@ -94,25 +102,31 @@ export default function BookingPage() {
           <EmptyState icon={Search} title={t("booking.noMatches.title")} description={t("booking.noMatches.description")} />
         )}
         {filteredBookings.map((booking) => (
-          <Card key={booking.id} interactive>
-            <CardContent className="flex items-center justify-between gap-3 p-4">
+          <Card key={booking.id} interactive {...openProps(() => setDetailId(booking.id))} title={t("details.open", { name: booking.customerName })} className={cn(OPEN_CLASS, booking.status === "cancelled" && "opacity-60")}>
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-info/10 text-info">
                   <User className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
                   <p className="truncate font-medium">{booking.customerName}</p>
-                  <p className="truncate text-sm text-muted-foreground">{booking.offering.name}</p>
+                  <p className="truncate text-sm text-muted-foreground">{booking.offering.name} · {formatPeso(booking.offering.price)}</p>
+                  {booking.customerContact && <p className="truncate text-xs text-muted-foreground">{booking.customerContact}</p>}
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
-                <Clock className="h-3.5 w-3.5" />
-                {formatBookingTime(booking.startTime)}
+              <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+                <Badge variant={STATUS_VARIANT[booking.status]}>{labels.bookingStatus(booking.status)}</Badge>
+                <div className="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5" />
+                  {formatBookingTime(booking.startTime)}
+                </div>
+                <BookingActions businessId={businessId} booking={booking} />
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+      <BookingDetailDialog booking={bookings.find((booking) => booking.id === detailId) ?? null} onClose={() => setDetailId(null)} />
     </div>
   );
 }

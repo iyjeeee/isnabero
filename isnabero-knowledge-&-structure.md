@@ -508,6 +508,12 @@ deliver a ready-to-extract ZIP with only changed/created files.
   their data" issues. NOTE: drizzle-kit will generate `0000_*.sql` (the
   actual `CREATE TABLE` statements) once `pnpm db:generate` is run against a
   live DB connection — that file does not exist yet in this scaffold.
+- `migrations/0000_initial_schema.sql` — **added in Round 27**: the CREATE TYPE / CREATE TABLE statements, generated from the
+  Drizzle schema with `drizzle-kit generate` (they were missing, so 0001 would have failed on a fresh project). Runs first.
+- `migrations/0009_lock_down_functions.sql`, `0010_restock_on_void.sql`, `0011_booking_status.sql`, `0012_offering_edit.sql`, `0013_admin_configure.sql` (Round 28: admin may update `businesses`/`business_modules`) —
+  see Round 27.
+- `HOSTED-SETUP.md`, `link-owner.sql` — step-by-step for a hosted Supabase project, and the script that links a real login to
+  the seeded owner (Round 27).
 - `migrations/0008_scheduling.sql` — see Round 23.
 - `migrations/0007_receipts.sql` — see Round 22.
 - `migrations/0006_inventory.sql` — see Round 21.
@@ -603,8 +609,11 @@ deliver a ready-to-extract ZIP with only changed/created files.
 - `src/hooks.ts` — `useOfferings`, `useCreateOfferingWithInclusions` (writes
   offering + bundle inclusions together — used by the Add Offering modal),
   `useToggleOfferingAvailability`. All call the repository, not Supabase
-  directly.
-- `src/index.ts` — module entry.
+  directly. Round 27 adds `useUpdateOffering` and `useDeleteOffering`.
+- `src/rules.ts` — `OfferingInUseError` / `OFFERING_IN_USE_MESSAGE` (Round 27): both repositories throw it when
+  deleting an offering that sales or bookings still reference.
+- `CatalogRepository` also has `updateOffering` and `deleteOffering` (Round 27; Supabase uses the `update_offering()` RPC).
+- `src/index.ts` — module entry (also exports `rules.ts`).
 
 ### Module: POS — `packages/modules/pos`
 - `package.json` — depends on `@isnabero/db`, `@isnabero/module-catalog`,
@@ -643,7 +652,12 @@ deliver a ready-to-extract ZIP with only changed/created files.
   [start, end)), `blocksSlot` (cancelled doesn't block), `assertValidRange`,
   `BookingConflictError` (user-facing message naming the clashing booking).
   Used by BOTH repositories — never duplicate the rule elsewhere.
-- `src/index.ts` — module entry (also exports `overlap.ts`).
+- `src/status.ts` (Round 27) — the booking lifecycle: `BOOKING_STATUSES`, `nextStatuses`, `canTransition`, `isEditable`,
+  `BookingStatusError`, `BOOKING_NOT_EDITABLE_MESSAGE`. pending → confirmed → completed; pending/confirmed → cancelled;
+  completed/cancelled are final. Migration 0011 enforces the same table in the database.
+- `BookingRepository` also has `updateBooking` (open bookings only; re-checks the slot excluding itself) and
+  `updateBookingStatus`; hooks `useUpdateBooking`, `useUpdateBookingStatus`.
+- `src/index.ts` — module entry (also exports `overlap.ts` and `status.ts`).
 
 ### Module: Expenses — `packages/modules/expenses`
 - `package.json` — `@isnabero/module-expenses`; same deps as the other modules.
@@ -744,7 +758,7 @@ deliver a ready-to-extract ZIP with only changed/created files.
   with `moduleKeyEnum` in `packages/db/src/schema/core.ts` (a test checks it).
   Include whenever adding, renaming, or reordering a module.
 - `src/lib/permissions.ts` — **`PERMISSIONS`**: the one role→permission map
-  (`business.configure` owner; `employees.manage`, `payments.void`,
+  (`business.configure` owner+admin since Round 28; `employees.manage`, `payments.void`,
   `expenses.view`, `expenses.manage`, `audit.view` owner+admin), `hasPermission`. The
   database RLS in migration 0004 mirrors it — change both together.
 - `src/lib/repositories/repository.ts` — `CoreRepository` interface for
@@ -762,10 +776,11 @@ deliver a ready-to-extract ZIP with only changed/created files.
 
 **`src/stores/` — Global Client State**
 - `src/stores/business-store.ts` — `useBusinessStore` (Zustand): current
-  tenant context (`businessId`, `businessName`). **Defaults to the seeded
-  demo business** ("Sample Business", `DEMO_BUSINESS_ID` from
-  `@isnabero/db`) instead of null, so pages render data before login
-  exists. Replace this default once real auth is built — `setBusiness`
+  tenant context (`businessId`, `businessName`). **Mock mode defaults to the
+  seeded demo business** ("Sample Business", `DEMO_BUSINESS_ID` from
+  `@isnabero/db`); **Supabase mode starts empty** and `AuthProvider` sets it
+  from the signed-in user's employee row (Round 27, `getMembership`) and
+  clears it on sign-out (`clearBusiness`). `setBusiness`
   should then be called with the logged-in employee's actual business_id.
 - `src/stores/theme-store.ts` — `useThemeStore` (Zustand): light/dark mode
   state. Persists to `localStorage` (`isnabero-theme` key), toggles the
@@ -813,8 +828,9 @@ deliver a ready-to-extract ZIP with only changed/created files.
   calls `CoreRepository.deleteEmployee`, invalidates employees list +
   dashboard stats.
 - `src/hooks/use-void-payment-record.ts` — `useVoidPaymentRecord(businessId)`:
-  calls `CoreRepository.voidPaymentRecord` (soft delete), invalidates payment
-  records + dashboard stats.
+  calls `CoreRepository.voidPaymentRecord` (soft delete; a POS payment also
+  restocks its items — Round 27), invalidates payment records, dashboard
+  stats, receipts, stock and reports.
 - `src/hooks/use-permission.ts` — `useCan()` (checker; denies while auth or
   the employee role is still loading) and `usePermission(p)`. Replaced the
   deleted `use-has-role.ts`.
@@ -825,11 +841,12 @@ deliver a ready-to-extract ZIP with only changed/created files.
   desktop-panel vs mobile-drawer behavior.
 
 **`src/components/` — Reusable Feature Components**
-- `src/components/catalog/CreateOfferingModal.tsx` — "Add offering" form
-  (react-hook-form + zod): name, description, type, price, duration,
-  dynamic bundle inclusions list (shown only when type = bundle). Shows a
-  success toast on save. Include when changing what fields an offering can
-  have.
+- `src/components/catalog/CreateOfferingModal.tsx` — the "Add offering" button plus `OfferingFormModal` in create mode.
+- `src/components/catalog/OfferingFormModal.tsx` (Round 27) — the offering form for BOTH add and edit (react-hook-form + zod):
+  name, description, type, price, duration, dynamic bundle inclusions list (shown only when type = bundle). Controlled
+  (`open`/`onOpenChange`, optional `offering` = edit). Include when changing what fields an offering can have.
+- `src/components/catalog/OfferingActions.tsx` (Round 27) — edit + delete buttons on a catalog card (delete uses `ConfirmDialog`;
+  a used offering shows the repository's error toast). Include with `CatalogPage.tsx`.
 - `src/components/catalog/offering-form-schema.ts` — `offeringFormSchema` +
   `OfferingFormValues`, split out of the modal so it is unit-tested. Blank
   Duration / inclusion Qty become `undefined` (→ null), NOT 0; duration and qty
@@ -837,10 +854,19 @@ deliver a ready-to-extract ZIP with only changed/created files.
 - `src/components/pos/CheckoutModal.tsx` — payment method selector (cash/
   GCash/bank transfer/other) with conditional reference-code field. Include
   when changing checkout/payment-method behavior.
-- `src/components/booking/NewBookingModal.tsx` — "New booking" form (same
-  trigger/dialog pattern as `CreateOfferingModal`): package select,
-  customer name, start time. Lives in Booking's `PageHeader` action slot,
-  replacing what used to be an always-visible inline form.
+- `src/components/booking/NewBookingModal.tsx` — the "New booking" button
+  plus `BookingFormModal` in create mode (Round 27: the form itself moved to
+  `BookingFormModal.tsx`, shared with edit). Lives in Booking's `PageHeader`
+  action slot.
+- `src/components/booking/BookingFormModal.tsx` (Round 27) — the booking form for BOTH create and edit (package, customer, optional
+  contact, start time); an edit keeps the booking's length unless the package changed. `booking-form.ts` holds the pure helpers
+  (`toDateTimeLocal`, `bookingMinutes`; tested in `booking/__tests__/booking-form.test.ts`).
+- `src/components/booking/BookingActions.tsx` (Round 27) — per-booking buttons: Confirm / Mark completed, edit, cancel (with
+  `ConfirmDialog`); renders nothing for completed/cancelled bookings. Include with `BookingPage.tsx`.
+- `src/components/NoBusinessAccess.tsx` (Round 27) — screen for a signed-in account that belongs to no business.
+- `src/lib/repositories/paginate.ts` (Round 27) — `fetchAllRows`: reads every page past Supabase's 1000-row cap; used by the paged
+  Supabase queries (payment records, sales/booking/catalog reports). Tested in `__tests__/paginate.test.ts`.
+- `src/lib/repositories/__tests__/void-sale.test.ts` (Round 27) — restock-on-void behaviour (mock).
 - `src/components/employees/AddEmployeeModal.tsx` — "Add employee" form
   (react-hook-form + zod): full name + role select. Email field and email
   validation exist ONLY in supabase mode (real invite); mock mode creates a
@@ -1035,7 +1061,8 @@ page's "Coming soon" placeholder cards into real, working reports.
   `App.tsx`.
 - (`use-has-role.ts` was deleted in Round 17 — see `use-permission.ts`.)
 - `apps/web/src/components/ProtectedRoute.tsx` — redirects to `/login` if
-  unauthenticated (never fires in mock mode).
+  unauthenticated (never fires in mock mode); shows `NoBusinessAccess` when the
+  account has no employee row (Supabase mode, Round 27).
 - `apps/web/src/pages/LoginPage.tsx` — real Supabase email/password
   sign-in form. Lazy-loaded like every other page.
 - `supabase/functions/invite-employee/index.ts` — Edge Function for real
@@ -1226,7 +1253,7 @@ Scope = the whole business (one bookable resource). Back-to-back is allowed
 first, then a "module is turned off" screen linking owners to Business Setup).
 Sidebar items and Dashboard quick actions are filtered by permission.
 `PaymentsPage` uses `payments.void`, `EmployeesPage` uses `employees.manage`.
-`business.configure` is owner-only (admin can't run setup) — one-line change.
+`business.configure` is owner+admin as of Round 28 (admin == owner in permissions.ts; RLS mirrored in `0013`).
 Mock role switch: `VITE_MOCK_ROLE=owner|admin|staff` (mock mode only; typed in
 `vite-env.d.ts`, documented in `.env.example`). `AuthProvider` derives
 `employeeLoading` from a resolved user+business key (no "no role" flash) and
@@ -1535,7 +1562,7 @@ app then shows the login page); pages never opened before going offline stay on 
 changes (a larger, separate step); the service worker has no update prompt (a new build is picked up on the next online load);
 Google Fonts are not cached (system fonts are used offline).
 
-### Round 26: Offline follow-up + design pass — CURRENT
+### Round 26: Offline follow-up + design pass
 Batch 3 is finished; this round is the agreed visuals/design pass (next: Supabase setup, last).
 **Offline follow-up (found by the owner's screenshot):** offline with nothing loaded, pages used to show misleading zeros/empty states. Now
 `useOfflineUnavailable` (queries that are paused with no data) swaps the page for "This page isn't available offline" (the page stays
@@ -1554,8 +1581,93 @@ screenshots before/after in light, dark and 390px.
 Known limits: the design pass is a consistency/bug audit by screenshot, not a visual redesign; say which pages or components to restyle
 further.
 
+### Round 27: Foundations + daily-use gaps (hosted Supabase prep)
+Decision: Supabase will be a **hosted project** (not `supabase start`). Nothing has been run against it yet; the sandbox cannot reach
+`supabase.co`. This round did the work that needs no live project: it tested the migrations on a scratch Postgres 16 (with stubs for
+`auth.uid()` and the `anon`/`authenticated` roles, mimicking Supabase's default function grants), fixed what that found, and built the
+four features that change the data model, so the schema is settled before real data exists.
+**Found by testing the SQL on a real Postgres (all fixed):**
+1. **No `0000` migration** — the tables were never created by any file. Generated `0000_initial_schema.sql`.
+2. **Forgeable audit log** — Supabase grants EXECUTE on public functions to `anon`/`authenticated` and PostgREST exposes them as
+   `/rest/v1/rpc/<name>`, so anyone could call the security-definer `audit_write` and write audit rows for any business. `0009` revokes
+   it (triggers still work; they run as the owner). `checkout_sale` is also closed to `anon`.
+3. **Bundles with inclusions could not be added** — 0001 had no write policy on `offering_inclusions`, so the client insert was blocked
+   by RLS. `0012` adds one.
+Confirmed OK on Postgres: staff can't read expenses/audit or edit the business; owners can; tenants are isolated; checkout RPC
+(stock, receipt numbers, oversell → 23514); booking overlap (23P01); receipt joins return the right shape.
+**Foundations:** (a) **Business from login** — `CoreRepository.getMembership(userId)` (mock + Supabase) returns the user's oldest employee
+row and its business; `AuthProvider` loads it as a query (so the offline cache restores it) and sets `useBusinessStore`; mock mode
+still starts on the demo business. An account with no employee row sees `NoBusinessAccess` instead of an empty app. Multi-business
+switching is not built (the oldest membership wins). (b) **Reports/lists vs the 1000-row cap** — `lib/repositories/paginate.ts`
+(`fetchAllRows`) pages through PostgREST's `max_rows`; the sales report reads previous + current period in one paged query, the booking
+report uses head-only count queries for totals, and the catalog report no longer sends every order id in the URL (that broke past a few
+hundred orders) — it reads `pos_order_items` with a `pos_orders!inner` join filtered by business and non-voided status.
+**Restock on void:** voiding a POS payment marks its order `voided`, returns tracked items to stock as `return` movements ("Sale #N
+voided") exactly once, and logs `stock.adjusted`. Mock: `voidMockSale()` in `packages/db/src/mock/stock.ts` (called from the core mock
+repo); Supabase: trigger `payment_records_restock_void` (`0010`). Also fixes voided sales still counting in "top sellers".
+**Booking status + edit:** `status.ts` lifecycle (above); `updateBooking` / `updateBookingStatus` in both repositories; UI: status badge,
+Confirm / Mark completed button, edit and cancel actions per booking card (`BookingActions`, shared `BookingFormModal` for create and
+edit with a new optional contact field; edit keeps the booking's length unless the package changes — `booking-form.ts`). Cancelled
+bookings free their slot. DB: `0011` adds the `bookings_guard` trigger (legal moves only, final bookings frozen) and audit actions
+`booking.status_changed` / `booking.updated`. Everyone in the business may do this (no new permission).
+**Offering edit + delete:** `updateOffering` / `deleteOffering` in both repositories; UI: edit and delete buttons on catalog cards
+(`OfferingActions`, shared `OfferingFormModal`). Delete is refused with a clear message when sales or bookings use the offering
+(`OfferingInUseError`; Postgres foreign key 23503). Supabase edit goes through the `update_offering()` RPC (`0012`: one transaction
+for details + inclusions + audit). Audit actions `offering.updated` / `offering.deleted` (delete is a BEFORE DELETE trigger; the
+cascade's own "Stopped tracking" line is skipped). Past sales keep the price they were sold at (`pos_order_items.unit_price`).
+New audit actions are in `AUDIT_ACTIONS` and both `enums.auditAction` locales.
+**Tests:** **201** total (web 118). typecheck / lint / build green. Playwright on the dev server (mock mode): add → edit → delete an
+offering, delete of a used offering refused with the toast, booking create → edit → confirm → cancel, no horizontal overflow at 390px.
+SQL: migrations 0000–0012 + seed applied in order to a fresh Postgres 16; 0009–0012 each exercised with `authenticated`/`anon` roles.
+**NOT verified:** anything through a real PostgREST/GoTrue (embeds in `getReceipt`, `getMembership`, the paged reports, RPC argument
+mapping for `update_offering`), the login flow, expired-session-while-offline, `invite-employee`, RLS with real JWTs. Filipino strings for
+this round were written without a native-speaker review (add them to `isnabero-translations-review.csv`).
+**Findings left as-is (decide before go-live):** (1) an admin can set any employee's role, including to `owner` (and promote
+themselves) — `employees` RLS allows owner/admin updates; the UI/last-owner rule is app-level only. (2) `createEmployee` still inserts
+a random placeholder `user_id`; real users need the `invite-employee` edge function or manual linking. (3) The seed runs triggers, so a
+fresh database starts with ~50 "System" audit rows (shift.created etc.). (4) Deleting an offering also deletes its stock history.
+**Hosted setup:** see `supabase/HOSTED-SETUP.md` (create project, apply 0000–0012 + seed, create the first user, run `link-owner.sql`,
+set `.env.local`). Open items not done: edit/cancel for expenses, reports including expenses/stock, offline selling, service-worker update prompt.
+
 ### Never Include in Prompts
 - `node_modules/` (any level) — build artifacts, never source.
 - `.turbo/`, `dist/` — build output/cache.
 - `.env`, `.env.local` — secrets.
 - `pnpm-lock.yaml` — huge, auto-generated, never needs manual editing (but it IS shipped in a round's ZIP when dependencies changed).
+
+### Round 28: Admin = owner, Filipino review, invite hardening
+- `apps/web/src/lib/permissions.ts`: `business.configure` is now `["owner","admin"]`, so admin has every permission an owner has
+  (test loops all permissions). `supabase/migrations/0013_admin_configure.sql` mirrors it in RLS (`businesses` update,
+  `business_modules` all). Verified on scratch Postgres: admin can update both, staff cannot. Last-owner protection is still app-level.
+- Filipino accuracy pass over all 655 strings (`i18n/locales/fil/*.ts`): fixed inverted `auth.mockModeError`, "puwede" spelling,
+  "Magbenta", length-limit wording ("Hindi dapat lumampas sa {max} na karakter"), "pagtatapos" for shift end, `modules.inventory.description`
+  grammar, `inventory.adjust.countedQuantity`, export/PDF wording. Still needs a native-speaker read before launch.
+- `supabase/functions/invite-employee/index.ts`: now verifies the caller's JWT and that they are an owner/admin of `businessId`
+  (previously trusted the request body). NOT verified against a real Supabase (no access from the sandbox).
+- Employee login IDs: employees sign in with their own email (Supabase Auth); `employees.user_id` links to `auth.users`.
+  Recommended: keep email login, use the invite flow; no custom usernames.
+
+### Round 29: Supabase-mode bug fix, sidebar regroup, detail dialogs, Playwright e2e — CURRENT
+- **Bug fixed — Supabase mode never activated.** `packages/db/src/data-source.ts` read `(import.meta)?.env`; Vite only replaces the literal
+  `import.meta.env.VITE_DATA_SOURCE`, so the optional-chained form read `undefined` and `getDataSource()` always returned `"mock"`
+  (no login page, "Sign out" toast, sample data). Now uses the literal form (cast kept for typing; try/catch still covers plain Node).
+  Regression-tested by `e2e/supabase/login-gate.spec.ts`.
+- Mock mode is now obvious: a "Sample data" badge under the business name; the mock sign-out toast explains how to switch to Supabase.
+- Sidebar (`layouts/Sidebar.tsx`, config in `lib/nav-config.ts`): groups by task — Dashboard; Sales (POS, Booking, Payment Records);
+  Products & Stock (Catalog, Inventory); Team (Employees, Schedule); Money & Reports (Expenses, Reports, Audit Log). Empty groups hide.
+  **Business Setup** is pinned at the bottom (settings, not daily work). `nav.core/modules/noModules` removed; `nav.groups.*`, `nav.demoMode*`,
+  `nav.mainNavigation` added. `lib/__tests__/nav-config.test.ts` checks every registered module appears exactly once.
+- Detail dialogs: `components/details/` — `DetailDialog` (shared label/value layout), `open-props.ts` (`openProps` makes a `<tr>`/card open on
+  click/Enter/Space; ignores inner buttons and portal events; `OPEN_CLASS`), and Payment/Employee/Expense/Audit/Booking/Offering/Stock(+Movement)
+  dialogs. Wired into Payments, Employees, Expenses, Audit Log, Inventory (items + history), Booking cards, Catalog cards. i18n namespace `details.*`.
+- Richer rows: `PaymentRecordView` gained `summary`, `receiptNumber`, `cashierName`, `customerName` (mock: from mockDb; Supabase:
+  `fetchPaymentDetails` in `supabase-repository.ts`, chunked `.in()` on pos_orders/bookings, best-effort — NOT verified against real PostgREST).
+  Payments table has a Details column and searches it; CSV export gained Details/Customer/Cashier. Expenses show "Recorded by"; inventory shows item type;
+  booking cards show price + contact; employees show a "You" tag.
+- Playwright e2e (`apps/web/playwright.config.ts`, `apps/web/e2e/`): projects `owner` (mock, :5199), `mobile`, `staff` (VITE_MOCK_ROLE=staff, :5198),
+  `supabase` (:5197; fake URL login-gate test, plus `live.spec.ts` that only runs with `E2E_LIVE=1 E2E_EMAIL E2E_PASSWORD` and only reads/signs in/out).
+  `fixtures.ts` fails any test on console errors / uncaught exceptions / same-origin HTTP errors; use `goTo()` (sidebar click) after changing mock data —
+  `page.goto` reloads and resets the in-memory mock DB. Commands: `pnpm --filter @isnabero/web e2e`, `e2e:live`. First run: `pnpm exec playwright install chromium`.
+  Sandbox: `PW_CHROMIUM_PATH`, `PW_NO_SANDBOX=1`. Vitest now only includes `src/**/*.test.*`.
+- Deps added to apps/web devDependencies: `@playwright/test` 1.56.0, `@types/node` ^22 (pnpm-lock.yaml updated).
+- File map: new `src/lib/nav-config.ts`, `src/components/details/*`, `src/i18n/locales/{en,fil}/details.ts`, `e2e/*`; see FILE entries above for the pages touched.

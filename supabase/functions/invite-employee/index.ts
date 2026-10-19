@@ -35,10 +35,25 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // TODO once auth is fully wired up: verify the caller is themselves an owner/admin of `businessId`
-    // before proceeding — this function currently trusts the request body, which is fine for local
-    // development but must NOT ship to production as-is. Check the caller's JWT (req.headers
-    // "Authorization") against employees for businessId with role in (owner, admin) first.
+    // Verify the caller: a signed-in owner/admin of this business (checked with the caller's own JWT)
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Not signed in" }), { status: 401 });
+    }
+    const { data: caller, error: callerError } = await supabaseAdmin.auth.getUser(authHeader.replace(/^Bearer\s+/i, ""));
+    if (callerError || !caller.user) {
+      return new Response(JSON.stringify({ error: "Not signed in" }), { status: 401 });
+    }
+    const { data: callerRow } = await supabaseAdmin
+      .from("employees")
+      .select("id")
+      .eq("business_id", businessId)
+      .eq("user_id", caller.user.id)
+      .in("role", ["owner", "admin"])
+      .maybeSingle();
+    if (!callerRow) {
+      return new Response(JSON.stringify({ error: "Only an owner or admin can invite employees" }), { status: 403 });
+    }
 
     const { data: invited, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email);
     if (inviteError) {

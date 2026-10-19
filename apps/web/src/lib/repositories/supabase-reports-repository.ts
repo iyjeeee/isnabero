@@ -6,6 +6,7 @@ import type {
   CatalogReportData,
   DailyPoint,
 } from "./reports-repository";
+import { fetchAllRows } from "./paginate";
 
 function toDateKey(date: Date): string {
   const y = date.getFullYear();
@@ -46,15 +47,20 @@ export function createSupabaseReportsRepository(supabase: SupabaseClient): Repor
   return {
     async getSalesReport(businessId, days = 14): Promise<SalesReportData> {
       const cutoff = cutoffDate(days);
-      const { data, error } = await supabase
-        .from("payment_records")
-        .select("amount, method, created_at, voided_at")
-        .eq("business_id", businessId)
-        .gte("created_at", cutoff.toISOString());
-      if (error) throw error;
-
-      const rows = data ?? [];
-      const active = rows.filter((row: any) => !row.voided_at);
+      const { start: prevStart } = previousPeriodRange(days);
+      // One paged read covers the previous and the current period; they're split below (the previous one ends where the current starts)
+      const all = await fetchAllRows<any>((from, to) =>
+        supabase
+          .from("payment_records")
+          .select("id, amount, method, created_at, voided_at")
+          .eq("business_id", businessId)
+          .gte("created_at", prevStart.toISOString())
+          .order("created_at")
+          .order("id")
+          .range(from, to),
+      );
+      const rows = all.filter((row) => new Date(row.created_at) >= cutoff);
+      const active = rows.filter((row) => !row.voided_at);
 
       const revenueByDate = new Map<string, number>();
       const revenueByMethod = new Map<string, number>();
@@ -65,16 +71,8 @@ export function createSupabaseReportsRepository(supabase: SupabaseClient): Repor
       }
       const totalRevenue = active.reduce((sum: number, row: any) => sum + Number(row.amount), 0);
 
-      const { start: prevStart, end: prevEnd } = previousPeriodRange(days);
-      const { data: prevData, error: prevError } = await supabase
-        .from("payment_records")
-        .select("amount, voided_at")
-        .eq("business_id", businessId)
-        .gte("created_at", prevStart.toISOString())
-        .lt("created_at", prevEnd.toISOString());
-      if (prevError) throw prevError;
-      const previousPeriodRevenue = (prevData ?? [])
-        .filter((row: any) => !row.voided_at)
+      const previousPeriodRevenue = all
+        .filter((row) => new Date(row.created_at) < cutoff && !row.voided_at)
         .reduce((sum: number, row: any) => sum + Number(row.amount), 0);
 
       return {
@@ -90,33 +88,41 @@ export function createSupabaseReportsRepository(supabase: SupabaseClient): Repor
 
     async getBookingReport(businessId, days = 14): Promise<BookingReportData> {
       const cutoff = cutoffDate(days);
-      const { data: allBookings, error: allError } = await supabase
-        .from("bookings")
-        .select("status, start_time")
-        .eq("business_id", businessId);
-      if (allError) throw allError;
+      const { start: prevStart, end: prevEnd } = previousPeriodRange(days);
 
-      const rows = allBookings ?? [];
-      const inRange = rows.filter((row: any) => new Date(row.start_time) >= cutoff);
+      // Totals come from head-only count queries (no rows transferred); only bookings from the previous period onward are read
+      // in full — they feed the daily chart, the period comparison and the upcoming count.
+      const countStatus = async (status?: string) => {
+        let query = supabase.from("bookings").select("id", { count: "exact", head: true }).eq("business_id", businessId);
+        if (status) query = query.eq("status", status);
+        const { count, error } = await query;
+        if (error) throw error;
+        return count ?? 0;
+      };
+      const [windowRows, totalBookings, pendingCount, confirmedCount, completedCount, cancelledCount] = await Promise.all([
+        fetchAllRows<any>((from, to) =>
+          supabase.from("bookings").select("id, status, start_time").eq("business_id", businessId).gte("start_time", prevStart.toISOString()).order("start_time").order("id").range(from, to),
+        ),
+        countStatus(),
+        countStatus("pending"),
+        countStatus("confirmed"),
+        countStatus("completed"),
+        countStatus("cancelled"),
+      ]);
 
+      const inRange = windowRows.filter((row) => new Date(row.start_time) >= cutoff);
       const countByDate = new Map<string, number>();
       for (const row of inRange) {
         const key = toDateKey(new Date(row.start_time));
         countByDate.set(key, (countByDate.get(key) ?? 0) + 1);
       }
-
-      const { start: prevStart, end: prevEnd } = previousPeriodRange(days);
-      const previousPeriodCount = rows.filter((r: any) => {
-        const startTime = new Date(r.start_time);
+      const previousPeriodCount = windowRows.filter((row) => {
+        const startTime = new Date(row.start_time);
         return startTime >= prevStart && startTime < prevEnd;
       }).length;
 
       const now = new Date();
-      const upcomingCount = rows.filter((r: any) => new Date(r.start_time) >= now && (r.status === "pending" || r.status === "confirmed")).length;
-      const completedCount = rows.filter((r: any) => r.status === "completed").length;
-      const cancelledCount = rows.filter((r: any) => r.status === "cancelled").length;
-      const pendingCount = rows.filter((r: any) => r.status === "pending").length;
-      const confirmedCount = rows.filter((r: any) => r.status === "confirmed").length;
+      const upcomingCount = windowRows.filter((row) => new Date(row.start_time) >= now && (row.status === "pending" || row.status === "confirmed")).length;
 
       return {
         dailyBookings: buildDailySeries(days, countByDate),
@@ -126,7 +132,7 @@ export function createSupabaseReportsRepository(supabase: SupabaseClient): Repor
           { label: "Completed", value: completedCount },
           { label: "Cancelled", value: cancelledCount },
         ],
-        totalBookings: rows.length,
+        totalBookings,
         previousPeriodCount,
         upcomingCount,
         completedCount,
@@ -141,23 +147,16 @@ export function createSupabaseReportsRepository(supabase: SupabaseClient): Repor
         .eq("business_id", businessId);
       if (offeringsError) throw offeringsError;
 
-      const { data: orders, error: ordersError } = await supabase
-        .from("pos_orders")
-        .select("id")
-        .eq("business_id", businessId)
-        .neq("status", "voided");
-      if (ordersError) throw ordersError;
-
-      const orderIds = (orders ?? []).map((order: any) => order.id);
-      let items: any[] = [];
-      if (orderIds.length > 0) {
-        const { data: itemsData, error: itemsError } = await supabase
+      // One joined read instead of listing every order id in a URL (which breaks past a few hundred orders); voided sales are excluded
+      const items = await fetchAllRows<any>((from, to) =>
+        supabase
           .from("pos_order_items")
-          .select("offering_id, quantity, unit_price")
-          .in("order_id", orderIds);
-        if (itemsError) throw itemsError;
-        items = itemsData ?? [];
-      }
+          .select("id, offering_id, quantity, unit_price, pos_orders!inner(business_id, status)")
+          .eq("pos_orders.business_id", businessId)
+          .neq("pos_orders.status", "voided")
+          .order("id")
+          .range(from, to),
+      );
 
       const totalsByOffering = new Map<string, { quantitySold: number; revenue: number }>();
       for (const item of items) {

@@ -5,12 +5,12 @@ export type DataSource = "mock" | "supabase";
 
 export function getDataSource(): DataSource {
   try {
-    // import.meta.env is statically replaced by Vite at build time in apps/web (and any package it
-    // bundles). Guarded in a try/catch since packages/db can also run in plain Node (drizzle-kit, edge
-    // functions) where import.meta.env doesn't exist.
-    const env = (import.meta as unknown as { env?: Record<string, string> })?.env;
-    if (env?.VITE_DATA_SOURCE === "supabase") return "supabase";
-    if (env?.VITE_DATA_SOURCE === "mock") return "mock";
+    // Must be the literal `import.meta.env.VITE_DATA_SOURCE` — Vite only replaces that exact form (an optional-chained or cast
+    // `import.meta?.env` is left alone, so it reads undefined in the browser and silently falls back to mock). Plain Node has no
+    // import.meta.env, so the try/catch below covers drizzle-kit and edge functions.
+    const source = (import.meta as unknown as { env: { VITE_DATA_SOURCE?: string } }).env.VITE_DATA_SOURCE;
+    if (source === "supabase") return "supabase";
+    if (source === "mock") return "mock";
   } catch {
     // import.meta not available in this runtime — fall through to the default below
   }

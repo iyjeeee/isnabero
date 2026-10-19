@@ -14,7 +14,7 @@ export const expenses: Dictionary["expenses"] = {
     descriptionReadonly: "Lalabas dito ang mga gastos na na-record ng owner o admin.",
   },
   noMatches: { title: "Walang tugma", description: "Subukan ang ibang hinahanap o category." },
-  table: { date: "Petsa", category: "Kategorya", description: "Deskripsyon", method: "Ibinayad gamit ang", amount: "Halaga", actions: "Mga Aksyon" },
+  table: { recordedBy: "Nag-record", date: "Petsa", category: "Kategorya", description: "Deskripsyon", method: "Ibinayad gamit ang", amount: "Halaga", actions: "Mga Aksyon" },
   voided: "Na-void",
   void: {
     ariaLabel: "I-void ang gastos na {label}",
@@ -41,7 +41,7 @@ export const expenses: Dictionary["expenses"] = {
     chooseDate: "Pumili ng petsa",
     futureDate: "Hindi puwedeng nasa hinaharap ang petsa",
     descriptionRequired: "Kailangan ang deskripsyon",
-    keepUnder: "Panatilihing wala pang {max} na karakter",
+    keepUnder: "Hindi dapat lumampas sa {max} na karakter",
     amountRequired: "Kailangan ang halaga",
     amountMin: "Dapat hindi bababa sa ₱0.01 ang halaga",
     amountTooLarge: "Masyadong malaki ang halaga",

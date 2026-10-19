@@ -9,7 +9,7 @@ export const dashboard: Dictionary["dashboard"] = {
   quickActions: {
     title: "Mabilisang Aksyon",
     empty: "Mag-enable ng module para makita ang mabilisang aksyon dito.",
-    pos: { label: "Mag-benta", description: "Buksan ang POS screen" },
+    pos: { label: "Magbenta", description: "Buksan ang POS screen" },
     catalog: { label: "Idagdag sa Katalogo", description: "Bagong item, bundle o add-on" },
     booking: { label: "Bagong booking", description: "Mag-iskedyul ng customer" },
     expenses: { label: "Mag-record ng gastos", description: "Upa, supplies, utilities…" },

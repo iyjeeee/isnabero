@@ -12,7 +12,7 @@ export const expenses = {
     descriptionReadonly: "Expenses recorded by an owner or admin will show up here.",
   },
   noMatches: { title: "No matches", description: "Try a different search term or category." },
-  table: { date: "Date", category: "Category", description: "Description", method: "Paid with", amount: "Amount", actions: "Actions" },
+  table: { recordedBy: "Recorded by", date: "Date", category: "Category", description: "Description", method: "Paid with", amount: "Amount", actions: "Actions" },
   voided: "Voided",
   void: {
     ariaLabel: "Void expense {label}",

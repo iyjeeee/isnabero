@@ -8,16 +8,11 @@ describe("hasPermission", () => {
     for (const permission of ALL) expect(hasPermission("owner", permission)).toBe(true);
   });
 
-  it("admin can manage employees, payments and expenses but not configure the business", () => {
-    expect(hasPermission("admin", "employees.manage")).toBe(true);
-    expect(hasPermission("admin", "payments.void")).toBe(true);
-    expect(hasPermission("admin", "expenses.view")).toBe(true);
-    expect(hasPermission("admin", "expenses.manage")).toBe(true);
-    expect(hasPermission("admin", "audit.view")).toBe(true);
-    expect(hasPermission("admin", "business.configure")).toBe(false);
+  it("admin has the same permissions as the owner, including configuring the business", () => {
+    for (const permission of ALL) expect(hasPermission("admin", permission), permission).toBe(true);
   });
 
-  it("staff has none of the gated permissions (expenses are owner/admin only)", () => {
+  it("staff has none of the gated permissions (everything gated is owner/admin)", () => {
     for (const permission of ALL) expect(hasPermission("staff", permission)).toBe(false);
   });
 

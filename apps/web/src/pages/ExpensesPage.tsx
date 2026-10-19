@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Receipt, CalendarDays, Layers, Wallet, Search } from "lucide-react";
 import { Card, CardContent, Badge, PageHeader, EmptyState, Skeleton, StatCard, FilterBar, Input, Pagination, cn } from "@isnabero/ui";
 import { EXPENSE_CATEGORY_VALUES, todayYmd, useExpenses, type ExpenseCategory } from "@isnabero/module-expenses";
@@ -13,6 +14,9 @@ import { VoidExpenseButton } from "@/components/expenses/VoidExpenseButton";
 import { computeExpenseStats } from "@/components/expenses/expense-stats";
 import { useFormat, useLabels, useT } from "@/i18n";
 import { formatPeso } from "@/lib/money";
+import { getCoreRepository } from "@/lib/repositories/get-repository";
+import { ExpenseDetailDialog } from "@/components/details/ExpenseDetailDialog";
+import { OPEN_CLASS, openProps } from "@/components/details/open-props";
 
 const CATEGORY_TABS = ["all", ...EXPENSE_CATEGORY_VALUES] as const;
 const CATEGORY_BADGE_VARIANT = { rent: "info", utilities: "warning", supplies: "default", salaries: "success", other: "secondary" } as const;
@@ -28,10 +32,19 @@ export default function ExpensesPage() {
   const canManage = usePermission("expenses.manage");
 
   const [showVoided, setShowVoided] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<"all" | ExpenseCategory>("all");
 
   const { data: expenses = [], isLoading } = useExpenses(supabase, businessId, { includeVoided: showVoided });
+
+  // names for "recorded by" (the expense only stores the employee id); shares the Employees page cache
+  const { data: employees = [] } = useQuery({
+    queryKey: ["employees", businessId],
+    queryFn: () => getCoreRepository(supabase).listEmployees(businessId),
+    enabled: Boolean(businessId),
+  });
+  const employeeName = (id: string | null) => (id ? employees.find((employee) => employee.id === id)?.fullName ?? null : null);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -124,13 +137,14 @@ export default function ExpensesPage() {
                     <th className="px-4 py-3">{t("expenses.table.category")}</th>
                     <th className="px-4 py-3">{t("expenses.table.description")}</th>
                     <th className="px-4 py-3">{t("expenses.table.method")}</th>
+                    <th className="px-4 py-3">{t("expenses.table.recordedBy")}</th>
                     <th className="px-4 py-3 text-right">{t("expenses.table.amount")}</th>
                     {canManage && <th className="px-4 py-3 text-right">{t("expenses.table.actions")}</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {pageItems.map((expense) => (
-                    <tr key={expense.id} className={cn("border-b transition-colors last:border-0 hover:bg-accent/50", expense.voidedAt && "opacity-50")}>
+                    <tr key={expense.id} {...openProps(() => setDetailId(expense.id))} title={t("details.open", { name: expense.description })} className={cn("border-b transition-colors last:border-0 hover:bg-accent/50", OPEN_CLASS, expense.voidedAt && "opacity-50")}>
                       <td className="whitespace-nowrap px-4 py-3">{f.date(expense.expenseDate)}</td>
                       <td className="px-4 py-3">
                         <Badge variant={CATEGORY_BADGE_VARIANT[expense.category]}>{labels.expenseCategory(expense.category)}</Badge>
@@ -140,6 +154,7 @@ export default function ExpensesPage() {
                         {expense.notes && <p className="text-xs text-muted-foreground">{expense.notes}</p>}
                       </td>
                       <td className="px-4 py-3">{labels.method(expense.method)}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{employeeName(expense.recordedBy) ?? "—"}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-right font-medium">
                         {peso(expense.amount)}
                         {expense.voidedAt && (
@@ -168,6 +183,7 @@ export default function ExpensesPage() {
           )}
         </CardContent>
       </Card>
+      <ExpenseDetailDialog expense={expenses.find((expense) => expense.id === detailId) ?? null} recordedByName={employeeName(expenses.find((expense) => expense.id === detailId)?.recordedBy ?? null)} onClose={() => setDetailId(null)} />
     </div>
   );
 }

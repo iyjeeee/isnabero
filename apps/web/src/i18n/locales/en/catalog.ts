@@ -13,6 +13,14 @@ export const catalog = {
     markAvailable: "Mark available",
     markedAvailable: "{name} marked available",
     markedSoldOut: "{name} marked sold out",
+    edit: "Edit {name}",
+    delete: "Delete {name}",
+    deleted: "{name} deleted",
+  },
+  deleteDialog: {
+    title: "Delete this offering?",
+    description: "\"{name}\" will be removed from the catalog. This can't be undone. If it has sales or bookings, mark it sold out instead.",
+    confirm: "Delete offering",
   },
   tabs: { all: "All", item: "Items", bundle: "Bundles", addon: "Add-ons" },
   form: {
@@ -35,6 +43,10 @@ export const catalog = {
     removeInclusion: "Remove inclusion",
     submit: "Save offering",
     added: "{name} added to catalog",
+    editTitle: "Edit offering",
+    editDescription: "Update the details. Past sales keep the price they were sold at.",
+    saveChanges: "Save changes",
+    updated: "{name} updated",
   },
   validation: {
     nameRequired: "Name is required",

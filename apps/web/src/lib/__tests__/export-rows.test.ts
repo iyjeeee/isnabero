@@ -24,12 +24,12 @@ describe("export rows", () => {
     const at = new Date(2026, 2, 10, 9, 5);
     const rows = paymentRows(
       [
-        { id: "1", sourceModule: "pos", method: "gcash", referenceCode: null, amount: 50, createdAt: at, voidedAt: null },
-        { id: "2", sourceModule: "pos", method: "cash", referenceCode: "R1", amount: 5, createdAt: new Date(2026, 2, 12), voidedAt: null },
+        { id: "1", sourceModule: "pos", method: "gcash", referenceCode: null, amount: 50, createdAt: at, voidedAt: null, summary: "2 × Sisig", receiptNumber: 7, cashierName: "Juan", customerName: null },
+        { id: "2", sourceModule: "pos", method: "cash", referenceCode: "R1", amount: 5, createdAt: new Date(2026, 2, 12), voidedAt: null, summary: null, receiptNumber: null, cashierName: null, customerName: null },
       ],
       { to: "2026-03-10" },
     );
-    expect(rows).toEqual([{ Date: "2026-03-10", Time: "09:05", Source: "pos", Method: "gcash", Reference: "", Amount: 50, Status: "Active" }]);
+    expect(rows).toEqual([{ Date: "2026-03-10", Time: "09:05", Source: "pos", Details: "2 × Sisig", Customer: "", Cashier: "Juan", Method: "gcash", Reference: "", Amount: 50, Status: "Active" }]);
   });
 
   it("bookings: joins the offering name and filters by start day", () => {

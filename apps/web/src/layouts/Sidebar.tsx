@@ -1,31 +1,20 @@
 import { useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Wallet, Users, BarChart3, Settings, ScrollText, Store, ChevronsLeft, ChevronsRight, LogOut, X } from "lucide-react";
+import { Store, ChevronsLeft, ChevronsRight, LogOut, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@isnabero/ui";
 import { getDataSource } from "@isnabero/db";
-import { MODULE_REGISTRY } from "@/lib/module-registry";
+import { getModuleDefinition } from "@/lib/module-registry";
+import { NAV_GROUPS, SETTINGS_ENTRY, type NavEntry } from "@/lib/nav-config";
 import { useBusinessModules } from "@/hooks/use-business-modules";
 import { useBusinessStore } from "@/stores/business-store";
 import { useSidebarStore } from "@/stores/sidebar-store";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useAuth } from "@/providers/AuthProvider";
 import { useCan } from "@/hooks/use-permission";
-import type { Permission } from "@/lib/permissions";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { useT, type TranslationKey } from "@/i18n";
-
-// CORE_NAV: never toggleable — every business gets these regardless of which modules are active.
-// `permission` hides an entry from roles that lack it (see lib/permissions.ts).
-const CORE_NAV: Array<{ labelKey: TranslationKey; path: string; icon: React.ComponentType<{ className?: string }>; permission?: Permission }> = [
-  { labelKey: "nav.dashboard", path: "/app", icon: LayoutDashboard },
-  { labelKey: "nav.payments", path: "/app/payments", icon: Wallet },
-  { labelKey: "nav.employees", path: "/app/employees", icon: Users },
-  { labelKey: "nav.reports", path: "/app/reports", icon: BarChart3 },
-  { labelKey: "nav.audit", path: "/app/audit", icon: ScrollText, permission: "audit.view" },
-  { labelKey: "nav.setup", path: "/app/setup", icon: Settings, permission: "business.configure" },
-];
+import { useT } from "@/i18n";
 
 function NavItem({
   label,
@@ -97,9 +86,19 @@ export function Sidebar() {
     await signOut();
   };
 
-  // Only show modules that are registered in code, toggled on for this business, AND allowed for the current role
-  const activeModules = MODULE_REGISTRY.filter((module) => enabledModules.includes(module.key) && (!module.permission || can(module.permission)));
-  const visibleCoreNav = CORE_NAV.filter((item) => !item.permission || can(item.permission));
+  // resolveEntry: a page/module entry -> label, path and icon, or null when it's hidden for this business or role
+  const resolveEntry = (entry: NavEntry) => {
+    if (entry.type === "page") {
+      if (entry.permission && !can(entry.permission)) return null;
+      return { key: entry.path, label: t(entry.labelKey), path: entry.path, icon: entry.icon };
+    }
+    const module = getModuleDefinition(entry.moduleKey);
+    if (!module || !enabledModules.includes(module.key) || (module.permission && !can(module.permission))) return null;
+    return { key: module.path, label: t(`modules.${module.key}.label`), path: module.path, icon: module.icon };
+  };
+  const groups = NAV_GROUPS.map((group) => ({ ...group, items: group.entries.map(resolveEntry).filter((item) => item !== null) })).filter((group) => group.items.length > 0);
+  const settingsVisible = can(SETTINGS_ENTRY.permission);
+  const isDemo = getDataSource() !== "supabase";
 
   return (
     <>
@@ -133,6 +132,11 @@ export function Sidebar() {
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-medium uppercase tracking-wide text-sidebar-muted">Isnabero</p>
               <p className="truncate font-display text-sm font-semibold">{businessName ?? t("nav.selectBusiness")}</p>
+              {isDemo && (
+                <span title={t("nav.demoModeHint")} className="mt-0.5 inline-block rounded bg-warning px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning-foreground">
+                  {t("nav.demoMode")}
+                </span>
+              )}
             </div>
           )}
           {/* Close button — mobile drawer only */}
@@ -145,31 +149,25 @@ export function Sidebar() {
           </button>
         </div>
 
-        <nav className={cn("flex-1 space-y-6 overflow-y-auto p-3", effectiveCollapsed && "px-2")}>
-          <div className="space-y-1">
-            {!effectiveCollapsed && <p className="px-3 text-xs font-semibold uppercase tracking-wide text-sidebar-muted">{t("nav.core")}</p>}
-            {visibleCoreNav.map((item) => (
-              <NavItem key={item.path} label={t(item.labelKey)} path={item.path} icon={item.icon} collapsed={effectiveCollapsed} onNavigate={() => setMobileOpen(false)} />
-            ))}
-          </div>
-
-          <div className="space-y-1">
-            {!effectiveCollapsed && <p className="px-3 text-xs font-semibold uppercase tracking-wide text-sidebar-muted">{t("nav.modules")}</p>}
-            {!effectiveCollapsed && activeModules.length === 0 && (
-              <p className="px-3 text-sm text-sidebar-muted">{t("nav.noModules")}</p>
-            )}
-            {activeModules.map((item) => (
-              <NavItem
-                key={item.path}
-                label={t(`modules.${item.key}.label`)}
-                path={item.path}
-                icon={item.icon}
-                collapsed={effectiveCollapsed}
-                onNavigate={() => setMobileOpen(false)}
-              />
-            ))}
-          </div>
+        <nav className={cn("flex-1 space-y-5 overflow-y-auto p-3", effectiveCollapsed && "px-2")} aria-label={t("nav.mainNavigation")}>
+          {groups.map((group) => (
+            <div key={group.id} className="space-y-1">
+              {group.labelKey && !effectiveCollapsed && (
+                <p className="px-3 text-xs font-semibold uppercase tracking-wide text-sidebar-muted">{t(group.labelKey)}</p>
+              )}
+              {group.labelKey && effectiveCollapsed && <div className="mx-2 border-t border-sidebar-border" aria-hidden="true" />}
+              {group.items.map((item) => (
+                <NavItem key={item.key} label={item.label} path={item.path} icon={item.icon} collapsed={effectiveCollapsed} onNavigate={() => setMobileOpen(false)} />
+              ))}
+            </div>
+          ))}
         </nav>
+
+        {settingsVisible && (
+          <div className={cn("border-t border-sidebar-border p-3", effectiveCollapsed && "px-2")}>
+            <NavItem label={t(SETTINGS_ENTRY.labelKey)} path={SETTINGS_ENTRY.path} icon={SETTINGS_ENTRY.icon} collapsed={effectiveCollapsed} onNavigate={() => setMobileOpen(false)} />
+          </div>
+        )}
 
         <div className={cn("flex items-center border-t border-sidebar-border px-4 py-3", effectiveCollapsed ? "flex-col gap-2 px-2" : "justify-between")}>
           {!effectiveCollapsed && <span className="text-xs text-sidebar-muted">{t("nav.theme")}</span>}

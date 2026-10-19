@@ -11,7 +11,7 @@ const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((mat
 const forms = (text: string) => text.split("|").length;
 
 // Terms that are the same in Filipino business usage
-const SAME_ON_PURPOSE = new Set(["nav.audit", "audit.title", "modules.online_store.label", "enums.method.bank_transfer", "pos.checkout.referenceCode"]);
+const SAME_ON_PURPOSE = new Set(["nav.audit", "audit.title", "modules.online_store.label", "enums.method.bank_transfer", "pos.checkout.referenceCode", "details.fields.reference"]);
 
 describe("dictionaries", () => {
   const keys = flattenKeys(EN);

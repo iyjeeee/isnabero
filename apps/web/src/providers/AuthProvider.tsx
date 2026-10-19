@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { getDataSource, setAuditActor, DEMO_OWNER_USER_ID, DEMO_ADMIN_USER_ID, DEMO_STAFF_USER_ID } from "@isnabero/db";
 import { supabase } from "@/lib/supabase";
 import { getCoreRepository } from "@/lib/repositories/get-repository";
@@ -14,7 +15,8 @@ interface AuthContextValue {
   user: AuthUser | null;
   employee: EmployeeView | null;
   loading: boolean; // auth session still resolving
-  employeeLoading: boolean; // employee row (role) still resolving for the current user + business
+  employeeLoading: boolean; // business + employee row (role) still resolving for the current user
+  noBusiness: boolean; // signed in, but the account belongs to no business (Supabase mode only)
   isAuthenticated: boolean;
   signOut: () => Promise<void>;
 }
@@ -39,6 +41,8 @@ function getMockSession(): AuthUser {
 // up real supabase.auth — see LoginPage for the sign-in flow and ProtectedRoute for the route guard.
 export function AuthProvider({ children }: { children: ReactNode }) {
   const businessId = useBusinessStore((state) => state.businessId);
+  const setBusiness = useBusinessStore((state) => state.setBusiness);
+  const clearBusiness = useBusinessStore((state) => state.clearBusiness);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [employee, setEmployee] = useState<EmployeeView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,7 +50,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // (not a separate flag) so there's no render where a signed-in user briefly looks like "no role"
   const [resolvedKey, setResolvedKey] = useState<string | null>(null);
   const employeeKey = user && businessId ? `${businessId}:${user.id}` : null;
-  const employeeLoading = employeeKey !== null && resolvedKey !== employeeKey;
+
+  // Supabase mode: which business the signed-in user belongs to (mock mode starts on the demo business instead).
+  // A query, so the offline cache can restore it when the app reloads without a connection.
+  const isSupabase = getDataSource() === "supabase";
+  const membership = useQuery({
+    queryKey: ["membership", user?.id ?? null],
+    queryFn: () => getCoreRepository(supabase).getMembership(user!.id),
+    enabled: isSupabase && Boolean(user),
+    staleTime: 5 * 60_000,
+  });
+  const membershipLoading = isSupabase && Boolean(user) && membership.isPending;
+  const noBusiness = isSupabase && Boolean(user) && !membership.isPending && !membership.data;
+  const membershipBusinessId = membership.data?.business.id;
+  const membershipBusinessName = membership.data?.business.name;
+  const hasUser = Boolean(user);
+
+  useEffect(() => {
+    if (!isSupabase) return;
+    if (!hasUser) clearBusiness();
+    else if (membershipBusinessId) setBusiness(membershipBusinessId, membershipBusinessName ?? "");
+    else if (!membership.isPending) clearBusiness();
+  }, [isSupabase, hasUser, membershipBusinessId, membershipBusinessName, membership.isPending, setBusiness, clearBusiness]);
+
+  // businessId in the store can lag the membership by one render, so wait for them to agree before resolving the employee
+  const employeeLoading = membershipLoading || (isSupabase && Boolean(membershipBusinessId) && membershipBusinessId !== businessId) || (employeeKey !== null && resolvedKey !== employeeKey);
 
   useEffect(() => {
     if (getDataSource() === "mock") {
@@ -102,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, employee, loading, employeeLoading, isAuthenticated: Boolean(user), signOut }}>
+    <AuthContext.Provider value={{ user, employee, loading, employeeLoading, noBusiness, isAuthenticated: Boolean(user), signOut }}>
       {children}
     </AuthContext.Provider>
   );

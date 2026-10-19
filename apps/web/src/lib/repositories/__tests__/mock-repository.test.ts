@@ -26,6 +26,13 @@ describe("mockCoreRepository — employees", () => {
     expect(employee).not.toBeNull();
     expect(employee?.role).toBe("owner");
   });
+
+  it("resolves the business a user belongs to, and null for a stranger", async () => {
+    const membership = await mockCoreRepository.getMembership(DEMO_OWNER_USER_ID);
+    expect(membership?.business.id).toBe(DEMO_BUSINESS_ID);
+    expect(membership?.employee.role).toBe("owner");
+    expect(await mockCoreRepository.getMembership("99999999-9999-9999-9999-999999999999")).toBeNull();
+  });
 });
 
 describe("mockCoreRepository — payment records", () => {

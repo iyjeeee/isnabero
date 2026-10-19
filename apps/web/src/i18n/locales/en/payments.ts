@@ -4,14 +4,14 @@ export const payments = {
   exportHint: "Uses the method filter and search currently applied.",
   source: { pos: "POS", booking: "Booking" },
   stats: { totalTransactions: "Total Transactions", totalCollected: "Total Collected", averageTransaction: "Average Transaction" },
-  filters: { bank: "Bank", showVoided: "Show voided", searchPlaceholder: "Search reference or source…" },
+  filters: { bank: "Bank", showVoided: "Show voided", searchPlaceholder: "Search item, customer, cashier or reference…" },
   empty: {
     title: "No transactions yet",
     description: "Sales from POS and paid bookings will show up here.",
     noMatchTitle: "No matches",
     noMatchDescription: "Try a different search term or method filter.",
   },
-  table: { source: "Source", method: "Method", reference: "Reference", amount: "Amount" },
+  table: { details: "Details", source: "Source", method: "Method", reference: "Reference", amount: "Amount" },
   viewReceipt: "View receipt",
   viewReceiptFor: "View receipt for {date}",
   void: {

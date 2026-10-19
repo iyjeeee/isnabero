@@ -38,3 +38,30 @@ export function useToggleOfferingAvailability(supabase: SupabaseClient, business
     },
   });
 }
+
+// useUpdateOffering: edit an offering's details (and bundle inclusions)
+export function useUpdateOffering(supabase: SupabaseClient, businessId: string) {
+  const repository = getCatalogRepository(supabase);
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ offeringId, input }: { offeringId: string; input: CreateOfferingInput }) => repository.updateOffering(businessId, offeringId, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["offerings", businessId] });
+      queryClient.invalidateQueries({ queryKey: ["bookings", businessId] }); // bookings show their offering's name
+      queryClient.invalidateQueries({ queryKey: ["stock", businessId] }); // stock rows show it too
+    },
+  });
+}
+
+// useDeleteOffering: remove an offering nothing has been sold or booked against
+export function useDeleteOffering(supabase: SupabaseClient, businessId: string) {
+  const repository = getCatalogRepository(supabase);
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (offeringId: string) => repository.deleteOffering(businessId, offeringId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["offerings", businessId] });
+      queryClient.invalidateQueries({ queryKey: ["stock", businessId] });
+    },
+  });
+}

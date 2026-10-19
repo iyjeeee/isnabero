@@ -13,6 +13,8 @@ import { StockBadge } from "@/components/inventory/StockBadge";
 import { TrackItemModal } from "@/components/inventory/TrackItemModal";
 import { AdjustStockModal } from "@/components/inventory/AdjustStockModal";
 import { ItemSettingsModal } from "@/components/inventory/ItemSettingsModal";
+import { MovementDetailDialog, StockItemDetailDialog } from "@/components/details/StockDetailDialogs";
+import { OPEN_CLASS, openProps } from "@/components/details/open-props";
 
 const STATUS_TABS = [
   { value: "all", labelKey: "common.all" },
@@ -30,6 +32,8 @@ export default function InventoryPage() {
   const { data: levels = [], isLoading } = useStockLevels(supabase, businessId);
   const { data: movements = [], isLoading: movementsLoading } = useStockMovements(supabase, businessId);
 
+  const [itemDetailId, setItemDetailId] = useState<string | null>(null);
+  const [movementDetailId, setMovementDetailId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_TABS)[number]["value"]>("all");
 
@@ -114,8 +118,11 @@ export default function InventoryPage() {
                 </thead>
                 <tbody>
                   {items.pageItems.map((level) => (
-                    <tr key={level.offeringId} className="border-b transition-colors last:border-0 hover:bg-accent/50">
-                      <td className="px-4 py-3 font-medium">{level.offeringName}</td>
+                    <tr key={level.offeringId} {...openProps(() => setItemDetailId(level.offeringId))} title={t("details.open", { name: level.offeringName })} className={cn("border-b transition-colors last:border-0 hover:bg-accent/50", OPEN_CLASS)}>
+                      <td className="px-4 py-3">
+                        <p className="font-medium">{level.offeringName}</p>
+                        <p className="text-xs text-muted-foreground">{labels.offeringType(level.offeringType)}</p>
+                      </td>
                       <td className="px-4 py-3">
                         <StockBadge level={level} />
                       </td>
@@ -169,7 +176,7 @@ export default function InventoryPage() {
                 </thead>
                 <tbody>
                   {history.pageItems.map((movement) => (
-                    <tr key={movement.id} className="border-b last:border-0 hover:bg-accent/50">
+                    <tr key={movement.id} {...openProps(() => setMovementDetailId(movement.id))} title={t("details.open", { name: movement.offeringName })} className={cn("border-b last:border-0 hover:bg-accent/50", OPEN_CLASS)}>
                       <td className="whitespace-nowrap px-4 py-3">{format.dateTime(movement.createdAt)}</td>
                       <td className="px-4 py-3">{movement.offeringName}</td>
                       <td className="px-4 py-3">
@@ -191,6 +198,8 @@ export default function InventoryPage() {
           )}
         </CardContent>
       </Card>
+      <StockItemDetailDialog level={levels.find((level) => level.offeringId === itemDetailId) ?? null} movements={movements} onClose={() => setItemDetailId(null)} />
+      <MovementDetailDialog movement={movements.find((movement) => movement.id === movementDetailId) ?? null} onClose={() => setMovementDetailId(null)} />
     </div>
   );
 }
