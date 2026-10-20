@@ -14,6 +14,7 @@ export const expenses = {
   noMatches: { title: "No matches", description: "Try a different search term or category." },
   table: { recordedBy: "Recorded by", date: "Date", category: "Category", description: "Description", method: "Paid with", amount: "Amount", actions: "Actions" },
   voided: "Voided",
+  edit: { ariaLabel: "Edit expense {label}" },
   void: {
     ariaLabel: "Void expense {label}",
     title: "Void this expense?",
@@ -24,7 +25,10 @@ export const expenses = {
   modal: {
     trigger: "Add expense",
     title: "Add expense",
-    description: "Record money your business spent. Mistakes can be voided, not edited.",
+    description: "Record money your business spent.",
+    editTitle: "Edit expense",
+    editDescription: "Correct this expense. Every change is kept in the Audit Log.",
+    updated: "Expense updated",
     date: "Date",
     category: "Category",
     descriptionLabel: "Description",

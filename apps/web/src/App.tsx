@@ -14,6 +14,9 @@ import { UiLabelsBridge } from "@/providers/UiLabelsBridge";
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
 const PaymentsPage = lazy(() => import("@/pages/PaymentsPage"));
+const SetPasswordPage = lazy(() => import("@/pages/SetPasswordPage"));
+const CustomersPage = lazy(() => import("@/pages/CustomersPage"));
+const CashClosePage = lazy(() => import("@/pages/CashClosePage"));
 const EmployeesPage = lazy(() => import("@/pages/EmployeesPage"));
 const ReportsPage = lazy(() => import("@/pages/ReportsPage"));
 const CatalogPage = lazy(() => import("@/pages/CatalogPage"));
@@ -33,6 +36,7 @@ export default function App() {
       <Suspense fallback={<PageFallback />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/set-password" element={<SetPasswordPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/app" element={<AppLayout />}>
               {/* setup sits outside SetupGate so the first-run redirect can't loop */}
@@ -47,11 +51,13 @@ export default function App() {
               <Route element={<SetupGate />}>
                 <Route index element={<DashboardPage />} />
                 <Route path="payments" element={<PaymentsPage />} />
+                <Route path="cash-close" element={<CashClosePage />} />
                 <Route path="employees" element={<EmployeesPage />} />
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="audit" element={<RouteGuard permission="audit.view"><AuditLogPage /></RouteGuard>} />
                 <Route path="catalog" element={<RouteGuard moduleKey="catalog"><CatalogPage /></RouteGuard>} />
                 <Route path="pos" element={<RouteGuard moduleKey="pos"><PosPage /></RouteGuard>} />
+                <Route path="customers" element={<RouteGuard moduleKey="booking"><CustomersPage /></RouteGuard>} />
                 <Route path="booking" element={<RouteGuard moduleKey="booking"><BookingPage /></RouteGuard>} />
                 <Route path="inventory" element={<RouteGuard moduleKey="inventory"><InventoryPage /></RouteGuard>} />
                 <Route path="schedule" element={<RouteGuard moduleKey="scheduling"><SchedulePage /></RouteGuard>} />

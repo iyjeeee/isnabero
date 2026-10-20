@@ -11,6 +11,7 @@ export const AUDIT_ACTIONS = {
   "offering.deleted": { entity: "offering", label: "Offering deleted" },
   "offering.availability_changed": { entity: "offering", label: "Availability changed" },
   "expense.created": { entity: "expense", label: "Expense recorded" },
+  "expense.updated": { entity: "expense", label: "Expense edited" },
   "expense.voided": { entity: "expense", label: "Expense voided" },
   "employee.created": { entity: "employee", label: "Employee added" },
   "employee.updated": { entity: "employee", label: "Employee updated" },
@@ -20,6 +21,7 @@ export const AUDIT_ACTIONS = {
   "shift.created": { entity: "shift", label: "Shift scheduled" },
   "shift.updated": { entity: "shift", label: "Shift changed" },
   "shift.deleted": { entity: "shift", label: "Shift removed" },
+  "cash.closed": { entity: "cash_close", label: "Cash closed" },
   "business.updated": { entity: "business", label: "Business updated" },
   "business.modules_changed": { entity: "business", label: "Modules changed" },
 } as const;

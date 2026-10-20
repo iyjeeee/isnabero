@@ -6,6 +6,8 @@ export const nav = {
   selectBusiness: "Select a business",
   dashboard: "Dashboard",
   payments: "Payment Records",
+  cashClose: "Cash Close",
+  customers: "Customers",
   employees: "Employees",
   reports: "Reports",
   audit: "Audit Log",

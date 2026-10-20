@@ -10,16 +10,18 @@ export function createSupabasePosRepository(supabase: SupabaseClient): PosReposi
     // One database function does the whole sale (payment record, order, items, stock deduction) in a single transaction,
     // so a stock shortage can't leave a half-recorded sale. Prices are read from the offerings table, and the cashier is the
     // signed-in employee (taken from auth.uid() in the function), so neither is trusted from the client.
-    async checkout({ businessId, lines, method, referenceCode }: CheckoutInput): Promise<CheckoutResult> {
+    async checkout({ businessId, lines, method, referenceCode, clientId, soldAt }: CheckoutInput): Promise<CheckoutResult> {
       const { data, error } = await supabase.rpc("checkout_sale", {
         p_business: businessId,
         p_method: method,
         p_reference: referenceCode ?? null,
         p_lines: lines.map((line) => ({ offering_id: line.offering.id, quantity: line.quantity })),
+        p_client_id: clientId ?? null,
+        p_sold_at: soldAt ? soldAt.toISOString() : null,
       });
       if (error) throw error.code === CHECK_VIOLATION ? new Error(error.message) : error;
-      const result = data as { order_id: string; total: number; receipt_number: number };
-      return { orderId: result.order_id, total: Number(result.total), receiptNumber: result.receipt_number };
+      const result = data as { order_id: string; total: number; receipt_number: number; duplicate?: boolean };
+      return { orderId: result.order_id, total: Number(result.total), receiptNumber: result.receipt_number, duplicate: result.duplicate === true };
     },
 
     async getReceipt(businessId: string, ref: ReceiptRef): Promise<Receipt | null> {

@@ -90,6 +90,7 @@ export function Sidebar() {
   const resolveEntry = (entry: NavEntry) => {
     if (entry.type === "page") {
       if (entry.permission && !can(entry.permission)) return null;
+      if (entry.requiresModule && !enabledModules.includes(entry.requiresModule)) return null;
       return { key: entry.path, label: t(entry.labelKey), path: entry.path, icon: entry.icon };
     }
     const module = getModuleDefinition(entry.moduleKey);

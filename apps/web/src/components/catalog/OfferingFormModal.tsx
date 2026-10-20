@@ -28,7 +28,7 @@ interface OfferingFormModalProps {
   offering?: OfferingWithInclusions; // present = edit this offering, absent = add a new one
 }
 
-const EMPTY_VALUES: OfferingFormValues = { name: "", description: "", type: "item", price: 0, durationMinutes: undefined, inclusions: [] };
+const EMPTY_VALUES: OfferingFormValues = { name: "", description: "", barcode: "", type: "item", price: 0, durationMinutes: undefined, inclusions: [] };
 
 // OfferingFormModal: one form for adding and editing an offering (controlled — CreateOfferingModal and OfferingActions own the open state)
 export function OfferingFormModal({ businessId, open, onOpenChange, offering }: OfferingFormModalProps) {
@@ -52,6 +52,7 @@ export function OfferingFormModal({ businessId, open, onOpenChange, offering }: 
         ? {
             name: offering.name,
             description: offering.description ?? "",
+            barcode: offering.barcode ?? "",
             type: offering.type,
             price: Number(offering.price),
             durationMinutes: offering.durationMinutes ?? undefined,
@@ -70,6 +71,7 @@ export function OfferingFormModal({ businessId, open, onOpenChange, offering }: 
       offering: {
         name: values.name,
         description: values.description || null,
+        barcode: values.barcode || null,
         type: values.type,
         price: String(values.price),
         durationMinutes: values.durationMinutes ?? null,
@@ -108,6 +110,13 @@ export function OfferingFormModal({ businessId, open, onOpenChange, offering }: 
           <div className="space-y-1.5">
             <Label htmlFor="description">{t("catalog.form.descriptionLabel")}</Label>
             <Textarea id="description" placeholder={t("catalog.form.descriptionPlaceholder")} {...form.register("description")} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="barcode">{t("catalog.form.barcode")}</Label>
+            <Input id="barcode" autoComplete="off" maxLength={64} onKeyDown={(event) => event.key === "Enter" && event.preventDefault()} {...form.register("barcode")} /> {/* scanners end with Enter, which must not submit the form */}
+            <p className="text-xs text-muted-foreground">{t("catalog.form.barcodeHint")}</p>
+            {form.formState.errors.barcode && <p className="text-xs text-destructive">{tm(form.formState.errors.barcode.message)}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

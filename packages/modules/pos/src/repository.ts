@@ -1,15 +1,20 @@
-import type { CartLine } from "./types";
+import type { CheckoutLine } from "./types";
 import type { Receipt, ReceiptRef } from "./receipt";
 
 export interface CheckoutInput {
   businessId: string;
   employeeId: string | null;
-  lines: CartLine[];
+  lines: CheckoutLine[];
   method: "cash" | "gcash" | "bank_transfer" | "other";
   referenceCode?: string;
+  // clientId: made once per sale and kept when it is retried, so a sale sent twice is recorded once (offline sales)
+  clientId?: string;
+  // soldAt: when the sale happened, if earlier than now (offline sales); never in the future
+  soldAt?: Date;
 }
 
 export interface CheckoutResult {
+  duplicate?: boolean; // true when this clientId was already recorded and the existing sale is returned
   orderId: string;
   total: number;
   receiptNumber: number;

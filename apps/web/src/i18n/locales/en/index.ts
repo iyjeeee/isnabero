@@ -23,6 +23,11 @@ import { exports } from "./exports";
 import { app } from "./app";
 import { offline } from "./offline";
 import { details } from "./details";
+import { offlineSales } from "./offlineSales";
+import { cashClose } from "./cashClose";
+import { customers } from "./customers";
+import { update } from "./update";
+import { setPassword } from "./setPassword";
 
 export const en = {
   common,
@@ -50,4 +55,9 @@ export const en = {
   app,
   offline,
   details,
+  offlineSales,
+  cashClose,
+  customers,
+  update,
+  setPassword,
 };

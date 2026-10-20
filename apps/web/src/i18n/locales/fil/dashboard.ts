@@ -5,6 +5,9 @@ export const dashboard: Dictionary["dashboard"] = {
   description: "{greeting} — narito ang aktibidad ngayon sa lahat ng naka-enable na module.",
   greeting: { morning: "Magandang umaga", afternoon: "Magandang hapon", evening: "Magandang gabi" },
   stats: { todaySales: "Benta Ngayon", upcomingBookings: "Mga Paparating na Booking", activeEmployees: "Mga Aktibong Empleyado" },
+  vsYesterday: "kumpara kahapon",
+  yesterdayByNow: "₱{amount} sa oras na ito kahapon",
+  todayBookings: { title: "Mga booking ngayon", open: "Buksan ang Booking", empty: "Walang booking ngayon." },
   stockAlerts: { title: "Mga alerto sa stock", openInventory: "Buksan ang Imbentaryo" },
   quickActions: {
     title: "Mabilisang Aksyon",

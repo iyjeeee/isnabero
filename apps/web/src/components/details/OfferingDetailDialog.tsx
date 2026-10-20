@@ -25,6 +25,7 @@ export function OfferingDetailDialog({ offering, stock, onClose }: { offering: O
       fields={[
         { label: t("details.fields.price"), value: <span className="font-display text-lg font-bold">{formatPeso(offering.price)}</span> },
         { label: t("details.fields.duration"), value: offering.durationMinutes ? t("details.minutes", { count: offering.durationMinutes }) : null },
+        { label: t("details.fields.barcode"), value: offering.barcode },
         { label: t("details.fields.stock"), value: stock ? <StockBadge level={stock} /> : t("details.notTracked") },
         { label: t("details.fields.description"), value: offering.description, wide: true },
         {

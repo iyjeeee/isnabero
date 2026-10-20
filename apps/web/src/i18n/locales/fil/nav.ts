@@ -7,6 +7,8 @@ export const nav: Dictionary["nav"] = {
   demoModeHint: "Hindi naka-connect sa Supabase — sample data ito at nare-reset kapag nag-reload.",
   selectBusiness: "Pumili ng negosyo",
   dashboard: "Dashboard",
+  cashClose: "Pagsasara ng Pera",
+  customers: "Mga Customer",
   payments: "Mga Tala ng Bayad",
   employees: "Mga Empleyado",
   reports: "Mga Ulat",

@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ShoppingCart, X, Search, Box, Layers, PlusCircle, Receipt } from "lucide-react";
 import { useOfferings } from "@isnabero/module-catalog";
-import { useCartStore, useCheckout } from "@isnabero/module-pos";
+import { useCartStore } from "@isnabero/module-pos";
 import { useStockLevels, type StockLevel } from "@isnabero/module-inventory";
 import { Card, CardContent, PageHeader, EmptyState, Skeleton, Input, FilterBar, QuantityStepper, Badge, cn } from "@isnabero/ui";
 import { toast } from "sonner";
@@ -10,6 +10,10 @@ import { useT } from "@/i18n";
 import { useBusinessStore } from "@/stores/business-store";
 import { useAuth } from "@/providers/AuthProvider";
 import { CheckoutModal } from "@/components/pos/CheckoutModal";
+import { findByBarcode } from "@/lib/barcode-scan";
+import { usePosShortcuts } from "@/hooks/use-pos-shortcuts";
+import { PendingSalesBar } from "@/components/pos/PendingSalesBar";
+import { useCheckoutOrQueue, usePendingByOffering } from "@/lib/offline-sales/hooks";
 import { ReceiptDialog } from "@/components/receipt/ReceiptDialog";
 import { formatAmount, formatPeso } from "@/lib/money";
 
@@ -28,35 +32,59 @@ export default function PosPage() {
   const { data: offerings = [], isLoading } = useOfferings(supabase, businessId);
   const { lines, addOffering, updateQuantity, removeLine, clear, total } = useCartStore();
   const { employee } = useAuth(); // cashier recorded on the order; null until the employee row resolves
-  const checkout = useCheckout(supabase);
+  const checkout = useCheckoutOrQueue();
+  const pendingByOffering = usePendingByOffering(businessId); // units rung up offline and not sent yet
   const { data: stockLevels = [] } = useStockLevels(supabase, businessId);
   const stockByOffering = useMemo(() => new Map<string, StockLevel>(stockLevels.map((level) => [level.offeringId, level])), [stockLevels]);
   const [search, setSearch] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  const checkoutRef = useRef<HTMLButtonElement>(null);
   const [receiptOrderId, setReceiptOrderId] = useState<string | null>(null); // the receipt shown after a sale
 
-  const handleCheckout = (method: "cash" | "gcash" | "bank_transfer" | "other", referenceCode?: string) => {
-    checkout.mutate(
-      { businessId, employeeId: employee?.id ?? null, lines, method, referenceCode },
-      {
-        onSuccess: (result) => {
-          toast.success(t("pos.page.saleCompleted", { total: formatAmount(total()) }));
-          clear();
-          setReceiptOrderId(result.orderId);
-        },
-      },
-    );
+  // handleCheckout: records the sale, or keeps it on this device when there is no connection (sent later, in order)
+  const handleCheckout = async (method: "cash" | "gcash" | "bank_transfer" | "other", referenceCode?: string) => {
+    const saleTotal = total();
+    const details = { total: saleTotal, lines: lines.map((line) => ({ id: line.offering.id, name: line.offering.name, price: line.offering.price, quantity: line.quantity })) };
+    try {
+      const result = await checkout.submit({ businessId, employeeId: employee?.id ?? null, lines, method, referenceCode }, details);
+      clear();
+      if ("queued" in result) toast.success(t("offlineSales.savedOffline"));
+      else {
+        toast.success(t("pos.page.saleCompleted", { total: formatAmount(saleTotal) }));
+        setReceiptOrderId(result.orderId);
+      }
+    } catch (error) {
+      toast.error((error as { message?: string } | null)?.message || t("errors.generic"));
+    }
+  };
+
+  // leftOf: stock still free to sell — what the server shows minus what is waiting to be sent from this device
+  const leftOf = (offeringId: string) => {
+    const stock = stockByOffering.get(offeringId);
+    return stock ? Math.max(0, stock.quantity - (pendingByOffering.get(offeringId) ?? 0)) : null;
   };
 
   // addToCart: a tracked item can't be added beyond what's in stock (the repository enforces it again at checkout)
   const addToCart = (offering: (typeof offerings)[number]) => {
-    const stock = stockByOffering.get(offering.id);
+    const left = leftOf(offering.id);
     const inCart = lines.find((line) => line.offering.id === offering.id)?.quantity ?? 0;
-    if (stock && inCart >= stock.quantity) {
-      toast.error(stock.quantity <= 0 ? t("pos.page.outOfStockToast", { name: offering.name }) : t("pos.page.onlyLeftToast", { count: stock.quantity, name: offering.name }));
+    if (left !== null && inCart >= left) {
+      toast.error(left <= 0 ? t("pos.page.outOfStockToast", { name: offering.name }) : t("pos.page.onlyLeftToast", { count: left, name: offering.name }));
       return;
     }
     addOffering(offering);
   };
+
+  // addScanned: a scanned code adds its item to the sale; an unknown code says so instead of doing nothing
+  const addScanned = (code: string) => {
+    const match = findByBarcode(offerings, code);
+    if (!match) {
+      toast.error(t("pos.scan.notFound", { code }));
+      return;
+    }
+    addToCart(match);
+  };
+  usePosShortcuts({ onScan: addScanned, onFocusSearch: () => searchRef.current?.focus(), onCheckout: () => checkoutRef.current?.click() });
 
   const availableOfferings = useMemo(
     () => offerings.filter((offering) => offering.isAvailable && offering.name.toLowerCase().includes(search.toLowerCase())),
@@ -66,6 +94,7 @@ export default function PosPage() {
   return (
     <div className="space-y-6">
       <PageHeader icon={ShoppingCart} title={t("pos.page.title")} description={t("pos.page.description")} />
+      <PendingSalesBar />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
@@ -73,8 +102,26 @@ export default function PosPage() {
             <FilterBar className="sm:justify-start">
               <div className="relative w-full sm:w-72">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder={t("pos.page.searchPlaceholder")} value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
+                <Input
+                  ref={searchRef}
+                  placeholder={t("pos.page.searchPlaceholder")}
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") setSearch("");
+                    if (event.key !== "Enter" || !search.trim()) return;
+                    event.preventDefault();
+                    // Enter adds the scanned/typed barcode's item, or the only item left in the results
+                    const target = findByBarcode(offerings, search) ?? (availableOfferings.length === 1 ? availableOfferings[0] : undefined);
+                    if (target) {
+                      addToCart(target);
+                      setSearch("");
+                    }
+                  }}
+                  className="pl-9"
+                />
               </div>
+              <p className="hidden text-xs text-muted-foreground lg:block">{t("pos.scan.hint")}</p>
             </FilterBar>
           )}
 
@@ -94,7 +141,8 @@ export default function PosPage() {
             {availableOfferings.map((offering) => {
               const TypeIcon = TYPE_ICON[offering.type];
               const stock = stockByOffering.get(offering.id);
-              const soldOut = stock?.status === "out";
+              const left = leftOf(offering.id);
+              const soldOut = left !== null && left <= 0;
               return (
                 <button
                   key={offering.id}
@@ -109,9 +157,9 @@ export default function PosPage() {
                     <p className="truncate font-medium leading-tight">{offering.name}</p>
                     <p className="mt-0.5 text-sm font-semibold text-primary">{formatPeso(offering.price)}</p>
                   </div>
-                  {stock && (
-                    <Badge variant={stock.status === "out" ? "destructive" : stock.status === "low" ? "warning" : "secondary"}>
-                      {stock.status === "out" ? t("pos.page.outOfStock") : t("pos.page.left", { count: stock.quantity })}
+                  {stock && left !== null && (
+                    <Badge variant={left <= 0 ? "destructive" : stock.status === "low" ? "warning" : "secondary"}>
+                      {left <= 0 ? t("pos.page.outOfStock") : t("pos.page.left", { count: left })}
                     </Badge>
                   )}
                 </button>
@@ -144,7 +192,7 @@ export default function PosPage() {
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
                       {/* min=1: clearing the box to retype must not drop the line — removal is the X button */}
-                      <QuantityStepper min={1} max={stockByOffering.get(line.offering.id)?.quantity ?? 999} value={line.quantity} onChange={(next) => updateQuantity(line.offering.id, next)} />
+                      <QuantityStepper min={1} max={leftOf(line.offering.id) ?? 999} value={line.quantity} onChange={(next) => updateQuantity(line.offering.id, next)} />
                       <button
                         onClick={() => removeLine(line.offering.id)}
                         className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
@@ -164,7 +212,7 @@ export default function PosPage() {
                 <span className="font-display text-primary">{formatPeso(total())}</span>
               </div>
             </div>
-            <CheckoutModal lines={lines} total={total()} isPending={checkout.isPending} onConfirm={handleCheckout} />
+            <CheckoutModal triggerRef={checkoutRef} lines={lines} total={total()} isPending={checkout.isPending} onConfirm={handleCheckout} />
           </CardContent>
         </Card>
       </div>

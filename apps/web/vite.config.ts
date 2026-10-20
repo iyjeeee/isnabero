@@ -1,9 +1,24 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
+import { readFileSync, writeFileSync } from "node:fs";
+
+// stampServiceWorker: writes a build id into dist/sw.js so each release is a different file and installed apps see the update
+const stampServiceWorker = () => ({
+  name: "stamp-service-worker",
+  apply: "build" as const,
+  closeBundle() {
+    const file = path.resolve(__dirname, "dist/sw.js");
+    try {
+      writeFileSync(file, readFileSync(file, "utf8").replace("__BUILD_ID__", Date.now().toString(36)));
+    } catch {
+      // no dist/sw.js (e.g. a build that skips public files): nothing to stamp
+    }
+  },
+});
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), stampServiceWorker()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

@@ -4,9 +4,11 @@ import type {
   SalesReportData,
   BookingReportData,
   CatalogReportData,
+  ProfitReportData,
   DailyPoint,
 } from "./reports-repository";
 import { fetchAllRows } from "./paginate";
+import { buildProfitReport } from "@/lib/profit";
 
 function toDateKey(date: Date): string {
   const y = date.getFullYear();
@@ -45,6 +47,25 @@ function previousPeriodRange(days: number): { start: Date; end: Date } {
 
 export function createSupabaseReportsRepository(supabase: SupabaseClient): ReportsRepository {
   return {
+    async getProfitReport(businessId, days = 14): Promise<ProfitReportData> {
+      const current = cutoffDate(days);
+      const { start, end } = previousPeriodRange(days);
+      const [payments, expenses] = await Promise.all([
+        fetchAllRows<any>((from, to) =>
+          supabase.from("payment_records").select("id, amount, created_at, voided_at").eq("business_id", businessId).gte("created_at", start.toISOString()).order("created_at").order("id").range(from, to),
+        ),
+        fetchAllRows<any>((from, to) =>
+          supabase.from("expenses").select("id, amount, expense_date, category, voided_at").eq("business_id", businessId).gte("expense_date", toDateKey(start)).order("expense_date").order("id").range(from, to),
+        ),
+      ]);
+      return buildProfitReport(
+        payments.map((row) => ({ amount: row.amount, createdAt: new Date(row.created_at), voidedAt: row.voided_at ? new Date(row.voided_at) : null })),
+        expenses.map((row) => ({ amount: row.amount, expenseDate: row.expense_date, category: row.category, voidedAt: row.voided_at ? new Date(row.voided_at) : null })),
+        { start: current, end: null },
+        { start, end },
+      );
+    },
+
     async getSalesReport(businessId, days = 14): Promise<SalesReportData> {
       const cutoff = cutoffDate(days);
       const { start: prevStart } = previousPeriodRange(days);

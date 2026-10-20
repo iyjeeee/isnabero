@@ -50,6 +50,21 @@ export function createSupabaseExpensesRepository(supabase: SupabaseClient): Expe
       return mapExpenseRow(data);
     },
 
+    async updateExpense(businessId, expenseId, input: CreateExpenseInput) {
+      const clean = normalizeExpenseInput(input);
+      const { data, error } = await supabase
+        .from("expenses")
+        .update({ category: clean.category, description: clean.description, amount: clean.amount, expense_date: clean.expenseDate, method: clean.method, notes: clean.notes })
+        .eq("id", expenseId)
+        .eq("business_id", businessId)
+        .is("voided_at", null)
+        .select()
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error("This expense can't be edited — it was voided or no longer exists.");
+      return mapExpenseRow(data);
+    },
+
     async voidExpense(businessId, expenseId) {
       // Only touches still-active rows so a repeat void keeps the original void time
       const { data, error } = await supabase

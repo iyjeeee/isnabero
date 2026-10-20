@@ -23,6 +23,7 @@ const ENTITY_TABS = [
   { value: "shift", labelKey: "audit.tabs.shift" },
   { value: "expense", labelKey: "audit.tabs.expense" },
   { value: "employee", labelKey: "audit.tabs.employee" },
+  { value: "cash_close", labelKey: "audit.tabs.cash_close" },
   { value: "business", labelKey: "audit.tabs.business" },
 ] as const satisfies readonly { value: "all" | AuditEntity; labelKey: TranslationKey }[];
 const ENTITY_BADGE_VARIANT: Record<AuditEntity, "default" | "success" | "info" | "warning" | "secondary" | "destructive"> = {
@@ -35,6 +36,7 @@ const ENTITY_BADGE_VARIANT: Record<AuditEntity, "default" | "success" | "info" |
   shift: "default",
   employee: "secondary",
   business: "secondary",
+  cash_close: "info",
 };
 const PAGE_SIZE = 15;
 

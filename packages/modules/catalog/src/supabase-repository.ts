@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CatalogRepository, CreateOfferingInput } from "./repository";
 import type { OfferingWithInclusions } from "./types";
-import { OfferingInUseError } from "./rules";
+import { DUPLICATE_BARCODE_MESSAGE, OfferingInUseError, normalizeBarcode } from "./rules";
 
 // mapInclusionRow: offering_inclusions row (snake_case, as returned by PostgREST) -> camelCase type
 function mapInclusionRow(row: any) {
@@ -22,9 +22,13 @@ function mapOfferingRow(row: any): OfferingWithInclusions {
     durationMinutes: row.duration_minutes,
     isAvailable: row.is_available,
     createdAt: new Date(row.created_at),
+    barcode: row.barcode ?? null,
     inclusions: (row.inclusions ?? []).map(mapInclusionRow),
   };
 }
+
+// duplicateAware: a unique-index violation (23505) becomes the friendly "barcode already used" message
+const duplicateAware = (error: { code?: string }) => (error.code === "23505" ? new Error(DUPLICATE_BARCODE_MESSAGE) : error);
 
 export function createSupabaseCatalogRepository(supabase: SupabaseClient): CatalogRepository {
   return {
@@ -49,10 +53,11 @@ export function createSupabaseCatalogRepository(supabase: SupabaseClient): Catal
           price: input.offering.price,
           duration_minutes: input.offering.durationMinutes ?? null,
           is_available: input.offering.isAvailable ?? true,
+          barcode: normalizeBarcode(input.offering.barcode),
         })
         .select()
         .single();
-      if (offeringError) throw offeringError;
+      if (offeringError) throw duplicateAware(offeringError);
 
       let inclusionRows: any[] = [];
       if (input.inclusions.length > 0) {
@@ -89,8 +94,9 @@ export function createSupabaseCatalogRepository(supabase: SupabaseClient): Catal
         p_price: Number(input.offering.price),
         p_duration: input.offering.durationMinutes ?? null,
         p_inclusions: type === "bundle" ? input.inclusions : [],
+        p_barcode: normalizeBarcode(input.offering.barcode),
       });
-      if (error) throw error;
+      if (error) throw duplicateAware(error);
       const { data, error: readError } = await supabase
         .from("offerings")
         .select("*, inclusions:offering_inclusions(*)")

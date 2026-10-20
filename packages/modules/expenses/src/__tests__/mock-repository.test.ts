@@ -105,4 +105,20 @@ describe("expenses audit trail", () => {
     await expect(mockExpensesRepository.createExpense(DEMO_BUSINESS_ID, input({ description: "" }))).rejects.toThrow();
     expect(auditRows.length).toBe(before);
   });
+
+  it("edits an active expense, audits what changed, and refuses voided or unknown ones", async () => {
+    const created = await mockExpensesRepository.createExpense(DEMO_BUSINESS_ID, input({ description: "Edit me", amount: 100 }));
+    const updated = await mockExpensesRepository.updateExpense(DEMO_BUSINESS_ID, created.id, input({ description: "Edit me", amount: 150, category: "other", notes: "fixed" }));
+    expect(updated).toMatchObject({ amount: 150, category: "other", notes: "fixed", recordedBy: created.recordedBy, createdAt: created.createdAt });
+    expect(auditRows.some((row) => row.action === "expense.updated" && row.summary === 'Edited expense "Edit me": amount ₱100.00 → ₱150.00, category supplies → other, notes changed')).toBe(true);
+
+    const before = auditRows.length;
+    await mockExpensesRepository.updateExpense(DEMO_BUSINESS_ID, created.id, input({ description: "Edit me", amount: 150, category: "other", notes: "fixed" }));
+    expect(auditRows.length).toBe(before); // nothing changed, nothing logged
+
+    await expect(mockExpensesRepository.updateExpense(DEMO_BUSINESS_ID, created.id, input({ amount: 0 }))).rejects.toThrow(/at least/);
+    await mockExpensesRepository.voidExpense(DEMO_BUSINESS_ID, created.id);
+    await expect(mockExpensesRepository.updateExpense(DEMO_BUSINESS_ID, created.id, input())).rejects.toThrow(/voided/);
+    await expect(mockExpensesRepository.updateExpense(OTHER_BUSINESS_ID, created.id, input())).rejects.toThrow(/not found/);
+  });
 });

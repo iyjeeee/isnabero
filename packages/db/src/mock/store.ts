@@ -104,13 +104,13 @@ const employeesSeed: Employee[] = [
 // Seven offerings spanning all three types (item/bundle/addon), one intentionally sold out, so
 // Catalog/POS/Reports all have realistic variety instead of two lonely rows.
 const offeringsSeed: Offering[] = [
-  { id: genId(), businessId: DEMO_BUSINESS_ID, name: "Sisig", description: "Sizzling pork sisig, single serving", type: "item", price: "150.00", durationMinutes: null, isAvailable: true, createdAt: new Date("2026-01-16") },
-  { id: genId(), businessId: DEMO_BUSINESS_ID, name: "Lumpia (6 pcs)", description: "Crispy fried spring rolls", type: "item", price: "80.00", durationMinutes: null, isAvailable: true, createdAt: new Date("2026-01-16") },
-  { id: genId(), businessId: DEMO_BUSINESS_ID, name: "Halo-Halo", description: "Shaved ice dessert with mixed toppings", type: "item", price: "120.00", durationMinutes: null, isAvailable: true, createdAt: new Date("2026-01-20") },
-  { id: genId(), businessId: DEMO_BUSINESS_ID, name: "Iced Tea", description: "House-brewed iced tea, 16oz", type: "item", price: "40.00", durationMinutes: null, isAvailable: false, createdAt: new Date("2026-01-20") },
-  { id: genId(), businessId: DEMO_BUSINESS_ID, name: "Bundle A", description: "10 mins unli shots + 2 prints", type: "bundle", price: "499.00", durationMinutes: 10, isAvailable: true, createdAt: new Date("2026-01-16") },
-  { id: genId(), businessId: DEMO_BUSINESS_ID, name: "Bundle B", description: "20 mins unli shots + 4 prints + 1 photo strip", type: "bundle", price: "799.00", durationMinutes: 20, isAvailable: true, createdAt: new Date("2026-02-01") },
-  { id: genId(), businessId: DEMO_BUSINESS_ID, name: "Extra 5 Prints", description: "Add-on for any photobooth package", type: "addon", price: "100.00", durationMinutes: null, isAvailable: true, createdAt: new Date("2026-02-01") },
+  { id: genId(), businessId: DEMO_BUSINESS_ID, name: "Sisig", description: "Sizzling pork sisig, single serving", type: "item", price: "150.00", durationMinutes: null, isAvailable: true, createdAt: new Date("2026-01-16"), barcode: "4800001000011" },
+  { id: genId(), businessId: DEMO_BUSINESS_ID, name: "Lumpia (6 pcs)", description: "Crispy fried spring rolls", type: "item", price: "80.00", durationMinutes: null, isAvailable: true, createdAt: new Date("2026-01-16"), barcode: "4800001000028" },
+  { id: genId(), businessId: DEMO_BUSINESS_ID, name: "Halo-Halo", description: "Shaved ice dessert with mixed toppings", type: "item", price: "120.00", durationMinutes: null, isAvailable: true, createdAt: new Date("2026-01-20"), barcode: null },
+  { id: genId(), businessId: DEMO_BUSINESS_ID, name: "Iced Tea", description: "House-brewed iced tea, 16oz", type: "item", price: "40.00", durationMinutes: null, isAvailable: false, createdAt: new Date("2026-01-20"), barcode: null },
+  { id: genId(), businessId: DEMO_BUSINESS_ID, name: "Bundle A", description: "10 mins unli shots + 2 prints", type: "bundle", price: "499.00", durationMinutes: 10, isAvailable: true, createdAt: new Date("2026-01-16"), barcode: null },
+  { id: genId(), businessId: DEMO_BUSINESS_ID, name: "Bundle B", description: "20 mins unli shots + 4 prints + 1 photo strip", type: "bundle", price: "799.00", durationMinutes: 20, isAvailable: true, createdAt: new Date("2026-02-01"), barcode: null },
+  { id: genId(), businessId: DEMO_BUSINESS_ID, name: "Extra 5 Prints", description: "Add-on for any photobooth package", type: "addon", price: "100.00", durationMinutes: null, isAvailable: true, createdAt: new Date("2026-02-01"), barcode: null },
 ];
 
 const offeringInclusionsSeed: OfferingInclusion[] = [];
@@ -180,6 +180,7 @@ for (let dayOffset = 20; dayOffset >= 0; dayOffset--) {
       total: total.toFixed(2),
       paymentRecordId: payment.id,
       receiptNumber: posOrdersSeed.length + 1, // history is generated oldest-first, so numbers run in order
+      clientId: null,
       createdAt,
     };
     posOrdersSeed.push(order);

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { LAST_OWNER_MESSAGE, normalizeBusinessName, normalizeReceiptDetails, summarizeLines } from "./repository";
+import { LAST_OWNER_MESSAGE, normalizeBusinessName, normalizeReceiptDetails, summarizeLines, validateCashAmounts } from "./repository";
 import type {
   BusinessView,
   SaveBusinessSetupInput,
@@ -14,6 +14,9 @@ import type {
   AuditLogEntry,
   ListAuditLogOptions,
   Membership,
+  CashCloseSummary,
+  CashCloseView,
+  CloseCashInput,
 } from "./repository";
 import { fetchAllRows } from "./paginate";
 import { MODULE_REGISTRY, normalizeModules, type ModuleKey } from "@/lib/module-registry";
@@ -51,6 +54,23 @@ async function fetchPaymentDetails(supabase: SupabaseClient, paymentIds: string[
     console.warn("Payment details unavailable", error);
   }
   return details;
+}
+
+function toCashCloseView(row: any): CashCloseView {
+  return {
+    id: row.id,
+    periodStart: new Date(row.period_start),
+    periodEnd: new Date(row.period_end),
+    openingFloat: Number(row.opening_float),
+    cashSales: Number(row.cash_sales),
+    cashExpenses: Number(row.cash_expenses),
+    expected: Number(row.expected),
+    counted: Number(row.counted),
+    difference: Number(row.difference),
+    note: row.note,
+    closedByName: row.closed_by_name,
+    createdAt: new Date(row.created_at),
+  };
 }
 
 export function createSupabaseCoreRepository(supabase: SupabaseClient): CoreRepository {
@@ -203,6 +223,38 @@ export function createSupabaseCoreRepository(supabase: SupabaseClient): CoreRepo
       if (error) throw error;
     },
 
+    async getCashCloseSummary(businessId, dayStart): Promise<CashCloseSummary> {
+      const { data, error } = await supabase.rpc("cash_close_summary", { p_business: businessId, p_day_start: dayStart.toISOString() });
+      if (error) throw error;
+      return {
+        periodStart: new Date(data.period_start),
+        cashSales: Number(data.cash_sales),
+        cashExpenses: Number(data.cash_expenses),
+        lastCounted: data.last_counted === null ? null : Number(data.last_counted),
+      };
+    },
+
+    async closeCash(businessId, dayStart, input: CloseCashInput): Promise<CashCloseView> {
+      validateCashAmounts(input.openingFloat, input.counted);
+      const { data, error } = await supabase.rpc("close_cash", {
+        p_business: businessId,
+        p_day_start: dayStart.toISOString(),
+        p_opening_float: input.openingFloat,
+        p_counted: input.counted,
+        p_note: input.note?.trim() || null,
+      });
+      if (error) throw error;
+      const { data: row, error: readError } = await supabase.from("cash_closes").select("*").eq("id", data.id).single();
+      if (readError) throw readError;
+      return toCashCloseView(row);
+    },
+
+    async listCashCloses(businessId): Promise<CashCloseView[]> {
+      const { data, error } = await supabase.from("cash_closes").select("*").eq("business_id", businessId).order("period_end", { ascending: false }).limit(100);
+      if (error) throw error;
+      return (data ?? []).map(toCashCloseView);
+    },
+
     async listAuditLog(businessId, options?: ListAuditLogOptions): Promise<AuditLogEntry[]> {
       const { data, error } = await supabase
         .from("audit_log")
@@ -255,13 +307,22 @@ export function createSupabaseCoreRepository(supabase: SupabaseClient): CoreRepo
       startOfDay.setHours(0, 0, 0, 0);
       const now = new Date();
 
-      const [salesResult, bookingsResult, employeesResult] = await Promise.all([
+      // yesterday up to this same time of day, so "vs yesterday" compares like with like
+      const dayBefore = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate() - 1, date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds());
+      const [salesResult, yesterdayResult, bookingsResult, employeesResult] = await Promise.all([
         supabase
           .from("payment_records")
           .select("amount")
           .eq("business_id", businessId)
           .is("voided_at", null)
           .gte("created_at", startOfDay.toISOString()),
+        supabase
+          .from("payment_records")
+          .select("amount")
+          .eq("business_id", businessId)
+          .is("voided_at", null)
+          .gte("created_at", dayBefore(startOfDay).toISOString())
+          .lt("created_at", dayBefore(now).toISOString()),
         supabase
           .from("bookings")
           .select("id", { count: "exact", head: true })
@@ -272,13 +333,17 @@ export function createSupabaseCoreRepository(supabase: SupabaseClient): CoreRepo
       ]);
 
       if (salesResult.error) throw salesResult.error;
+      if (yesterdayResult.error) throw yesterdayResult.error;
       if (bookingsResult.error) throw bookingsResult.error;
       if (employeesResult.error) throw employeesResult.error;
 
       const todaySalesTotal = (salesResult.data ?? []).reduce((sum: number, record: any) => sum + Number(record.amount), 0);
 
+      const yesterdaySalesTotal = (yesterdayResult.data ?? []).reduce((sum: number, record: any) => sum + Number(record.amount), 0);
+
       return {
         todaySalesTotal,
+        yesterdaySalesTotal,
         upcomingBookingsCount: bookingsResult.count ?? 0,
         activeEmployeesCount: employeesResult.count ?? 0,
       };

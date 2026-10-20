@@ -31,6 +31,8 @@ export const catalog: Dictionary["catalog"] = {
     description: "Gumawa ng menu item, package bundle, o add-on para sa POS at Booking.",
     name: "Pangalan",
     namePlaceholder: "hal. Sisig, Bundle A",
+    barcode: "Barcode / code ng item (opsyonal)",
+    barcodeHint: "I-scan dito ang barcode ng produkto, o mag-type ng sarili mong code. Ginagamit ito ng POS para idagdag ang item kapag na-scan.",
     descriptionLabel: "Deskripsyon (opsyonal)",
     descriptionPlaceholder: "Maikling deskripsyon na lalabas sa card sa katalogo",
     type: "Uri",
@@ -51,6 +53,7 @@ export const catalog: Dictionary["catalog"] = {
     updated: "Na-update ang {name}",
   },
   validation: {
+    barcodeTooLong: "Gawing mas maikli sa 64 na karakter ang barcode",
     nameRequired: "Kailangan ang pangalan",
     priceMin: "Dapat 0 pataas ang presyo",
     durationInt: "Dapat buong numero ng minuto ang tagal",

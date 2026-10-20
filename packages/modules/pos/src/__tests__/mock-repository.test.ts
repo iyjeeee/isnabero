@@ -10,6 +10,7 @@ function makeCartLine(overrides: Partial<CartLine["offering"]> = {}, quantity = 
       id: "test-offering-id",
       businessId: DEMO_BUSINESS_ID,
       name: "Test Item",
+      barcode: null,
       description: null,
       type: "item",
       price: "100.00",
@@ -160,5 +161,25 @@ describe("receipts", () => {
   it("formats receipt numbers with a fixed width", () => {
     expect(formatReceiptNumber(7)).toBe("000007");
     expect(formatReceiptNumber(123456)).toBe("123456");
+  });
+});
+
+describe("mockPosRepository offline sales", () => {
+  it("records a sale once however many times the same clientId is sent", async () => {
+    const clientId = genId();
+    const input = { businessId: DEMO_BUSINESS_ID, employeeId: null, lines: [makeCartLine({ price: "40.00" }, 2)], method: "cash" as const, clientId };
+    const first = await mockPosRepository.checkout(input);
+    const orders = mockDb.posOrders.length;
+    const again = await mockPosRepository.checkout(input);
+    expect(again).toMatchObject({ orderId: first.orderId, receiptNumber: first.receiptNumber, total: 80, duplicate: true });
+    expect(mockDb.posOrders.length).toBe(orders);
+  });
+
+  it("dates the sale when it happened, never in the future", async () => {
+    const twoHoursAgo = new Date(Date.now() - 2 * 3600_000);
+    const past = await mockPosRepository.checkout({ businessId: DEMO_BUSINESS_ID, employeeId: null, lines: [makeCartLine({}, 1)], method: "cash", soldAt: twoHoursAgo });
+    expect(mockDb.posOrders.find((order) => order.id === past.orderId)?.createdAt).toEqual(twoHoursAgo);
+    const future = await mockPosRepository.checkout({ businessId: DEMO_BUSINESS_ID, employeeId: null, lines: [makeCartLine({}, 1)], method: "cash", soldAt: new Date(Date.now() + 86_400_000) });
+    expect(mockDb.posOrders.find((order) => order.id === future.orderId)!.createdAt.getTime()).toBeLessThanOrEqual(Date.now());
   });
 });

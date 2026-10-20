@@ -6,6 +6,7 @@ export const reports: Dictionary["reports"] = {
   empty: "Mag-enable ng module tulad ng POS, Booking, o Katalogo para makita ang ulat nito dito.",
   last14Days: "— nakaraang 14 na araw",
   date: "Petsa: {date}",
+  profit: { title: "Tubo", revenue: "Kita", expenses: "Gastos", profit: "Tubo", loss: "Lugi", whereItWent: "Saan napunta ang gastos", noExpenses: "Walang gastos sa panahong ito." },
   sales: {
     title: "Ulat ng Benta",
     totalRevenue: "Kabuuang Kita",

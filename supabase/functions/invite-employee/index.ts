@@ -1,15 +1,20 @@
 // supabase/functions/invite-employee/index.ts
 // Deploy with: supabase functions deploy invite-employee
-// Requires these secrets set on the project (NOT the anon key — this needs admin privileges):
-//   supabase secrets set SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=...
+// SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided to Edge Functions automatically on hosted projects.
+// Optional secret: SITE_URL (e.g. https://app.example.com) — where the invite email sends the person to set a password.
+// If it isn't set, the browser's own address (Origin header) is used.
 // Called from the client via supabase.functions.invoke("invite-employee", { body: {...} }) —
 // see apps/web/src/components/employees/AddEmployeeModal.tsx for the calling code.
 //
-// Why this exists: creating an employee record with a real login requires creating an actual
-// auth.users row, which requires the service role key — something that must never be exposed to the
-// browser. This function runs server-side with that privilege; the client never sees the key.
+// Why this exists: creating an employee with a real login requires creating an actual auth.users row, which needs the
+// service role key — something that must never reach the browser. This function runs server-side with that privilege.
+//
+// The redirect address must be allowed in Supabase: Authentication > URL Configuration > Redirect URLs
+// (add <your site>/set-password), otherwise the invite link falls back to the Site URL.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.46.1";
+
+declare const Deno: { env: { get(name: string): string | undefined }; serve(handler: (req: Request) => Response | Promise<Response>): void };
 
 interface InviteEmployeeRequest {
   businessId: string;
@@ -18,32 +23,40 @@ interface InviteEmployeeRequest {
   role: "owner" | "admin" | "staff";
 }
 
+// CORS: the browser sends a preflight (OPTIONS) before invoking a function, so every reply — errors included — must carry these
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+const ROLES = ["owner", "admin", "staff"];
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 Deno.serve(async (req: Request) => {
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return reply(405, { error: "Method not allowed" });
 
   try {
-    const { businessId, email, fullName, role } = (await req.json()) as InviteEmployeeRequest;
+    const body = (await req.json()) as Partial<InviteEmployeeRequest>;
+    const businessId = body.businessId;
+    const email = body.email?.trim().toLowerCase();
+    const fullName = body.fullName?.trim();
+    const role = body.role;
 
-    if (!businessId || !email || !fullName || !role) {
-      return new Response(JSON.stringify({ error: "businessId, email, fullName, and role are all required" }), { status: 400 });
-    }
+    if (!businessId || !email || !fullName || !role) return reply(400, { error: "businessId, email, fullName, and role are all required" });
+    if (!EMAIL.test(email)) return reply(400, { error: "That email address doesn't look right." });
+    if (!ROLES.includes(role)) return reply(400, { error: "Role must be owner, admin or staff." });
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Verify the caller: a signed-in owner/admin of this business (checked with the caller's own JWT)
+    // Verify the caller: a signed-in owner/admin of this business
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Not signed in" }), { status: 401 });
-    }
+    if (!authHeader) return reply(401, { error: "Not signed in" });
     const { data: caller, error: callerError } = await supabaseAdmin.auth.getUser(authHeader.replace(/^Bearer\s+/i, ""));
-    if (callerError || !caller.user) {
-      return new Response(JSON.stringify({ error: "Not signed in" }), { status: 401 });
-    }
+    if (callerError || !caller.user) return reply(401, { error: "Not signed in" });
     const { data: callerRow } = await supabaseAdmin
       .from("employees")
       .select("id")
@@ -51,13 +64,13 @@ Deno.serve(async (req: Request) => {
       .eq("user_id", caller.user.id)
       .in("role", ["owner", "admin"])
       .maybeSingle();
-    if (!callerRow) {
-      return new Response(JSON.stringify({ error: "Only an owner or admin can invite employees" }), { status: 403 });
-    }
+    if (!callerRow) return reply(403, { error: "Only an owner or admin can invite employees" });
 
-    const { data: invited, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email);
+    const siteUrl = (Deno.env.get("SITE_URL") || req.headers.get("origin") || "").replace(/\/$/, "");
+    const { data: invited, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, siteUrl ? { redirectTo: `${siteUrl}/set-password` } : undefined);
     if (inviteError) {
-      return new Response(JSON.stringify({ error: inviteError.message }), { status: 400 });
+      const alreadyUsed = /already|registered|exists/i.test(inviteError.message);
+      return reply(alreadyUsed ? 409 : 400, { error: alreadyUsed ? "Someone with that email already has an account. Ask them to sign in, or use a different email." : inviteError.message });
     }
 
     const { data: employee, error: insertError } = await supabaseAdmin
@@ -67,11 +80,13 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (insertError) {
-      return new Response(JSON.stringify({ error: insertError.message }), { status: 400 });
+      // The login was just created for this invite and has no employee row: remove it so the email can be invited again
+      await supabaseAdmin.auth.admin.deleteUser(invited.user.id);
+      return reply(400, { error: insertError.message });
     }
 
-    return new Response(JSON.stringify({ employee }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return reply(200, { employee });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), { status: 500 });
+    return reply(500, { error: error instanceof Error ? error.message : "Unknown error" });
   }
 });

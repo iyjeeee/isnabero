@@ -1,7 +1,7 @@
 import { mockDb, delay, genId, recordAudit, auditPeso } from "@isnabero/db";
 import type { CatalogRepository, CreateOfferingInput } from "./repository";
 import type { OfferingWithInclusions } from "./types";
-import { OfferingInUseError } from "./rules";
+import { DUPLICATE_BARCODE_MESSAGE, OfferingInUseError, isSameBarcode, normalizeBarcode } from "./rules";
 
 // mockCatalogRepository: in-memory stand-in for Supabase, used while VITE_DATA_SOURCE=mock (the default)
 export const mockCatalogRepository: CatalogRepository = {
@@ -18,6 +18,8 @@ export const mockCatalogRepository: CatalogRepository = {
 
   async createOfferingWithInclusions(businessId, input: CreateOfferingInput) {
     await delay();
+    const barcode = normalizeBarcode(input.offering.barcode);
+    if (barcode && mockDb.offerings.some((item) => item.businessId === businessId && isSameBarcode(item.barcode, barcode))) throw new Error(DUPLICATE_BARCODE_MESSAGE);
     const offering = {
       id: genId(),
       businessId,
@@ -28,6 +30,7 @@ export const mockCatalogRepository: CatalogRepository = {
       durationMinutes: input.offering.durationMinutes ?? null,
       isAvailable: input.offering.isAvailable ?? true,
       createdAt: new Date(),
+      barcode,
     };
     mockDb.offerings.push(offering);
 
@@ -60,7 +63,9 @@ export const mockCatalogRepository: CatalogRepository = {
     if (!name) throw new Error("Name is required");
     if (Number(input.offering.price) < 0) throw new Error("Price must be 0 or more");
     const type = input.offering.type ?? "item";
-    Object.assign(offering, { name, description: input.offering.description ?? null, type, price: String(input.offering.price), durationMinutes: input.offering.durationMinutes ?? null });
+    const barcode = normalizeBarcode(input.offering.barcode);
+    if (barcode && mockDb.offerings.some((item) => item.id !== offeringId && item.businessId === businessId && isSameBarcode(item.barcode, barcode))) throw new Error(DUPLICATE_BARCODE_MESSAGE);
+    Object.assign(offering, { name, description: input.offering.description ?? null, type, price: String(input.offering.price), durationMinutes: input.offering.durationMinutes ?? null, barcode });
 
     // Replace the inclusions in place (bundles only), like the update_offering() database function
     mockDb.offeringInclusions.splice(0, mockDb.offeringInclusions.length, ...mockDb.offeringInclusions.filter((inclusion) => inclusion.offeringId !== offeringId));

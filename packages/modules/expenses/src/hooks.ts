@@ -19,7 +19,23 @@ export function useCreateExpense(supabase: SupabaseClient, businessId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateExpenseInput) => repository.createExpense(businessId, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["expenses", businessId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses", businessId] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] }); // profit figures use expenses
+    },
+  });
+}
+
+export function useUpdateExpense(supabase: SupabaseClient, businessId: string) {
+  const repository = getExpensesRepository(supabase);
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ expenseId, input }: { expenseId: string; input: CreateExpenseInput }) => repository.updateExpense(businessId, expenseId, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses", businessId] });
+      queryClient.invalidateQueries({ queryKey: ["audit_log", businessId] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] }); // profit figures use expenses
+    },
   });
 }
 
@@ -28,6 +44,9 @@ export function useVoidExpense(supabase: SupabaseClient, businessId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (expenseId: string) => repository.voidExpense(businessId, expenseId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["expenses", businessId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses", businessId] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+    },
   });
 }

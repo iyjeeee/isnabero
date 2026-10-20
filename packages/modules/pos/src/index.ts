@@ -3,3 +3,4 @@ export * from "./receipt";
 export * from "./repository";
 export * from "./cart-store";
 export * from "./hooks";
+export * from "./get-repository";

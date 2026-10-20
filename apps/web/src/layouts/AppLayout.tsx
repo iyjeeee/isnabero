@@ -8,8 +8,10 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PageFallback } from "@/components/PageFallback";
 import { useT } from "@/i18n";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { UpdateBanner } from "@/components/UpdateBanner";
 import { OfflineUnavailable } from "@/components/OfflineUnavailable";
 import { useOfflineUnavailable } from "@/hooks/use-offline-unavailable";
+import { useOfflineSalesSync } from "@/lib/offline-sales/hooks";
 
 export function AppLayout() {
   const setMobileOpen = useSidebarStore((state) => state.setMobileOpen);
@@ -17,6 +19,7 @@ export function AppLayout() {
   const { pathname } = useLocation();
   const { t } = useT();
   const offlineUnavailable = useOfflineUnavailable();
+  useOfflineSalesSync(); // sends sales rung up offline whenever the app is open, on any page
 
   return (
     // h-screen + overflow-hidden (NOT min-h-screen) is required here: it constrains this container to
@@ -47,6 +50,7 @@ export function AppLayout() {
         </div>
 
         <OfflineBanner />
+        <UpdateBanner />
 
         <div className="flex-1 overflow-y-auto">
           <div className="w-full animate-fade-in px-4 py-6 sm:px-6 sm:py-8 lg:px-10 xl:px-14">

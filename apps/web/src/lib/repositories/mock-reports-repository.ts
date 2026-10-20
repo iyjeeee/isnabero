@@ -1,9 +1,11 @@
 import { mockDb, delay } from "@isnabero/db";
+import { buildProfitReport } from "@/lib/profit";
 import type {
   ReportsRepository,
   SalesReportData,
   BookingReportData,
   CatalogReportData,
+  ProfitReportData,
   DailyPoint,
 } from "./reports-repository";
 
@@ -47,6 +49,18 @@ function previousPeriodRange(days: number): { start: Date; end: Date } {
 }
 
 export const mockReportsRepository: ReportsRepository = {
+  async getProfitReport(businessId, days = 14): Promise<ProfitReportData> {
+    await delay();
+    const current = cutoffDate(days);
+    const { start, end } = previousPeriodRange(days);
+    return buildProfitReport(
+      mockDb.paymentRecords.filter((record) => record.businessId === businessId),
+      mockDb.expenses.filter((expense) => expense.businessId === businessId),
+      { start: current, end: null },
+      { start, end },
+    );
+  },
+
   async getSalesReport(businessId, days = 14): Promise<SalesReportData> {
     await delay();
     const cutoff = cutoffDate(days);

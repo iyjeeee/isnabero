@@ -4,6 +4,7 @@ export const reports = {
   empty: "Enable a module like POS, Booking, or Catalog to see its report here.",
   last14Days: "— last 14 days",
   date: "Date: {date}",
+  profit: { title: "Profit", revenue: "Revenue", expenses: "Expenses", profit: "Profit", loss: "Loss", whereItWent: "Where the expenses went", noExpenses: "No expenses in this period." },
   sales: {
     title: "Sales Report",
     totalRevenue: "Total Revenue",

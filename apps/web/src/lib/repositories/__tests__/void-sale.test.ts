@@ -5,11 +5,11 @@ import { mockDb, genId, auditRows, DEMO_BUSINESS_ID } from "@isnabero/db";
 // makeSale: a paid POS sale for one offering, built straight in the mock store (what checkout leaves behind)
 function makeSale({ tracked, quantity = 3, source = "pos" as "pos" | "booking" }: { tracked: boolean; quantity?: number; source?: "pos" | "booking" }) {
   const offeringId = genId();
-  mockDb.offerings.push({ id: offeringId, businessId: DEMO_BUSINESS_ID, name: `Voidable ${offeringId.slice(0, 4)}`, description: null, type: "item", price: "50.00", durationMinutes: null, isAvailable: true, createdAt: new Date() });
+  mockDb.offerings.push({ id: offeringId, businessId: DEMO_BUSINESS_ID, name: `Voidable ${offeringId.slice(0, 4)}`, description: null, type: "item", price: "50.00", durationMinutes: null, isAvailable: true, createdAt: new Date(), barcode: null });
   if (tracked) mockDb.stockItems.push({ offeringId, businessId: DEMO_BUSINESS_ID, quantity: 10, lowStockThreshold: 0, createdAt: new Date() });
   const payment = { id: genId(), businessId: DEMO_BUSINESS_ID, sourceModule: source, method: "cash" as const, referenceCode: null, amount: String(quantity * 50), createdAt: new Date(), voidedAt: null };
   mockDb.paymentRecords.push(payment);
-  const order = { id: genId(), businessId: DEMO_BUSINESS_ID, employeeId: null, status: "paid" as const, total: payment.amount, paymentRecordId: payment.id, receiptNumber: 9000 + mockDb.posOrders.length, createdAt: new Date() };
+  const order = { id: genId(), businessId: DEMO_BUSINESS_ID, employeeId: null, status: "paid" as const, total: payment.amount, paymentRecordId: payment.id, receiptNumber: 9000 + mockDb.posOrders.length, clientId: null, createdAt: new Date() };
   mockDb.posOrders.push(order);
   mockDb.posOrderItems.push({ id: genId(), orderId: order.id, offeringId, quantity, unitPrice: "50.00" });
   if (tracked) mockDb.stockItems.find((row) => row.offeringId === offeringId)!.quantity -= quantity; // what the sale took out

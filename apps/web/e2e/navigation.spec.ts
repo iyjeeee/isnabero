@@ -5,7 +5,7 @@ test.describe("sidebar and navigation", () => {
     await page.goto("/app");
     const nav = sidebar(page);
     for (const heading of ["Sales", "Products & Stock", "Team", "Money & Reports"]) await expect(nav.getByText(heading, { exact: true })).toBeVisible();
-    for (const link of ["Dashboard", "POS / Cashier", "Booking", "Payment Records", "Catalog", "Inventory", "Employees", "Schedule", "Expenses", "Reports", "Audit Log"]) {
+    for (const link of ["Dashboard", "POS / Cashier", "Booking", "Payment Records", "Cash Close", "Customers", "Catalog", "Inventory", "Employees", "Schedule", "Expenses", "Reports", "Audit Log"]) {
       await expect(nav.getByRole("link", { name: link })).toBeVisible();
     }
     // old "Core" / "Modules" headings are gone
@@ -28,6 +28,8 @@ test.describe("sidebar and navigation", () => {
     ["/app/pos", /POS/],
     ["/app/booking", /Booking/],
     ["/app/payments", /Payment Records/],
+    ["/app/cash-close", /Cash Close/],
+    ["/app/customers", /Customers/],
     ["/app/catalog", /Catalog/],
     ["/app/inventory", /Inventory/],
     ["/app/employees", /Employees/],

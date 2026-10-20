@@ -1,0 +1,21 @@
+export const customers = {
+  title: "Customers",
+  description: "Everyone who has booked with you, with their booking history. Built from your bookings, so there is nothing extra to maintain.",
+  searchPlaceholder: "Search name or contact…",
+  searchAria: "Search customers",
+  emptyTitle: "No customers yet",
+  emptyDescription: "Customers appear here after their first booking.",
+  noMatchesTitle: "No matches",
+  noMatchesDescription: "Try a different name or number.",
+  table: { name: "Customer", contact: "Contact", bookings: "Bookings", spent: "Spent", last: "Last visit", next: "Next booking" },
+  none: "—",
+  detail: {
+    title: "Customer details",
+    visits: "Completed visits",
+    cancelled: "Cancelled",
+    spent: "Total spent (completed)",
+    firstSeen: "First booking",
+    history: "Booking history",
+  },
+  exportHint: "All customers shown, with their totals.",
+};

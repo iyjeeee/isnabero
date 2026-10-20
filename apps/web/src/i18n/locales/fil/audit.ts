@@ -16,6 +16,7 @@ export const audit: Dictionary["audit"] = {
     expense: "Gastos",
     employee: "Empleyado",
     business: "Negosyo",
+    cash_close: "Pagsasara ng pera",
   },
   empty: {
     noneTitle: "Wala pang naitala",

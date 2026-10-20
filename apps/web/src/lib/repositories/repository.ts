@@ -30,6 +30,7 @@ export interface Membership {
 
 export interface DashboardStats {
   todaySalesTotal: number;
+  yesterdaySalesTotal: number; // sales from the start of yesterday up to this same time of day, so the comparison is fair
   upcomingBookingsCount: number;
   activeEmployeesCount: number;
 }
@@ -141,6 +142,45 @@ export interface ListPaymentRecordsOptions {
   includeVoided?: boolean;
 }
 
+// CashCloseSummary: the cash movement since the last close, shown before the drawer is counted
+export interface CashCloseSummary {
+  periodStart: Date; // the last close's end, or the start of today when there is none
+  cashSales: number;
+  cashExpenses: number;
+  lastCounted: number | null; // what the last close counted — the usual starting cash for the next one
+}
+
+export interface CashCloseView {
+  id: string;
+  periodStart: Date;
+  periodEnd: Date;
+  openingFloat: number;
+  cashSales: number;
+  cashExpenses: number;
+  expected: number;
+  counted: number;
+  difference: number; // counted - expected: negative = short, positive = over
+  note: string | null;
+  closedByName: string;
+  createdAt: Date;
+}
+
+export interface CloseCashInput {
+  openingFloat: number;
+  counted: number;
+  note?: string;
+}
+
+// expectedCash: what should be in the drawer — starting cash plus cash sales, minus cash paid out (rounded to centavos)
+export function expectedCash(openingFloat: number, cashSales: number, cashExpenses: number): number {
+  return Math.round((openingFloat + cashSales - cashExpenses) * 100) / 100;
+}
+
+// validateCashAmounts: shared by both repositories and the form
+export function validateCashAmounts(openingFloat: number, counted: number): void {
+  if (!Number.isFinite(openingFloat) || !Number.isFinite(counted) || openingFloat < 0 || counted < 0) throw new Error("Starting cash and counted cash must be zero or more.");
+}
+
 // CoreRepository: data-access contract for everything that's always-on (not a toggleable module).
 export interface CoreRepository {
   getBusiness(businessId: string): Promise<BusinessView>;
@@ -169,6 +209,10 @@ export interface CoreRepository {
   // Used after login to pick the business instead of assuming one; multi-business switching isn't built yet.
   getMembership(userId: string): Promise<Membership | null>;
   getDashboardStats(businessId: string): Promise<DashboardStats>;
+  // cash close: end-of-shift count. dayStart = start of today on this device; the first close covers from then, later ones from the previous close.
+  getCashCloseSummary(businessId: string, dayStart: Date): Promise<CashCloseSummary>;
+  closeCash(businessId: string, dayStart: Date, input: CloseCashInput): Promise<CashCloseView>;
+  listCashCloses(businessId: string): Promise<CashCloseView[]>; // newest first
   // listAuditLog: read-only by design — the log is written by triggers / recordAudit, never by the app UI.
   listAuditLog(businessId: string, options?: ListAuditLogOptions): Promise<AuditLogEntry[]>;
 }

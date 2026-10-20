@@ -8,8 +8,12 @@ function nextReceiptNumber(businessId: string): number {
 }
 
 export const mockPosRepository: PosRepository = {
-  async checkout({ businessId, employeeId, lines, method, referenceCode }: CheckoutInput): Promise<CheckoutResult> {
+  async checkout({ businessId, employeeId, lines, method, referenceCode, clientId, soldAt }: CheckoutInput): Promise<CheckoutResult> {
     await delay(400);
+    // A sale already recorded under this clientId comes back as is (an offline sale that was sent twice)
+    const existing = clientId ? mockDb.posOrders.find((order) => order.businessId === businessId && order.clientId === clientId) : undefined;
+    if (existing) return { orderId: existing.id, total: Number(existing.total), receiptNumber: existing.receiptNumber, duplicate: true };
+    const when = soldAt && soldAt.getTime() < Date.now() ? soldAt : new Date();
     // Refuse before recording anything, so a stock shortage never leaves a half-recorded sale
     assertStockForSale(businessId, lines.map((line) => ({ offeringId: line.offering.id, quantity: line.quantity })));
     const total = lines.reduce((sum, line) => sum + Number(line.offering.price) * line.quantity, 0);
@@ -21,7 +25,7 @@ export const mockPosRepository: PosRepository = {
       method,
       referenceCode: referenceCode ?? null,
       amount: String(total),
-      createdAt: new Date(),
+      createdAt: when,
       voidedAt: null,
     };
     mockDb.paymentRecords.push(payment);
@@ -34,7 +38,8 @@ export const mockPosRepository: PosRepository = {
       total: String(total),
       paymentRecordId: payment.id,
       receiptNumber: nextReceiptNumber(businessId),
-      createdAt: new Date(),
+      clientId: clientId ?? null,
+      createdAt: when,
     };
     mockDb.posOrders.push(order);
 

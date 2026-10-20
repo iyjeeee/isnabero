@@ -28,6 +28,7 @@ export const enums: Dictionary["enums"] = {
     offering_deleted: "Nabura ang offering",
     offering_availability_changed: "Nagbago ang availability",
     expense_created: "Naitala ang gastos",
+    expense_updated: "Na-edit ang gastos",
     expense_voided: "Na-void ang gastos",
     employee_created: "Nagdagdag ng empleyado",
     employee_updated: "Na-update ang empleyado",
@@ -37,6 +38,7 @@ export const enums: Dictionary["enums"] = {
     shift_created: "Naka-iskedyul ang shift",
     shift_updated: "Nabago ang shift",
     shift_deleted: "Inalis ang shift",
+    cash_closed: "Naisara ang pera",
     business_updated: "Na-update ang negosyo",
     business_modules_changed: "Nagbago ang mga module",
   },
@@ -50,5 +52,6 @@ export const enums: Dictionary["enums"] = {
     stock: "Stock",
     shift: "Shift",
     business: "Negosyo",
+    cash_close: "Pagsasara ng pera",
   },
 };

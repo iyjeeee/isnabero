@@ -17,6 +17,7 @@ function mapOfferingRow(row: any) {
     durationMinutes: row.duration_minutes,
     isAvailable: row.is_available,
     createdAt: new Date(row.created_at),
+    barcode: row.barcode ?? null,
     inclusions: (row.inclusions ?? []).map((inclusion: any) => ({
       id: inclusion.id,
       offeringId: inclusion.offering_id,

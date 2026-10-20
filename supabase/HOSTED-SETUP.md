@@ -6,7 +6,7 @@ chat, source files or ZIPs — they only go in `apps/web/.env.local`, which is g
 1. **Create the project** at supabase.com (note the database password you choose). Under *Project Settings → API* copy the
    **Project URL** and the **anon public key**.
 2. **Back up first** if the project already holds data (*Database → Backups*).
-3. **Apply the migrations in order**, `0000` to `0013`, from `supabase/migrations/`. Either:
+3. **Apply the migrations in order**, `0000` to `0017`, from `supabase/migrations/`. Either:
    - SQL editor: open each file, paste, run — in numeric order, one at a time; or
    - CLI: `supabase login`, `supabase link --project-ref <ref>`, `supabase db push` (asks for the database password).
    Each file must finish without errors before you run the next. (They were tested in this order on a fresh Postgres 16.)
@@ -24,5 +24,10 @@ chat, source files or ZIPs — they only go in `apps/web/.env.local`, which is g
 
 Automated check: with the app set to Supabase mode, `E2E_LIVE=1 E2E_EMAIL=<you> E2E_PASSWORD=<pw> pnpm --filter @isnabero/web e2e:live` signs in, visits every page and signs out (read-only).
 
-Optional, later: deploy the invite function (`supabase functions deploy invite-employee`, needs the service-role key set as a
-function secret — never in the browser env) so new employees get real logins instead of placeholder ids.
+## Invites (real logins for new employees)
+
+1. In the dashboard: **Authentication → URL Configuration**: set *Site URL* to your app's address and add `<your app address>/set-password` to *Redirect URLs*.
+2. With the Supabase CLI: `supabase login`, `supabase link --project-ref <ref>`, then `supabase functions deploy invite-employee`.
+   The service-role key is provided to the function automatically on hosted projects; never put it in the browser env. Optional secret:
+   `supabase secrets set SITE_URL=https://your-app-address` (otherwise the browser's own address is used).
+3. In the app, **Employees → Invite employee**. The person gets an email, opens the link, chooses a password on the "Set your password" page and lands in the app.

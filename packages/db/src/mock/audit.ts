@@ -14,6 +14,11 @@ export function setAuditActor(actor: AuditActor | null): void {
   currentActor = actor;
 }
 
+// getAuditActor: who is acting right now in mock mode (null when nobody is signed in)
+export function getAuditActor(): AuditActor | null {
+  return currentActor;
+}
+
 export interface AuditEntry {
   businessId: string;
   action: AuditAction;

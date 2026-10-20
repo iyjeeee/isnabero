@@ -1,12 +1,12 @@
 import type { LucideIcon } from "lucide-react";
-import { LayoutDashboard, Wallet, Users, BarChart3, ScrollText, Settings } from "lucide-react";
+import { LayoutDashboard, Wallet, Calculator, Contact, Users, BarChart3, ScrollText, Settings } from "lucide-react";
 import type { Permission } from "@/lib/permissions";
 import type { ModuleKey } from "@/lib/module-registry";
 import type { TranslationKey } from "@/i18n";
 
 // NavEntry: a fixed page (labelKey + path + icon) or a module page (moduleKey; label/path/icon come from MODULE_REGISTRY)
 export type NavEntry =
-  | { type: "page"; labelKey: TranslationKey; path: string; icon: LucideIcon; permission?: Permission }
+  | { type: "page"; labelKey: TranslationKey; path: string; icon: LucideIcon; permission?: Permission; requiresModule?: ModuleKey } // requiresModule: hidden unless that module is on
   | { type: "module"; moduleKey: ModuleKey };
 
 export interface NavGroup {
@@ -24,7 +24,9 @@ export const NAV_GROUPS: NavGroup[] = [
     entries: [
       { type: "module", moduleKey: "pos" },
       { type: "module", moduleKey: "booking" },
+      { type: "page", labelKey: "nav.customers", path: "/app/customers", icon: Contact, requiresModule: "booking" },
       { type: "page", labelKey: "nav.payments", path: "/app/payments", icon: Wallet },
+      { type: "page", labelKey: "nav.cashClose", path: "/app/cash-close", icon: Calculator },
     ],
   },
   { id: "products", labelKey: "nav.groups.products", entries: [{ type: "module", moduleKey: "catalog" }, { type: "module", moduleKey: "inventory" }] },

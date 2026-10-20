@@ -11,6 +11,7 @@ const optionalPositiveInt = (message: string) =>
 export const offeringFormSchema = z.object({
   name: z.string().trim().min(1, msg("catalog.validation.nameRequired")),
   description: z.string().optional(),
+  barcode: z.string().trim().max(64, msg("catalog.validation.barcodeTooLong")).optional(),
   type: z.enum(["item", "bundle", "addon"]),
   price: z.coerce.number().min(0, msg("catalog.validation.priceMin")),
   durationMinutes: optionalPositiveInt(msg("catalog.validation.durationInt")),

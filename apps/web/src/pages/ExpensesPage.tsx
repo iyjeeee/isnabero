@@ -10,6 +10,7 @@ import { usePagination } from "@/hooks/use-pagination";
 import { ExportButton } from "@/components/ExportButton";
 import { expenseRows } from "@/lib/export-rows";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
+import { EditExpenseButton } from "@/components/expenses/EditExpenseButton";
 import { VoidExpenseButton } from "@/components/expenses/VoidExpenseButton";
 import { computeExpenseStats } from "@/components/expenses/expense-stats";
 import { useFormat, useLabels, useT } from "@/i18n";
@@ -165,7 +166,8 @@ export default function ExpensesPage() {
                       </td>
                       {canManage && (
                         <td className="px-4 py-3">
-                          <div className="flex justify-end">
+                          <div className="flex justify-end gap-1.5">
+                            {!expense.voidedAt && <EditExpenseButton businessId={businessId} expense={expense} />}
                             {!expense.voidedAt && <VoidExpenseButton businessId={businessId} expenseId={expense.id} label={`${expense.description} ${peso(expense.amount)}`} />}
                           </div>
                         </td>

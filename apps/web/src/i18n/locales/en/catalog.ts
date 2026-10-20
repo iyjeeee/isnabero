@@ -29,6 +29,8 @@ export const catalog = {
     description: "Create a menu item, package bundle, or add-on for POS and Booking.",
     name: "Name",
     namePlaceholder: "e.g. Sisig, Bundle A",
+    barcode: "Barcode / item code (optional)",
+    barcodeHint: "Scan the product’s barcode here, or type your own code. The POS uses it to add the item when scanned.",
     descriptionLabel: "Description (optional)",
     descriptionPlaceholder: "Short description shown on the catalog card",
     type: "Type",
@@ -49,6 +51,7 @@ export const catalog = {
     updated: "{name} updated",
   },
   validation: {
+    barcodeTooLong: "Keep the barcode under 64 characters",
     nameRequired: "Name is required",
     priceMin: "Price must be 0 or more",
     durationInt: "Duration must be a whole number of minutes",

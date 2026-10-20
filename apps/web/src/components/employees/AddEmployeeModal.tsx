@@ -19,6 +19,7 @@ import {
 import { getDataSource } from "@isnabero/db";
 import { supabase } from "@/lib/supabase";
 import { msg, useLabels, useT } from "@/i18n";
+import { inviteErrorMessage } from "@/lib/invite-error";
 import { useCreateEmployee } from "@/hooks/use-create-employee";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -60,11 +61,12 @@ export function AddEmployeeModal({ businessId }: AddEmployeeModalProps) {
       const { error } = await supabase.functions.invoke("invite-employee", {
         body: { businessId, email: values.email, fullName: values.fullName, role: values.role },
       });
-      setIsInviting(false);
       if (error) {
-        toast.error(t("employees.add.inviteFailed", { name: values.fullName, error: error.message }));
+        setIsInviting(false);
+        toast.error(t("employees.add.inviteFailed", { name: values.fullName, error: await inviteErrorMessage(error) }));
         return;
       }
+      setIsInviting(false);
       toast.success(t("employees.add.invited", { name: values.fullName }));
       queryClient.invalidateQueries({ queryKey: ["employees", businessId] });
       queryClient.invalidateQueries({ queryKey: ["dashboard_stats", businessId] });

@@ -1647,7 +1647,7 @@ set `.env.local`). Open items not done: edit/cancel for expenses, reports includ
 - Employee login IDs: employees sign in with their own email (Supabase Auth); `employees.user_id` links to `auth.users`.
   Recommended: keep email login, use the invite flow; no custom usernames.
 
-### Round 29: Supabase-mode bug fix, sidebar regroup, detail dialogs, Playwright e2e — CURRENT
+### Round 29: Supabase-mode bug fix, sidebar regroup, detail dialogs, Playwright e2e
 - **Bug fixed — Supabase mode never activated.** `packages/db/src/data-source.ts` read `(import.meta)?.env`; Vite only replaces the literal
   `import.meta.env.VITE_DATA_SOURCE`, so the optional-chained form read `undefined` and `getDataSource()` always returned `"mock"`
   (no login page, "Sign out" toast, sample data). Now uses the literal form (cast kept for typing; try/catch still covers plain Node).
@@ -1671,3 +1671,45 @@ set `.env.local`). Open items not done: edit/cancel for expenses, reports includ
   Sandbox: `PW_CHROMIUM_PATH`, `PW_NO_SANDBOX=1`. Vitest now only includes `src/**/*.test.*`.
 - Deps added to apps/web devDependencies: `@playwright/test` 1.56.0, `@types/node` ^22 (pnpm-lock.yaml updated).
 - File map: new `src/lib/nav-config.ts`, `src/components/details/*`, `src/i18n/locales/{en,fil}/details.ts`, `e2e/*`; see FILE entries above for the pages touched.
+
+### Round 30: offline selling, cash close, dashboard, change calculator, customers, expense edit + profit, barcode/shortcuts, update prompt, invites — CURRENT
+New migrations (apply in order after 0013; all verified on a scratch Postgres 16, NOT on hosted Supabase yet): `0014_offline_sales.sql`,
+`0015_cash_close.sql`, `0016_expense_edit.sql`, `0017_barcode.sql`. New e2e specs: offline-sales, cash-close, dashboard-and-change, customers,
+expense-edit-profit, pos-scan, supabase/set-password.
+
+1. **Offline selling.** `pos_orders.client_id` (+ unique index per business) and `checkout_sale(p_business, p_method, p_reference, p_lines, p_client_id, p_sold_at)`:
+   a repeated client id returns the existing sale (`duplicate: true`); `p_sold_at` backdates (clamped to now). Web side `apps/web/src/lib/offline-sales/`:
+   `types.ts` (PendingSale), `queue-store.ts` (zustand persist, localStorage key `isnabero-pending-sales`; `pendingQuantities`), `classify.ts`
+   (`isConnectionError`: network/expired-JWT = retry, server refusal = park), `sync.ts` (`syncPendingSales`: oldest first, one run at a time, refused sale
+   parked as "failed", connection error stops the run), `hooks.ts` (`useOfflineSalesSync` mounted in `AppLayout`; `useCheckoutOrQueue` used by `PosPage`;
+   `usePendingByOffering`). `components/pos/PendingSalesBar.tsx` lists waiting/refused sales (retry/discard). Waiting units are subtracted from the
+   stock shown at the till. Cash Close is blocked while sales wait. The global MutationCache offline guard is untouched (the POS no longer uses `useCheckout`).
+   Text: `offlineSales.*`; `offline.message` updated. Not verified: real PostgREST/JWT-refresh behaviour while offline.
+2. **Cash close.** Table `cash_closes` (RLS: members read; written only by `close_cash()`), `cash_close_summary()`, `cash_totals()`; expected = starting cash
+   + cash sales − cash expenses since the previous close (period by `created_at`; voided excluded); audit `cash.closed`. Page `pages/CashClosePage.tsx`
+   (route `/app/cash-close`, Sales group, all roles), `components/cash/CashDifferenceBadge.tsx`, `components/details/CashCloseDetailDialog.tsx`,
+   `hooks/use-cash-close.ts`; core repository gained `getCashCloseSummary/closeCash/listCashCloses` (+ `expectedCash`, `validateCashAmounts`).
+   Mock rows in `packages/db/src/mock/cash-closes.ts`; schema `packages/db/src/schema/cash.ts`. Limit: a sale that commits after a close started but is
+   stamped earlier is missed (rare); offline sales are why close is blocked while any wait on this device.
+3. **Dashboard.** `DashboardStats.yesterdaySalesTotal` (yesterday up to the same time of day); Today's Sales card shows TrendBadge + amount;
+   `components/dashboard/TodayBookingsCard.tsx` (booking module on). Stock alerts card already existed.
+4. **Change calculator.** `CheckoutModal`: "Cash received" box (cash only), quick amounts, change due / still owed, confirm blocked while short.
+   Not stored with the sale. Pure helpers `lib/cash-change.ts`.
+5. **Customers.** No table: `lib/customers.ts` (`groupCustomers`, matched by contact else name) over all bookings; `pages/CustomersPage.tsx`
+   (route `/app/customers`, requires Booking module — `NavEntry.requiresModule`), `components/details/CustomerDetailDialog.tsx`; text `customers.*`.
+6. **Expenses.** `ExpensesRepository.updateExpense` (active only; audit `expense.updated` with what changed; migration 0016 replaces the "only void" trigger:
+   active rows editable, voided rows frozen, recorded_by/created_at never change). UI: `ExpenseFormDialog` (add + edit), `EditExpenseButton`.
+   Profit: `lib/profit.ts` (`buildProfitReport`), `ReportsRepository.getProfitReport`, `components/reports/ProfitReportSection.tsx` (Expenses module on + `expenses.view`).
+   "Cancel" = the existing Void (unchanged).
+7. **Barcode + shortcuts.** `offerings.barcode` (unique per business, case-insensitive; `update_offering` gained `p_barcode`); catalog form field; module rules
+   `normalizeBarcode`, `DUPLICATE_BARCODE_MESSAGE`. POS: `lib/barcode-scan.ts` (`findByBarcode`, `createScanBuffer`, scanner = keys < 80 ms apart + Enter),
+   `hooks/use-pos-shortcuts.ts` (scan when no field focused, `/` focus search, F9 checkout; inactive while a dialog is open); Enter in the search box adds a
+   barcode match or the only result. Mock demo codes: Sisig 4800001000011, Lumpia 4800001000028.
+8. **Update prompt.** `public/sw.js` no longer self-activates; build stamps `BUILD_ID` (plugin `stampServiceWorker` in `vite.config.ts`); `lib/offline/update-store.ts`,
+   `register-service-worker.ts` (checks every 30 min and on tab focus), `components/UpdateBanner.tsx` (in `AppLayout`): "Update now" / "Later".
+   Verified in a real browser against `vite build` + `vite preview`.
+9. **Invites.** `supabase/functions/invite-employee/index.ts` rewritten: CORS + OPTIONS, validation, caller must be owner/admin, `redirectTo` = `SITE_URL` or request
+   Origin + `/set-password`, duplicate-email message, removes the new login if the employee row fails. Client: `lib/invite-error.ts` shows the function's real message;
+   `pages/SetPasswordPage.tsx` (public route `/set-password`). `AddEmployeeModal` already used the invite flow in Supabase mode (mock mode still creates locally).
+   NOT verified: the function itself (no Deno here; syntax-checked only) and the email/link flow on a real project.
+

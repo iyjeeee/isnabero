@@ -16,6 +16,7 @@ export const expenses: Dictionary["expenses"] = {
   noMatches: { title: "Walang tugma", description: "Subukan ang ibang hinahanap o category." },
   table: { recordedBy: "Nag-record", date: "Petsa", category: "Kategorya", description: "Deskripsyon", method: "Ibinayad gamit ang", amount: "Halaga", actions: "Mga Aksyon" },
   voided: "Na-void",
+  edit: { ariaLabel: "I-edit ang gastos na {label}" },
   void: {
     ariaLabel: "I-void ang gastos na {label}",
     title: "I-void ang gastos na ito?",
@@ -26,7 +27,10 @@ export const expenses: Dictionary["expenses"] = {
   modal: {
     trigger: "Magdagdag ng gastos",
     title: "Magdagdag ng gastos",
-    description: "I-record ang perang ginastos ng negosyo mo. Ang mga mali ay maaaring i-void, hindi i-edit.",
+    description: "I-record ang perang ginastos ng negosyo mo.",
+    editTitle: "I-edit ang gastos",
+    editDescription: "Ituwid ang gastos na ito. Lahat ng pagbabago ay nasa Audit Log.",
+    updated: "Na-update ang gastos",
     date: "Petsa",
     category: "Kategorya",
     descriptionLabel: "Deskripsyon",

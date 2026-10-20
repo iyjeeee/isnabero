@@ -14,6 +14,7 @@ export const audit = {
     expense: "Expenses",
     employee: "Employees",
     business: "Business",
+    cash_close: "Cash close",
   },
   empty: {
     noneTitle: "Nothing logged yet",

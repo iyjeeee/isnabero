@@ -1,5 +1,5 @@
-import { mockDb, delay, genId, recordAudit, auditRows, auditPeso, voidMockSale, DEMO_OWNER_USER_ID } from "@isnabero/db";
-import { LAST_OWNER_MESSAGE, normalizeBusinessName, normalizeReceiptDetails, summarizeLines } from "./repository";
+import { mockDb, delay, genId, recordAudit, auditRows, auditPeso, voidMockSale, cashCloseRows, getAuditActor, DEMO_OWNER_USER_ID, type CashCloseRow } from "@isnabero/db";
+import { LAST_OWNER_MESSAGE, expectedCash, normalizeBusinessName, normalizeReceiptDetails, summarizeLines, validateCashAmounts } from "./repository";
 import type {
   BusinessView,
   SaveBusinessSetupInput,
@@ -14,6 +14,9 @@ import type {
   AuditLogEntry,
   ListAuditLogOptions,
   Membership,
+  CashCloseSummary,
+  CashCloseView,
+  CloseCashInput,
 } from "./repository";
 import { MODULE_REGISTRY, normalizeModules, type ModuleKey } from "@/lib/module-registry";
 
@@ -39,6 +42,38 @@ function toBusinessView(business: (typeof mockDb.businesses)[number]): BusinessV
     tin: business.tin,
     contactNumber: business.contactNumber,
     receiptFooter: business.receiptFooter,
+  };
+}
+
+function toCashCloseView(row: CashCloseRow): CashCloseView {
+  return {
+    id: row.id,
+    periodStart: row.periodStart,
+    periodEnd: row.periodEnd,
+    openingFloat: Number(row.openingFloat),
+    cashSales: Number(row.cashSales),
+    cashExpenses: Number(row.cashExpenses),
+    expected: Number(row.expected),
+    counted: Number(row.counted),
+    difference: Number(row.difference),
+    note: row.note,
+    closedByName: row.closedByName,
+    createdAt: row.createdAt,
+  };
+}
+
+// lastCloseOf: the most recent close for a business (the next period starts where it ended)
+function lastCloseOf(businessId: string): CashCloseRow | undefined {
+  return cashCloseRows.filter((row) => row.businessId === businessId).sort((a, b) => b.periodEnd.getTime() - a.periodEnd.getTime())[0];
+}
+
+// cashSince: cash taken in and paid out between two moments (voided records left out) — same rule as cash_totals() in migration 0015
+function cashBetween(businessId: string, start: Date, end: Date) {
+  const inRange = (date: Date) => date >= start && date < end;
+  const sum = (amounts: string[]) => Math.round(amounts.reduce((total, amount) => total + Number(amount), 0) * 100) / 100;
+  return {
+    cashSales: sum(mockDb.paymentRecords.filter((row) => row.businessId === businessId && row.method === "cash" && !row.voidedAt && inRange(row.createdAt)).map((row) => row.amount)),
+    cashExpenses: sum(mockDb.expenses.filter((row) => row.businessId === businessId && row.method === "cash" && !row.voidedAt && inRange(row.createdAt)).map((row) => row.amount)),
   };
 }
 
@@ -217,6 +252,10 @@ export const mockCoreRepository: CoreRepository = {
     const todaySalesTotal = mockDb.paymentRecords
       .filter((record) => record.businessId === businessId && record.createdAt >= startOfDay && !record.voidedAt)
       .reduce((sum, record) => sum + Number(record.amount), 0);
+    const dayBefore = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate() - 1, date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds());
+    const yesterdaySalesTotal = mockDb.paymentRecords
+      .filter((record) => record.businessId === businessId && record.createdAt >= dayBefore(startOfDay) && record.createdAt < dayBefore(now) && !record.voidedAt)
+      .reduce((sum, record) => sum + Number(record.amount), 0);
 
     const upcomingBookingsCount = mockDb.bookings.filter(
       (booking) =>
@@ -227,6 +266,51 @@ export const mockCoreRepository: CoreRepository = {
 
     const activeEmployeesCount = mockDb.employees.filter((employee) => employee.businessId === businessId).length;
 
-    return { todaySalesTotal, upcomingBookingsCount, activeEmployeesCount };
+    return { todaySalesTotal, yesterdaySalesTotal, upcomingBookingsCount, activeEmployeesCount };
+  },
+
+  async getCashCloseSummary(businessId, dayStart): Promise<CashCloseSummary> {
+    await delay(100);
+    const last = lastCloseOf(businessId);
+    const now = new Date();
+    const periodStart = last?.periodEnd ?? new Date(Math.min(dayStart.getTime(), now.getTime()));
+    return { periodStart, ...cashBetween(businessId, periodStart, now), lastCounted: last ? Number(last.counted) : null };
+  },
+
+  async closeCash(businessId, dayStart, input: CloseCashInput): Promise<CashCloseView> {
+    await delay(300);
+    validateCashAmounts(input.openingFloat, input.counted);
+    const now = new Date();
+    const periodStart = lastCloseOf(businessId)?.periodEnd ?? new Date(Math.min(dayStart.getTime(), now.getTime()));
+    const { cashSales, cashExpenses } = cashBetween(businessId, periodStart, now);
+    const expected = expectedCash(input.openingFloat, cashSales, cashExpenses);
+    const counted = Math.round(input.counted * 100) / 100;
+    const actor = getAuditActor();
+    const row: CashCloseRow = {
+      id: genId(),
+      businessId,
+      periodStart,
+      periodEnd: now,
+      openingFloat: input.openingFloat.toFixed(2),
+      cashSales: cashSales.toFixed(2),
+      cashExpenses: cashExpenses.toFixed(2),
+      expected: expected.toFixed(2),
+      counted: counted.toFixed(2),
+      difference: (counted - expected).toFixed(2),
+      note: input.note?.trim() || null,
+      closedBy: actor?.id ?? null,
+      closedByName: actor?.name ?? "System",
+      createdAt: now,
+    };
+    cashCloseRows.push(row);
+    const difference = counted - expected;
+    const verdict = Math.abs(difference) < 0.005 ? "balanced" : difference < 0 ? `short ${auditPeso(-difference)}` : `over ${auditPeso(difference)}`;
+    recordAudit({ businessId, action: "cash.closed", entityId: row.id, summary: `Cash closed: counted ${auditPeso(counted)} vs expected ${auditPeso(expected)} (${verdict})` });
+    return toCashCloseView(row);
+  },
+
+  async listCashCloses(businessId): Promise<CashCloseView[]> {
+    await delay(100);
+    return cashCloseRows.filter((row) => row.businessId === businessId).sort((a, b) => b.periodEnd.getTime() - a.periodEnd.getTime()).map(toCashCloseView);
   },
 };

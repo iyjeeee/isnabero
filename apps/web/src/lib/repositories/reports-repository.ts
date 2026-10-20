@@ -46,6 +46,9 @@ export interface CatalogReportData {
   totalOfferings: number;
 }
 
+import type { ProfitReportData } from "@/lib/profit";
+export type { ProfitReportData };
+
 // ReportsRepository: read-only aggregation queries backing the three Reports page sections. Kept
 // separate from CoreRepository since these are cross-table aggregates specific to reporting, not
 // simple CRUD on one table.
@@ -53,4 +56,6 @@ export interface ReportsRepository {
   getSalesReport(businessId: string, days?: number): Promise<SalesReportData>;
   getBookingReport(businessId: string, days?: number): Promise<BookingReportData>;
   getCatalogReport(businessId: string): Promise<CatalogReportData>;
+  // getProfitReport: revenue minus expenses for the last `days` days vs the same-length period before (owner/admin: expenses are hidden from staff)
+  getProfitReport(businessId: string, days?: number): Promise<ProfitReportData>;
 }

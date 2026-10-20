@@ -3,6 +3,9 @@ export const dashboard = {
   description: "{greeting} — here's today's activity across every enabled module.",
   greeting: { morning: "Good morning", afternoon: "Good afternoon", evening: "Good evening" },
   stats: { todaySales: "Today's Sales", upcomingBookings: "Upcoming Bookings", activeEmployees: "Active Employees" },
+  vsYesterday: "vs yesterday",
+  yesterdayByNow: "₱{amount} by this time yesterday",
+  todayBookings: { title: "Today's bookings", open: "Open Booking", empty: "No bookings today." },
   stockAlerts: { title: "Stock alerts", openInventory: "Open Inventory" },
   quickActions: {
     title: "Quick Actions",

@@ -1,8 +1,15 @@
 // Isnabero service worker: keeps the app shell available offline. It never touches API/data requests (other origins).
+// BUILD_ID is stamped at build time (vite.config.ts), so every release changes this file and browsers notice the update.
+const BUILD_ID = "__BUILD_ID__";
 const CACHE = "isnabero-shell-v1";
 const SHELL = "/index.html";
 
-self.addEventListener("install", () => self.skipWaiting());
+// A new version waits until the person taps "Update" (the page sends SKIP_WAITING), so it never swaps code under a sale in progress.
+// A first-ever install has nothing to wait for and activates by itself.
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
+  if (event.data && event.data.type === "GET_VERSION" && event.source) event.source.postMessage({ type: "VERSION", buildId: BUILD_ID }); // handy when checking which release is running
+});
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(

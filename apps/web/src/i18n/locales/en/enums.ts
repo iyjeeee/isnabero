@@ -27,6 +27,7 @@ export const enums = {
     offering_deleted: "Offering deleted",
     offering_availability_changed: "Availability changed",
     expense_created: "Expense recorded",
+    expense_updated: "Expense edited",
     expense_voided: "Expense voided",
     employee_created: "Employee added",
     employee_updated: "Employee updated",
@@ -36,6 +37,7 @@ export const enums = {
     shift_created: "Shift scheduled",
     shift_updated: "Shift changed",
     shift_deleted: "Shift removed",
+    cash_closed: "Cash closed",
     business_updated: "Business updated",
     business_modules_changed: "Modules changed",
   },
@@ -49,5 +51,6 @@ export const enums = {
     stock: "Stock",
     shift: "Shift",
     business: "Business",
+    cash_close: "Cash close",
   },
 };

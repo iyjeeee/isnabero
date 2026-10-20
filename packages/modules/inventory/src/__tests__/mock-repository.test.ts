@@ -6,7 +6,7 @@ const OTHER_BUSINESS_ID = "00000000-0000-0000-0000-00000000ffff";
 
 // Fresh offering per test so tests can't affect each other or the seeded stock
 function newOffering(name: string) {
-  const offering = { id: genId(), businessId: DEMO_BUSINESS_ID, name, description: null, type: "item" as const, price: "10.00", durationMinutes: null, isAvailable: true, createdAt: new Date() };
+  const offering = { id: genId(), businessId: DEMO_BUSINESS_ID, name, description: null, type: "item" as const, price: "10.00", durationMinutes: null, isAvailable: true, createdAt: new Date(), barcode: null };
   mockDb.offerings.push(offering);
   return offering;
 }
