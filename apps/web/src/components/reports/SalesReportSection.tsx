@@ -67,7 +67,7 @@ export function SalesReportSection({ businessId }: SalesReportSectionProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               <div className="h-64 lg:col-span-2">
                 <p className="mb-2 text-sm font-medium text-muted-foreground">{t("reports.sales.dailyRevenue")}</p>
                 <ResponsiveContainer width="100%" height="90%">

@@ -56,7 +56,7 @@ export default function BookingPage() {
   const nextBooking = bookings.find((booking) => isEditable(booking.status) && new Date(booking.startTime) >= new Date());
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader icon={CalendarClock} title={t("booking.title")} description={t("booking.description")}
         action={
           <div className="flex items-center gap-2">
@@ -71,7 +71,7 @@ export default function BookingPage() {
         <StatCard label={t("booking.stats.confirmed")} value={confirmedCount} icon={CalendarCheck2} accent="success" isLoading={isLoading} />
         <StatCard
           label={t("booking.stats.next")}
-          value={nextBooking ? formatBookingTime(nextBooking.startTime) : "—"}
+          value={nextBooking ? <span className="text-base sm:text-lg">{formatBookingTime(nextBooking.startTime)}</span> : "—"}
           icon={Clock}
           accent="info"
           isLoading={isLoading}

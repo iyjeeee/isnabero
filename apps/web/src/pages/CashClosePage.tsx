@@ -59,7 +59,7 @@ export default function CashClosePage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-4xl space-y-5">
       <PageHeader icon={Calculator} title={t("cashClose.title")} description={t("cashClose.description")} />
 
       <Card>

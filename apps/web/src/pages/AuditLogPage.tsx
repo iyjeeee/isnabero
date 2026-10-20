@@ -69,7 +69,7 @@ export default function AuditLogPage() {
   const { page, setPage, totalPages, pageItems, totalItems } = usePagination(filtered, PAGE_SIZE);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         icon={ScrollText}
         title={t("audit.title")}

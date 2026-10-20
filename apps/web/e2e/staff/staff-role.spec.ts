@@ -9,7 +9,10 @@ test.describe("staff role", () => {
     await expect(nav.getByRole("link", { name: "Schedule" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Expenses" })).toHaveCount(0);
     await expect(nav.getByRole("link", { name: "Audit Log" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Settings" }).click();
+    await expect(page.getByRole("dialog").getByRole("button", { name: "Dark" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Business Setup" })).toHaveCount(0);
+    await page.keyboard.press("Escape");
   });
 
   for (const path of ["/app/expenses", "/app/audit", "/app/setup"]) {

@@ -43,7 +43,7 @@ export function ReceiptDetailsCard({ business }: { business: BusinessView }) {
 
   return (
     <Card>
-      <CardContent className="p-6">
+      <CardContent className="p-5">
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div>
             <h2 className="font-display text-lg font-semibold">{t("receipt.details.title")}</h2>

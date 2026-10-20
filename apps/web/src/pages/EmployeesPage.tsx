@@ -56,7 +56,7 @@ export default function EmployeesPage() {
   const staffCount = employees.filter((employee) => employee.role === "staff" || employee.role === "admin").length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         icon={Users}
         title={t("nav.employees")}

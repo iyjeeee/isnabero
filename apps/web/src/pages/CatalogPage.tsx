@@ -60,7 +60,7 @@ export default function CatalogPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         icon={LayoutGrid}
         title={t("catalog.page.title")}

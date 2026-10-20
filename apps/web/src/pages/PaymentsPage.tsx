@@ -62,7 +62,7 @@ export default function PaymentsPage() {
   const sourceLabel = (source: string) => (source === "pos" ? t("payments.source.pos") : source === "booking" ? t("payments.source.booking") : source);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         icon={Wallet}
         title={t("payments.title")}

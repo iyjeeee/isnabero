@@ -48,7 +48,7 @@ export default function InventoryPage() {
   const outCount = levels.filter((level) => level.status === "out").length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         icon={Boxes}
         title={t("inventory.page.title")}

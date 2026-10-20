@@ -18,7 +18,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
       onClick={() => setLanguage(next.code)}
       aria-label={`${t("language.switchTo", { language: current.label })} → ${next.label}`}
       title={`${t("language.label")}: ${current.label} → ${next.label}`}
-      className={className ?? "gap-1 px-2 text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground"}
+      className={className ?? "gap-1 px-2 text-muted-foreground hover:bg-accent hover:text-foreground"}
     >
       <Languages className="h-4 w-4" />
       <span className="text-xs font-semibold uppercase">{current.code}</span>

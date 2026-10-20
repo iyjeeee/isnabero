@@ -97,7 +97,7 @@ export default function DashboardPage() {
   const sourceLabel = (source: string) => (source === "pos" ? t("payments.source.pos") : source === "booking" ? t("payments.source.booking") : source);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         icon={LayoutDashboard}
         title={t("dashboard.title")}
@@ -124,29 +124,32 @@ export default function DashboardPage() {
         <StatCard label={t("dashboard.stats.activeEmployees")} value={stats?.activeEmployeesCount ?? 0} icon={Users} accent="default" isLoading={statsLoading} />
       </div>
 
-      {enabledModules.includes("booking") && businessId && <TodayBookingsCard businessId={businessId} />}
+      {/* side by side on wide screens so each card is only as wide as its content needs */}
+      <div className="grid grid-cols-1 items-start gap-4 empty:hidden lg:grid-cols-2">
+        {enabledModules.includes("booking") && businessId && <TodayBookingsCard businessId={businessId} />}
 
-      {inventoryOn && stockAlerts.length > 0 && (
-        <Card className="animate-slide-up border-warning/40">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <TriangleAlert className="h-4 w-4 text-warning" />
-              {t("dashboard.stockAlerts.title")}
-            </CardTitle>
-            <Link to="/app/inventory" className="text-sm font-medium text-primary hover:underline">
-              {t("dashboard.stockAlerts.openInventory")}
-            </Link>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-x-6 gap-y-2">
-            {stockAlerts.map((level) => (
-              <div key={level.offeringId} className="flex items-center gap-2 text-sm">
-                <span className="font-medium">{level.offeringName}</span>
-                <StockBadge level={level} />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+        {inventoryOn && stockAlerts.length > 0 && (
+          <Card className="animate-slide-up border-warning/40">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <TriangleAlert className="h-4 w-4 text-warning" />
+                {t("dashboard.stockAlerts.title")}
+              </CardTitle>
+              <Link to="/app/inventory" className="text-sm font-medium text-primary hover:underline">
+                {t("dashboard.stockAlerts.openInventory")}
+              </Link>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-x-6 gap-y-2">
+              {stockAlerts.map((level) => (
+                <div key={level.offeringId} className="flex items-center gap-2 text-sm">
+                  <span className="font-medium">{level.offeringName}</span>
+                  <StockBadge level={level} />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Quick Actions */}

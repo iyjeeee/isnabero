@@ -1,7 +1,7 @@
 import { test, expect, sidebar } from "./fixtures";
 
 test.describe("sidebar and navigation", () => {
-  test("groups pages by task and pins Business Setup at the bottom", async ({ page }) => {
+  test("groups pages by task and keeps Business Setup in the top bar", async ({ page }) => {
     await page.goto("/app");
     const nav = sidebar(page);
     for (const heading of ["Sales", "Products & Stock", "Team", "Money & Reports"]) await expect(nav.getByText(heading, { exact: true })).toBeVisible();
@@ -11,9 +11,37 @@ test.describe("sidebar and navigation", () => {
     // old "Core" / "Modules" headings are gone
     await expect(nav.getByText("Core", { exact: true })).toHaveCount(0);
     await expect(nav.getByText("Modules", { exact: true })).toHaveCount(0);
-    // settings sit outside the grouped list
+    // settings live in the top bar, not the sidebar
     await expect(nav.getByRole("link", { name: "Business Setup" })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Business Setup" })).toBeVisible();
+    // the top bar shows just Settings and Sign out; language, theme and Business Setup sit in the settings modal
+    const bar = page.locator("header");
+    await expect(bar.getByRole("button", { name: "Settings" })).toBeVisible();
+    await expect(bar.getByRole("button", { name: "Sign out" })).toBeVisible();
+    await expect(bar.getByRole("link", { name: "Business Setup" })).toHaveCount(0);
+    await bar.getByRole("button", { name: "Settings" }).click();
+    await expect(page.getByRole("dialog").getByRole("link", { name: /Business Setup/ })).toBeVisible();
+  });
+
+  test("keeps cards compact: content never stretches past the max width on a wide screen", async ({ page }) => {
+    await page.setViewportSize({ width: 1920, height: 1000 });
+    await page.goto("/app");
+    const card = page.getByText("Today's bookings", { exact: true }).locator("xpath=ancestor::div[contains(@class,'rounded-lg')][1]");
+    await expect(card).toBeVisible();
+    expect((await card.boundingBox())!.width).toBeLessThan(700);
+    await page.goto("/app/payments");
+    const header = page.getByRole("heading", { level: 1, name: "Payment Records" }).locator("xpath=ancestor::div[contains(@class,'rounded-xl')][1]");
+    expect((await header.boundingBox())!.width).toBeLessThanOrEqual(1152);
+  });
+
+  test("never shows a sidebar scrollbar, even on a short window, and the list still scrolls", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 420 });
+    await page.goto("/app");
+    const list = sidebar(page);
+    const info = await list.evaluate((el) => ({ barWidth: (el as HTMLElement).offsetWidth - el.clientWidth, scrolls: el.scrollHeight > el.clientHeight }));
+    expect(info.barWidth).toBe(0);
+    expect(info.scrolls).toBe(true);
+    await list.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    expect(await list.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
   });
 
   test("shows the sample-data badge in mock mode and explains sign out", async ({ page }) => {

@@ -94,6 +94,17 @@
   }
 }
 
+/* no-scrollbar: still scrolls (wheel, touch, keyboard) but never draws a scrollbar — used by the sidebar list */
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Receipt printing: the receipt is rendered in a hidden copy under <body>; when printing, everything else is hidden. */
 .receipt-print-root {
   display: none;

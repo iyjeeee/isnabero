@@ -23,6 +23,9 @@ export const nav: Dictionary["nav"] = {
   expandSidebar: "I-expand ang sidebar",
   openMenu: "Buksan ang menu",
   closeMenu: "Isara ang menu",
-  switchToDark: "Lumipat sa dark mode",
-  switchToLight: "Lumipat sa light mode",
+  settings: "Mga Setting",
+  settingsHint: "Wika, itsura at setup ng negosyo.",
+  themeLight: "Maliwanag",
+  themeDark: "Madilim",
+  setupHint: "Pangalan, mga module at resibo",
 };

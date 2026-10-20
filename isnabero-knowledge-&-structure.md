@@ -890,19 +890,18 @@ deliver a ready-to-extract ZIP with only changed/created files.
 - `src/components/PageFallback.tsx` — shared "Loading…" Suspense fallback
   (App.tsx for /login, AppLayout for pages).
 - `src/components/LanguageSwitcher.tsx` — EN/FIL button (sidebar footer, login page); `src/providers/UiLabelsBridge.tsx` feeds translated labels to `packages/ui` (`ui-labels.tsx`: `UiLabelsProvider`/`useUiLabels`, English defaults).
-- `src/components/ThemeToggle.tsx` — sun/moon icon button, calls
+- `src/components/ThemeToggle.tsx` (REMOVED in Round 32; theme now chosen in `SettingsDialog.tsx`) — sun/moon icon button, calls
   `useThemeStore`. Lives in the Sidebar footer.
 
 **`src/layouts/` — Shell**
 - `src/layouts/Sidebar.tsx` — dark navy surface (via `sidebar-*` tokens,
   NOT the main `background` token) with a branded header (icon + business
-  name), `CORE_NAV` (always-on: Dashboard, Payment Records, Employees,
-  Reports), the dynamic module nav (`MODULE_REGISTRY` filtered by
-  `useBusinessModules`), and a `ThemeToggle` footer. Active nav item gets a
+  name), grouped nav from `lib/nav-config.ts` and a collapse toggle (theme, language, sign out and Business Setup moved to `TopBar.tsx` in Round 31). Active nav item gets a
   solid maroon (`primary`) background; hover states have icon scale + slide
   micro-animations. Include whenever changing sidebar behavior, colors, or
   the core nav list.
-- `src/layouts/AppLayout.tsx` — Sidebar + fluid-width content container
+- `src/layouts/TopBar.tsx` — navy top bar (same `sidebar-*` tokens as the sidebar): Settings icon (opens `components/SettingsDialog.tsx`) and Sign out icon (+ hamburger and business name on mobile). Include with Sidebar/AppLayout for shell changes.
+- `src/layouts/AppLayout.tsx` — Sidebar + TopBar + fluid-width content container
   (`px-6 lg:px-10 xl:px-14`, NO max-width cap — was `max-w-6xl`, removed
   because it wasted horizontal space on wide screens) with a fade-in
   animation + `<ErrorBoundary>` + `<Suspense>` + `<Outlet>` wrapper for all
@@ -1672,7 +1671,7 @@ set `.env.local`). Open items not done: edit/cancel for expenses, reports includ
 - Deps added to apps/web devDependencies: `@playwright/test` 1.56.0, `@types/node` ^22 (pnpm-lock.yaml updated).
 - File map: new `src/lib/nav-config.ts`, `src/components/details/*`, `src/i18n/locales/{en,fil}/details.ts`, `e2e/*`; see FILE entries above for the pages touched.
 
-### Round 30: offline selling, cash close, dashboard, change calculator, customers, expense edit + profit, barcode/shortcuts, update prompt, invites — CURRENT
+### Round 30: offline selling, cash close, dashboard, change calculator, customers, expense edit + profit, barcode/shortcuts, update prompt, invites
 New migrations (apply in order after 0013; all verified on a scratch Postgres 16, NOT on hosted Supabase yet): `0014_offline_sales.sql`,
 `0015_cash_close.sql`, `0016_expense_edit.sql`, `0017_barcode.sql`. New e2e specs: offline-sales, cash-close, dashboard-and-change, customers,
 expense-edit-profit, pos-scan, supabase/set-password.
@@ -1713,3 +1712,25 @@ expense-edit-profit, pos-scan, supabase/set-password.
    `pages/SetPasswordPage.tsx` (public route `/set-password`). `AddEmployeeModal` already used the invite flow in Supabase mode (mock mode still creates locally).
    NOT verified: the function itself (no Deno here; syntax-checked only) and the email/link flow on a real project.
 
+### Round 31: top bar + no sidebar scrollbar
+- New `layouts/TopBar.tsx` (rendered by `AppLayout` above the banners, all screen sizes): right side holds **Business Setup** (link to `/app/setup`, gated by
+  `business.configure`, label hidden below `sm`), `LanguageSwitcher`, `ThemeToggle`, and new `components/SignOutButton.tsx` (same demo-mode toast as before).
+  Left side (mobile only): hamburger + business name — this replaces the old inline mobile bar in `AppLayout`.
+- `layouts/Sidebar.tsx` now holds only the header, grouped nav and the collapse toggle (settings row and theme/language/sign-out footer removed).
+  `ThemeToggle`/`LanguageSwitcher` defaults changed from sidebar tokens to the main-surface tokens (they live on the light/dark top bar now).
+- Sidebar scrollbar: the nav list uses the `no-scrollbar` utility (`src/index.css`): still scrolls by wheel/touch/keyboard but never draws a bar.
+- Tests: `e2e/navigation.spec.ts` (Business Setup in `<header>`, new scrollbar test at 1280x420); `e2e/pos-scan.spec.ts` now fires scans in one tick (`scan()`),
+  since keystroke-by-keystroke typing could exceed the 80 ms scan gap on a busy machine. Unused i18n key `nav.theme` remains (harmless).
+
+### Round 32: sidebar-styled top bar with settings modal, compact page sizing — CURRENT
+- Top bar (`layouts/TopBar.tsx`) now uses the sidebar's navy tokens and shows only two icons: Settings and Sign out (`components/SignOutButton.tsx`).
+  Settings opens `components/SettingsDialog.tsx`: Language (English/Filipino, `aria-pressed` buttons), Theme (Light/Dark via `useThemeStore.setTheme`), and a
+  Business Setup link (gated by `business.configure`, closes the modal on click). `components/ThemeToggle.tsx` was deleted (unused); `LanguageSwitcher` stays for
+  the login / set-password pages. i18n: `nav.settings`, `settingsHint`, `themeLight`, `themeDark`, `setupHint` added; `nav.switchToDark/Light` removed.
+- Compact sizing principle (applies to every page): the content column in `AppLayout` is `mx-auto max-w-6xl` (1152px) with `px-4 py-5 sm:px-6 sm:py-6`;
+  `PageHeader` is `p-4 sm:p-5`, h1 `text-xl sm:text-2xl`, icon 40px; `CardHeader`/`CardContent` default to `p-5` (use `p-0` for edge-to-edge tables; do NOT use
+  responsive padding defaults, they beat unprefixed overrides); page roots use `space-y-5`; POS/report grids `gap-4`. Narrow focus pages keep their own cap
+  (`SetupPage` `max-w-2xl`, `CashClosePage` `max-w-4xl`). Dashboard: Today's bookings and Stock alerts sit side by side (`lg:grid-cols-2`, hidden when empty).
+  Booking "Next booking" stat value uses a smaller font so the date doesn't wrap.
+- Tests: `language-and-theme.spec.ts` rewritten for the modal; `navigation.spec.ts` (top bar shows only Settings + Sign out; compact-width test); `setup.spec.ts`,
+  `staff/staff-role.spec.ts`, `mobile/mobile.spec.ts` updated; `pos-scan.spec.ts` uses the one-tick `scan()` helper in both tests.

@@ -60,7 +60,7 @@ export function SetupWizard({ business, enabledModules }: SetupWizardProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Card>
-        <CardContent className="space-y-6 p-6">
+        <CardContent className="space-y-5 p-5">
           <SetupSteps steps={steps} current={step} />
 
           {step === 0 && (

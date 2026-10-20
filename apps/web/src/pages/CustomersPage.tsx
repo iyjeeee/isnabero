@@ -35,7 +35,7 @@ export default function CustomersPage() {
   const dash = t("customers.none");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader icon={Contact} title={t("customers.title")} description={t("customers.description")} />
 
       {customers.length > 0 && (

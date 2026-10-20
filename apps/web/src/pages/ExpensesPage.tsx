@@ -62,7 +62,7 @@ export default function ExpensesPage() {
   const stats = useMemo(() => computeExpenseStats(expenses, todayYmd()), [expenses]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader icon={Receipt} title={t("expenses.title")} description={t("expenses.description")} action={
           <div className="flex items-center gap-2">
             <ExportButton title="Expenses" filenamePrefix="expenses" moneyColumns={["Amount"]} withDateRange hint={t("expenses.exportHint")} disabled={filtered.length === 0} buildRows={(range) => expenseRows(filtered, range)} />

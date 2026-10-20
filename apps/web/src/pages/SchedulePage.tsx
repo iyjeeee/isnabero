@@ -56,7 +56,7 @@ export default function SchedulePage() {
     );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         icon={CalendarDays}
         title={t("schedule.title")}

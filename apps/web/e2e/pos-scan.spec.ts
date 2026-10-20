@@ -1,21 +1,24 @@
 import { test, expect, goTo } from "./fixtures";
 
+// scan: fires the keys in one tick like a real scanner, so a busy test machine can't stretch the gaps past the scan threshold
+const scan = (page: import("@playwright/test").Page, code: string) =>
+  page.evaluate((text) => {
+    for (const key of [...text, "Enter"]) window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+  }, code);
+
 test.describe("POS barcode scanning and shortcuts", () => {
   test("a scan adds the item, / focuses search, Enter in search adds, F9 opens checkout", async ({ page }) => {
     await page.goto("/app/pos");
     await expect(page.getByRole("button", { name: /Sisig/ }).first()).toBeVisible();
 
     // a scanner types the code quickly and presses Enter, with no field focused
-    await page.keyboard.type("4800001000011");
-    await page.keyboard.press("Enter");
+    await scan(page, "4800001000011");
     await expect(page.getByRole("spinbutton", { name: "Quantity" })).toHaveValue("1");
-    await page.keyboard.type("4800001000011");
-    await page.keyboard.press("Enter");
+    await scan(page, "4800001000011");
     await expect(page.getByRole("spinbutton", { name: "Quantity" })).toHaveValue("2");
 
     // an unknown code says so
-    await page.keyboard.type("0000000000");
-    await page.keyboard.press("Enter");
+    await scan(page, "0000000000");
     await expect(page.getByText("No item has the barcode 0000000000.")).toBeVisible();
 
     // "/" jumps to search; Enter adds the matching barcode and clears the box
@@ -48,8 +51,7 @@ test.describe("POS barcode scanning and shortcuts", () => {
     await expect(form).toBeHidden();
     await goTo(page, "POS / Cashier");
     await expect(page.getByRole("button", { name: /^E2E scan item/ })).toBeVisible(); // wait for the items to load before scanning
-    await page.keyboard.type("e2e-code-1"); // case does not matter
-    await page.keyboard.press("Enter");
+    await scan(page, "e2e-code-1"); // case does not matter
     await expect(page.getByRole("spinbutton", { name: "Quantity" })).toHaveValue("1");
   });
 });

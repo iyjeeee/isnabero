@@ -1,19 +1,15 @@
 import { useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Store, ChevronsLeft, ChevronsRight, LogOut, X } from "lucide-react";
-import { toast } from "sonner";
+import { Store, ChevronsLeft, ChevronsRight, X } from "lucide-react";
 import { cn } from "@isnabero/ui";
 import { getDataSource } from "@isnabero/db";
 import { getModuleDefinition } from "@/lib/module-registry";
-import { NAV_GROUPS, SETTINGS_ENTRY, type NavEntry } from "@/lib/nav-config";
+import { NAV_GROUPS, type NavEntry } from "@/lib/nav-config";
 import { useBusinessModules } from "@/hooks/use-business-modules";
 import { useBusinessStore } from "@/stores/business-store";
 import { useSidebarStore } from "@/stores/sidebar-store";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { useAuth } from "@/providers/AuthProvider";
 import { useCan } from "@/hooks/use-permission";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useT } from "@/i18n";
 
 function NavItem({
@@ -60,7 +56,6 @@ export function Sidebar() {
   const toggleCollapsed = useSidebarStore((state) => state.toggleCollapsed);
   const mobileOpen = useSidebarStore((state) => state.mobileOpen);
   const setMobileOpen = useSidebarStore((state) => state.setMobileOpen);
-  const { signOut } = useAuth();
   const { t } = useT();
   const can = useCan();
   const location = useLocation();
@@ -78,14 +73,6 @@ export function Sidebar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
-  const handleSignOut = async () => {
-    if (getDataSource() !== "supabase") {
-      toast.info(t("nav.signOutMock"));
-      return;
-    }
-    await signOut();
-  };
-
   // resolveEntry: a page/module entry -> label, path and icon, or null when it's hidden for this business or role
   const resolveEntry = (entry: NavEntry) => {
     if (entry.type === "page") {
@@ -98,7 +85,6 @@ export function Sidebar() {
     return { key: module.path, label: t(`modules.${module.key}.label`), path: module.path, icon: module.icon };
   };
   const groups = NAV_GROUPS.map((group) => ({ ...group, items: group.entries.map(resolveEntry).filter((item) => item !== null) })).filter((group) => group.items.length > 0);
-  const settingsVisible = can(SETTINGS_ENTRY.permission);
   const isDemo = getDataSource() !== "supabase";
 
   return (
@@ -150,7 +136,7 @@ export function Sidebar() {
           </button>
         </div>
 
-        <nav className={cn("flex-1 space-y-5 overflow-y-auto p-3", effectiveCollapsed && "px-2")} aria-label={t("nav.mainNavigation")}>
+        <nav className={cn("no-scrollbar flex-1 space-y-5 overflow-y-auto p-3", effectiveCollapsed && "px-2")} aria-label={t("nav.mainNavigation")}>
           {groups.map((group) => (
             <div key={group.id} className="space-y-1">
               {group.labelKey && !effectiveCollapsed && (
@@ -163,28 +149,6 @@ export function Sidebar() {
             </div>
           ))}
         </nav>
-
-        {settingsVisible && (
-          <div className={cn("border-t border-sidebar-border p-3", effectiveCollapsed && "px-2")}>
-            <NavItem label={t(SETTINGS_ENTRY.labelKey)} path={SETTINGS_ENTRY.path} icon={SETTINGS_ENTRY.icon} collapsed={effectiveCollapsed} onNavigate={() => setMobileOpen(false)} />
-          </div>
-        )}
-
-        <div className={cn("flex items-center border-t border-sidebar-border px-4 py-3", effectiveCollapsed ? "flex-col gap-2 px-2" : "justify-between")}>
-          {!effectiveCollapsed && <span className="text-xs text-sidebar-muted">{t("nav.theme")}</span>}
-          <div className="flex items-center gap-1">
-            <LanguageSwitcher />
-            <ThemeToggle />
-            <button
-              onClick={handleSignOut}
-              title={t("nav.signOut")}
-              aria-label={t("nav.signOut")}
-              className="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
 
         {/* Collapse toggle — desktop only; collapsing to icon-only doesn't apply to the mobile drawer */}
         <button

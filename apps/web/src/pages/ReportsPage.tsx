@@ -21,7 +21,7 @@ export default function ReportsPage() {
   const hasAnyReport = enabledModules.includes("pos") || enabledModules.includes("booking") || enabledModules.includes("catalog") || enabledModules.includes("expenses");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader icon={BarChart3} title={t("reports.title")} description={t("reports.description")} />
 
       {!hasAnyReport && (

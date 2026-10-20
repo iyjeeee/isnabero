@@ -92,11 +92,11 @@ export default function PosPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader icon={ShoppingCart} title={t("pos.page.title")} description={t("pos.page.description")} />
       <PendingSalesBar />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
           {offerings.length > 0 && (
             <FilterBar className="sm:justify-start">
@@ -168,7 +168,7 @@ export default function PosPage() {
           </div>
         </div>
 
-        <Card className="sticky top-6 h-fit">
+        <Card className="sticky top-4 h-fit">
           <CardContent className="space-y-4 p-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">

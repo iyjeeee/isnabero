@@ -21,6 +21,9 @@ export const nav = {
   expandSidebar: "Expand sidebar",
   openMenu: "Open menu",
   closeMenu: "Close menu",
-  switchToDark: "Switch to dark mode",
-  switchToLight: "Switch to light mode",
+  settings: "Settings",
+  settingsHint: "Language, appearance and business setup.",
+  themeLight: "Light",
+  themeDark: "Dark",
+  setupHint: "Name, modules and receipts",
 };
