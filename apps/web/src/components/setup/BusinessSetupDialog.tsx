@@ -7,7 +7,6 @@ import { useBusiness } from "@/hooks/use-business";
 import { useBusinessModules } from "@/hooks/use-business-modules";
 import { useCan } from "@/hooks/use-permission";
 import { SetupWizard } from "@/components/setup/SetupWizard";
-import { ReceiptDetailsForm } from "@/components/receipt/ReceiptDetailsForm";
 
 // prompted: the first-run prompt shows once per page load, so closing it with "X" isn't undone by a re-render
 let prompted = false;
@@ -44,12 +43,6 @@ export function BusinessSetupDialog() {
           {(businessLoading || modulesLoading) && <Skeleton className="h-56 w-full rounded-xl" />}
           {/* key: remount with fresh initial values if the business changes while this is open */}
           {business && enabledModules && <SetupWizard key={business.id} business={business} enabledModules={enabledModules} onDone={() => setOpen(false)} />}
-          {/* After first-run setup only, so the wizard stays three short steps */}
-          {business && !isFirstRun && (
-            <div className="border-t pt-5">
-              <ReceiptDetailsForm key={`receipt-${business.id}`} business={business} />
-            </div>
-          )}
         </div>
       </DialogContent>
     </Dialog>

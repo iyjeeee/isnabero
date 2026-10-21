@@ -33,9 +33,9 @@ test.describe("sidebar and navigation", () => {
     const side = (await sidebar(page).locator("xpath=preceding-sibling::div[1]").boundingBox())!;
     expect(bar.height).toBe(side.height);
     // Today's bookings and Stock alerts share a row instead of two full-width bars
-    const bookings = (await page.getByText("Today's bookings", { exact: true }).boundingBox())!;
-    const stock = (await page.getByText("Stock alerts", { exact: true }).boundingBox())!;
-    expect(Math.abs(bookings.y - stock.y)).toBeLessThan(4);
+    const top = async (text: string) => (await page.getByText(text, { exact: true }).boundingBox())!.y;
+    await expect(page.getByText("Stock alerts", { exact: true })).toBeVisible();
+    await expect.poll(async () => Math.abs((await top("Today's bookings")) - (await top("Stock alerts")))).toBeLessThan(4); // polls: stats may still be loading and shifting the row
   });
 
   test("never shows a sidebar scrollbar, even on a short window, and the list still scrolls", async ({ page }) => {

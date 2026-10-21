@@ -9,7 +9,6 @@ export const receipt = {
     print: "Print",
   },
   details: {
-    title: "Receipt details",
     description: "Printed on every sales receipt. Leave a field empty to leave it off.",
     address: "Address",
     tin: "TIN",
@@ -17,7 +16,5 @@ export const receipt = {
     footer: "Footer message",
     footerPlaceholder: "Thank you! Come again.",
     disclaimer: "Receipts from Isnabero are sales receipts. They are not BIR-registered official receipts and say so at the bottom.",
-    submit: "Save receipt details",
-    saved: "Receipt details saved",
   },
 };

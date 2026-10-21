@@ -11,7 +11,6 @@ export const receipt: Dictionary["receipt"] = {
     print: "I-print",
   },
   details: {
-    title: "Detalye ng receipt",
     description: "Lalabas sa bawat sales receipt. Iwanang blangko ang field para hindi ito isama.",
     address: "Address",
     tin: "TIN",
@@ -19,7 +18,5 @@ export const receipt: Dictionary["receipt"] = {
     footer: "Mensahe sa ibaba",
     footerPlaceholder: "Salamat! Balik kayo ulit.",
     disclaimer: "Ang mga receipt mula sa Isnabero ay sales receipt. Hindi ito BIR-registered official receipt at nakasulat ito sa ibaba ng receipt.",
-    submit: "I-save ang detalye ng receipt",
-    saved: "Na-save ang detalye ng receipt",
   },
 };

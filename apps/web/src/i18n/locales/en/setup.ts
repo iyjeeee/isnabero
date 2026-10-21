@@ -1,9 +1,9 @@
 export const setup = {
   welcomeTitle: "Welcome — let's set up your business",
-  welcomeDescription: "Three quick steps to tailor Isnabero to how you work.",
-  description: "Update your business name and the modules you use.",
+  welcomeDescription: "Four quick steps to tailor Isnabero to how you work.",
+  description: "Update your business name, modules and receipt details.",
   progress: "Setup progress",
-  steps: { business: "Business", modules: "Modules", review: "Review" },
+  steps: { business: "Business", modules: "Modules", review: "Review", receipt: "Receipt details" },
   business: {
     name: "Business name",
     nameHint: "Shown in the sidebar and on your pages.",

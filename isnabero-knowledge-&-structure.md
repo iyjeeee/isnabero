@@ -1735,7 +1735,7 @@ expense-edit-profit, pos-scan, supabase/set-password.
 - Tests: `language-and-theme.spec.ts` rewritten for the modal; `navigation.spec.ts` (top bar shows only Settings + Sign out; compact-width test); `setup.spec.ts`,
   `staff/staff-role.spec.ts`, `mobile/mobile.spec.ts` updated; `pos-scan.spec.ts` uses the one-tick `scan()` helper in both tests.
 
-### Round 33: Business Setup as a modal, full-width pages, aligned headers — CURRENT
+### Round 33: Business Setup as a modal, full-width pages, aligned headers
 - **Business Setup is a modal, not a page.** `components/setup/BusinessSetupDialog.tsx` (mounted in `AppLayout`) holds `SetupWizard` (now flat, takes `onDone`) and, after
   first-run, `components/receipt/ReceiptDetailsForm.tsx` (was `ReceiptDetailsCard`; no Card wrapper). Open state: `stores/setup-dialog-store.ts` (`useSetupDialogStore`).
   Opened from Settings (`SettingsDialog`), the dashboard checklist step "Finish business setup" (`action` instead of `to`), and the "module is off" screen in `RouteGuard`.
@@ -1749,3 +1749,10 @@ expense-edit-profit, pos-scan, supabase/set-password.
   is now icon + "Isnabero" + business name only; the "Sample data" badge moved to the top bar (`components/DemoBadge.tsx`).
 - Tests: `setup.spec.ts` (modal, `/app/setup` redirect), `navigation.spec.ts` (full width, header heights equal, bookings/stock share a row), `staff-role.spec.ts`, `language-and-theme.spec.ts`.
   First-run auto-open was checked by hand with the mock business temporarily set to not-set-up (not an automated test).
+
+### Round 34: Receipt details as the last Business Setup step — CURRENT
+- `components/setup/SetupWizard.tsx` now has 4 steps: Business, Modules, Review, **Receipt details**. The last step's button ("Finish setup") validates the receipt fields
+  (`validateReceiptDetails`), saves name + modules (`useSaveBusinessSetup`), then saves the receipt details (`useSaveReceiptDetails`) only if they changed, then toasts and closes.
+  Invalid receipt fields keep the modal on step 4. `components/receipt/ReceiptDetailsForm.tsx` is now a controlled fields-only component (`value`, `errors`, `onChange`) with no
+  save button; `BusinessSetupDialog.tsx` no longer renders it under the wizard. i18n: `setup.steps.receipt` added; `receipt.details.title/submit/saved` removed; setup descriptions updated.
+- Tests: `e2e/setup.spec.ts` (receipt fields absent on steps 1-3, invalid TIN keeps step 4 open, values persist next time); `navigation.spec.ts` bookings/stock row check now polls (was flaky).

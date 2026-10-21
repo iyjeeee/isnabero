@@ -2,10 +2,10 @@ import type { Dictionary } from "../../translate";
 
 export const setup: Dictionary["setup"] = {
   welcomeTitle: "Welcome — i-setup natin ang negosyo mo",
-  welcomeDescription: "Tatlong mabilis na hakbang para iangkop ang Isnabero sa paraan ng trabaho mo.",
-  description: "I-update ang pangalan ng negosyo at ang mga module na gamit mo.",
+  welcomeDescription: "Apat na mabilis na hakbang para iangkop ang Isnabero sa paraan ng trabaho mo.",
+  description: "I-update ang pangalan ng negosyo, mga module at detalye ng receipt.",
   progress: "Progreso ng setup",
-  steps: { business: "Negosyo", modules: "Mga module", review: "Rebyu" },
+  steps: { business: "Negosyo", modules: "Mga module", review: "Rebyu", receipt: "Detalye ng receipt" },
   business: {
     name: "Pangalan ng negosyo",
     nameHint: "Makikita sa sidebar at sa mga pahina mo.",
