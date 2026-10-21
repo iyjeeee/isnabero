@@ -1722,7 +1722,7 @@ expense-edit-profit, pos-scan, supabase/set-password.
 - Tests: `e2e/navigation.spec.ts` (Business Setup in `<header>`, new scrollbar test at 1280x420); `e2e/pos-scan.spec.ts` now fires scans in one tick (`scan()`),
   since keystroke-by-keystroke typing could exceed the 80 ms scan gap on a busy machine. Unused i18n key `nav.theme` remains (harmless).
 
-### Round 32: sidebar-styled top bar with settings modal, compact page sizing — CURRENT
+### Round 32: sidebar-styled top bar with settings modal, compact page sizing (the max-width cap was replaced in Round 33)
 - Top bar (`layouts/TopBar.tsx`) now uses the sidebar's navy tokens and shows only two icons: Settings and Sign out (`components/SignOutButton.tsx`).
   Settings opens `components/SettingsDialog.tsx`: Language (English/Filipino, `aria-pressed` buttons), Theme (Light/Dark via `useThemeStore.setTheme`), and a
   Business Setup link (gated by `business.configure`, closes the modal on click). `components/ThemeToggle.tsx` was deleted (unused); `LanguageSwitcher` stays for
@@ -1734,3 +1734,18 @@ expense-edit-profit, pos-scan, supabase/set-password.
   Booking "Next booking" stat value uses a smaller font so the date doesn't wrap.
 - Tests: `language-and-theme.spec.ts` rewritten for the modal; `navigation.spec.ts` (top bar shows only Settings + Sign out; compact-width test); `setup.spec.ts`,
   `staff/staff-role.spec.ts`, `mobile/mobile.spec.ts` updated; `pos-scan.spec.ts` uses the one-tick `scan()` helper in both tests.
+
+### Round 33: Business Setup as a modal, full-width pages, aligned headers — CURRENT
+- **Business Setup is a modal, not a page.** `components/setup/BusinessSetupDialog.tsx` (mounted in `AppLayout`) holds `SetupWizard` (now flat, takes `onDone`) and, after
+  first-run, `components/receipt/ReceiptDetailsForm.tsx` (was `ReceiptDetailsCard`; no Card wrapper). Open state: `stores/setup-dialog-store.ts` (`useSetupDialogStore`).
+  Opened from Settings (`SettingsDialog`), the dashboard checklist step "Finish business setup" (`action` instead of `to`), and the "module is off" screen in `RouteGuard`.
+  First run: the dialog opens by itself once per page load for an owner/admin whose business has `setupCompletedAt === null` (replaces the old forced redirect;
+  `SetupGate.tsx` and `pages/SetupPage.tsx` were deleted). `/app/setup` still exists as `components/setup/SetupRedirect.tsx`: goes to `/app` and opens the modal
+  (staff: the dialog renders nothing). `SETTINGS_ENTRY` in `lib/nav-config.ts` no longer has a `path`. Copy: `setup.review.later` now says Settings → Business Setup.
+- **Full-width content.** The `max-w-6xl` cap from Round 32 is gone: `AppLayout` content is `w-full px-4 py-5 sm:px-6 sm:py-6 lg:px-8`. Wide screens get more columns instead of
+  side gutters: Catalog grids `repeat(auto-fill,minmax(18rem,1fr))`; POS `lg:grid-cols-[minmax(0,1fr)_22rem]` with tiles `auto-fill minmax(11rem,1fr)`; Cash Close form and
+  history side by side (`xl:grid-cols-[2fr_3fr]`); Booking cards 2 per row on `xl`; Profit "where the expenses went" in 2 columns on `lg`; dashboard bookings + stock alerts share a row.
+- **Top bar / sidebar alignment.** Both headers are `h-16` with `border-white/10` lines, and the sidebar has a right border, so the lines run across the screen. The sidebar header
+  is now icon + "Isnabero" + business name only; the "Sample data" badge moved to the top bar (`components/DemoBadge.tsx`).
+- Tests: `setup.spec.ts` (modal, `/app/setup` redirect), `navigation.spec.ts` (full width, header heights equal, bookings/stock share a row), `staff-role.spec.ts`, `language-and-theme.spec.ts`.
+  First-run auto-open was checked by hand with the mock business temporarily set to not-set-up (not an automated test).

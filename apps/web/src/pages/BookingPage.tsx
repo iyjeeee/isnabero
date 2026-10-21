@@ -87,19 +87,19 @@ export default function BookingPage() {
         </FilterBar>
       )}
 
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
         {isLoading && (
-          <div className="space-y-2">
+          <div className="space-y-2 xl:col-span-2">
             {[...Array(3)].map((_, i) => (
               <Skeleton key={i} className="h-16 rounded-lg" />
             ))}
           </div>
         )}
         {!isLoading && bookings.length === 0 && (
-          <EmptyState icon={CalendarClock} title={t("booking.empty.title")} description={t("booking.empty.description")} />
+          <EmptyState icon={CalendarClock} title={t("booking.empty.title")} description={t("booking.empty.description")} className="xl:col-span-2" />
         )}
         {!isLoading && bookings.length > 0 && filteredBookings.length === 0 && (
-          <EmptyState icon={Search} title={t("booking.noMatches.title")} description={t("booking.noMatches.description")} />
+          <EmptyState icon={Search} title={t("booking.noMatches.title")} description={t("booking.noMatches.description")} className="xl:col-span-2" />
         )}
         {filteredBookings.map((booking) => (
           <Card key={booking.id} interactive {...openProps(() => setDetailId(booking.id))} title={t("details.open", { name: booking.customerName })} className={cn(OPEN_CLASS, booking.status === "cancelled" && "opacity-60")}>

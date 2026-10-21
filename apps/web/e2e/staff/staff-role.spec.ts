@@ -15,12 +15,18 @@ test.describe("staff role", () => {
     await page.keyboard.press("Escape");
   });
 
-  for (const path of ["/app/expenses", "/app/audit", "/app/setup"]) {
+  for (const path of ["/app/expenses", "/app/audit"]) {
     test(`${path} shows a no-access screen`, async ({ page }) => {
       await page.goto(path);
       await expect(page.getByText("You don't have access to this page")).toBeVisible();
     });
   }
+
+  test("/app/setup does not open Business Setup for staff", async ({ page }) => {
+    await page.goto("/app/setup");
+    await expect(page).toHaveURL(/\/app$/);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
 
   test("staff cannot void payments, manage employees or adjust stock", async ({ page }) => {
     await page.goto("/app/payments");

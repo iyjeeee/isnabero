@@ -20,6 +20,7 @@ import { useOfferings } from "@isnabero/module-catalog";
 import { useStockLevels } from "@isnabero/module-inventory";
 import { supabase } from "@/lib/supabase";
 import { useBusinessStore } from "@/stores/business-store";
+import { useSetupDialogStore } from "@/stores/setup-dialog-store";
 import { useBusinessModules } from "@/hooks/use-business-modules";
 import { useBusiness } from "@/hooks/use-business";
 import { useCan } from "@/hooks/use-permission";
@@ -67,6 +68,7 @@ export default function DashboardPage() {
   const { data: offerings = [] } = useOfferings(supabase, businessId ?? "");
   const { data: business } = useBusiness(businessId);
   const can = useCan();
+  const setSetupOpen = useSetupDialogStore((state) => state.setOpen);
   const inventoryOn = enabledModules.includes("inventory");
   const { data: stockLevels = [] } = useStockLevels(supabase, inventoryOn ? (businessId ?? "") : ""); // empty id keeps the query off when Inventory is disabled
   const stockAlerts = stockLevels.filter((level) => level.status !== "ok").sort((a, b) => (a.status === b.status ? a.offeringName.localeCompare(b.offeringName) : a.status === "out" ? -1 : 1));
@@ -80,8 +82,8 @@ export default function DashboardPage() {
 
   // `to` makes an unfinished step a link, only when that page is reachable for this role / module set
   const sellPath = enabledModules.includes("pos") ? "/app/pos" : enabledModules.includes("booking") ? "/app/booking" : undefined;
-  const checklist: Array<{ id: string; label: string; done: boolean; to?: string }> = [
-    { id: "setup", label: t("dashboard.checklist.setup"), done: Boolean(business?.setupCompletedAt), to: can("business.configure") ? "/app/setup" : undefined },
+  const checklist: Array<{ id: string; label: string; done: boolean; to?: string; action?: () => void }> = [
+    { id: "setup", label: t("dashboard.checklist.setup"), done: Boolean(business?.setupCompletedAt), action: can("business.configure") ? () => setSetupOpen(true) : undefined },
     { id: "catalog", label: t("dashboard.checklist.catalog"), done: offerings.length > 0, to: enabledModules.includes("catalog") ? "/app/catalog" : undefined },
     { id: "firstSale", label: t("dashboard.checklist.firstSale"), done: recentPayments.length > 0, to: sellPath },
     { id: "teammate", label: t("dashboard.checklist.teammate"), done: (stats?.activeEmployeesCount ?? 0) > 1, to: can("employees.manage") ? "/app/employees" : undefined },
@@ -203,10 +205,14 @@ export default function DashboardPage() {
                   ) : (
                     <Circle className="h-4 w-4 shrink-0 text-muted-foreground" />
                   )}
-                  {step.done || !step.to ? (
+                  {step.done || (!step.to && !step.action) ? (
                     <span className={step.done ? "text-muted-foreground line-through" : ""}>{step.label}</span>
+                  ) : step.action ? (
+                    <button type="button" onClick={step.action} className="font-medium hover:text-primary hover:underline">
+                      {step.label}
+                    </button>
                   ) : (
-                    <Link to={step.to} className="font-medium hover:text-primary hover:underline">
+                    <Link to={step.to!} className="font-medium hover:text-primary hover:underline">
                       {step.label}
                     </Link>
                   )}

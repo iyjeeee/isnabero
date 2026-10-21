@@ -19,7 +19,7 @@ export const setup: Dictionary["setup"] = {
   },
   review: {
     none: "Wala — mga laging naka-on na feature lang ang makikita.",
-    later: "Puwede mo itong baguhin anumang oras sa Pag-setup ng Negosyo sa sidebar.",
+    later: "Puwede mo itong baguhin anumang oras sa Mga Setting → Pag-setup ng Negosyo.",
   },
   saved: "Na-save ang business setup",
   finish: "Tapusin ang setup",

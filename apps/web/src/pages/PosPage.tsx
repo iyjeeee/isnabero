@@ -96,8 +96,8 @@ export default function PosPage() {
       <PageHeader icon={ShoppingCart} title={t("pos.page.title")} description={t("pos.page.description")} />
       <PendingSalesBar />
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="space-y-4">
           {offerings.length > 0 && (
             <FilterBar className="sm:justify-start">
               <div className="relative w-full sm:w-72">
@@ -126,7 +126,7 @@ export default function PosPage() {
           )}
 
           {isLoading && (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-3">
               {[...Array(6)].map((_, i) => (
                 <Skeleton key={i} className="h-20 rounded-lg" />
               ))}
@@ -137,7 +137,7 @@ export default function PosPage() {
             <EmptyState icon={ShoppingCart} title={t("pos.page.nothingTitle")} description={t("pos.page.nothingDescription")} />
           )}
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-3">
             {availableOfferings.map((offering) => {
               const TypeIcon = TYPE_ICON[offering.type];
               const stock = stockByOffering.get(offering.id);

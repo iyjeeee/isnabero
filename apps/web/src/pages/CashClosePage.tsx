@@ -59,112 +59,115 @@ export default function CashClosePage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5">
+    <div className="space-y-5">
       <PageHeader icon={Calculator} title={t("cashClose.title")} description={t("cashClose.description")} />
 
-      <Card>
-        <CardContent className="space-y-5 p-5">
-          <div>
-            <h2 className="font-semibold">{t("cashClose.current.title")}</h2>
-            {summary && <p className="text-sm text-muted-foreground">{t("cashClose.current.since", { when: format.dateTime(summary.periodStart) })}</p>}
-          </div>
-          {isLoading && <Skeleton className="h-40 w-full" />}
-          {isError && <p className="text-sm text-destructive">{t("cashClose.current.loadFailed")}</p>}
-          {summary && (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="starting-cash">{t("cashClose.current.startingCash")}</Label>
-                  <Input id="starting-cash" type="number" inputMode="decimal" min="0" step="0.01" value={startingValue} onChange={(event) => setStartingText(event.target.value)} />
-                  <p className="text-xs text-muted-foreground">{t("cashClose.current.startingCashHint")}</p>
-                </div>
-                <dl className="space-y-2 rounded-md border bg-muted/40 p-3 text-sm">
-                  <div className="flex justify-between">
-                    <dt>{t("cashClose.current.cashSales")}</dt>
-                    <dd className="font-medium">{formatPeso(summary.cashSales)}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt>{t("cashClose.current.cashExpenses")}</dt>
-                    <dd className="font-medium">−{formatPeso(summary.cashExpenses)}</dd>
-                  </div>
-                  <div className="flex justify-between border-t pt-2 text-base font-semibold">
-                    <dt>{t("cashClose.current.expected")}</dt>
-                    <dd data-testid="expected-cash">{expected === null ? "—" : formatPeso(expected)}</dd>
-                  </div>
-                </dl>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="counted-cash">{t("cashClose.current.counted")}</Label>
-                  <Input id="counted-cash" type="number" inputMode="decimal" min="0" step="0.01" value={countedText} onChange={(event) => setCountedText(event.target.value)} />
-                  <p className="text-xs text-muted-foreground">{t("cashClose.current.countedHint")}</p>
-                </div>
-                <div className="space-y-1.5">
-                  <p className="text-sm font-medium">{t("cashClose.current.difference")}</p>
-                  <div className="flex h-10 items-center">{difference === null ? <span className="text-muted-foreground">—</span> : <CashDifferenceBadge difference={difference} />}</div>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="close-note">{t("cashClose.current.note")}</Label>
-                <Textarea id="close-note" rows={2} maxLength={300} placeholder={t("cashClose.current.notePlaceholder")} value={note} onChange={(event) => setNote(event.target.value)} />
-              </div>
-
-              {blockedReason && (
-                <p role="status" className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
-                  {blockedReason}
-                </p>
-              )}
-              <Button disabled={!valid || blockedReason !== null || closeCash.isPending} onClick={() => setConfirmOpen(true)}>
-                {t("cashClose.current.close")}
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      <section className="space-y-3">
-        <h2 className="font-semibold">{t("cashClose.history.title")}</h2>
+      {/* side by side on wide screens: the count form on the left, past closes on the right */}
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <Card>
-          <CardContent className="p-0">
-            {closesLoading && (
-              <div className="p-5">
-                <Skeleton className="h-10 w-full" />
-              </div>
-            )}
-            {!closesLoading && closes.length === 0 && <EmptyState icon={Calculator} title={t("cashClose.history.emptyTitle")} description={t("cashClose.history.emptyDescription")} className="border-0" />}
-            {closes.length > 0 && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="border-b bg-muted/50 text-left text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-3">{t("cashClose.history.when")}</th>
-                      <th className="px-4 py-3">{t("cashClose.history.by")}</th>
-                      <th className="px-4 py-3 text-right">{t("cashClose.history.expected")}</th>
-                      <th className="px-4 py-3 text-right">{t("cashClose.history.counted")}</th>
-                      <th className="px-4 py-3">{t("cashClose.history.difference")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {closes.map((row) => (
-                      <tr key={row.id} className={`border-b last:border-0 hover:bg-muted/40 ${OPEN_CLASS}`} {...openProps(() => setDetail(row))}>
-                        <td className="px-4 py-3">{format.dateTime(row.periodEnd)}</td>
-                        <td className="px-4 py-3">{row.closedByName}</td>
-                        <td className="px-4 py-3 text-right">{formatPeso(row.expected)}</td>
-                        <td className="px-4 py-3 text-right">{formatPeso(row.counted)}</td>
-                        <td className="px-4 py-3">
-                          <CashDifferenceBadge difference={row.difference} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          <CardContent className="space-y-5 p-5">
+            <div>
+              <h2 className="font-semibold">{t("cashClose.current.title")}</h2>
+              {summary && <p className="text-sm text-muted-foreground">{t("cashClose.current.since", { when: format.dateTime(summary.periodStart) })}</p>}
+            </div>
+            {isLoading && <Skeleton className="h-40 w-full" />}
+            {isError && <p className="text-sm text-destructive">{t("cashClose.current.loadFailed")}</p>}
+            {summary && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="starting-cash">{t("cashClose.current.startingCash")}</Label>
+                    <Input id="starting-cash" type="number" inputMode="decimal" min="0" step="0.01" value={startingValue} onChange={(event) => setStartingText(event.target.value)} />
+                    <p className="text-xs text-muted-foreground">{t("cashClose.current.startingCashHint")}</p>
+                  </div>
+                  <dl className="space-y-2 rounded-md border bg-muted/40 p-3 text-sm">
+                    <div className="flex justify-between">
+                      <dt>{t("cashClose.current.cashSales")}</dt>
+                      <dd className="font-medium">{formatPeso(summary.cashSales)}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt>{t("cashClose.current.cashExpenses")}</dt>
+                      <dd className="font-medium">−{formatPeso(summary.cashExpenses)}</dd>
+                    </div>
+                    <div className="flex justify-between border-t pt-2 text-base font-semibold">
+                      <dt>{t("cashClose.current.expected")}</dt>
+                      <dd data-testid="expected-cash">{expected === null ? "—" : formatPeso(expected)}</dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="counted-cash">{t("cashClose.current.counted")}</Label>
+                    <Input id="counted-cash" type="number" inputMode="decimal" min="0" step="0.01" value={countedText} onChange={(event) => setCountedText(event.target.value)} />
+                    <p className="text-xs text-muted-foreground">{t("cashClose.current.countedHint")}</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-medium">{t("cashClose.current.difference")}</p>
+                    <div className="flex h-10 items-center">{difference === null ? <span className="text-muted-foreground">—</span> : <CashDifferenceBadge difference={difference} />}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="close-note">{t("cashClose.current.note")}</Label>
+                  <Textarea id="close-note" rows={2} maxLength={300} placeholder={t("cashClose.current.notePlaceholder")} value={note} onChange={(event) => setNote(event.target.value)} />
+                </div>
+
+                {blockedReason && (
+                  <p role="status" className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+                    {blockedReason}
+                  </p>
+                )}
+                <Button disabled={!valid || blockedReason !== null || closeCash.isPending} onClick={() => setConfirmOpen(true)}>
+                  {t("cashClose.current.close")}
+                </Button>
+              </>
             )}
           </CardContent>
         </Card>
-      </section>
+
+        <section className="space-y-3">
+          <h2 className="font-semibold">{t("cashClose.history.title")}</h2>
+          <Card>
+            <CardContent className="p-0">
+              {closesLoading && (
+                <div className="p-5">
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              )}
+              {!closesLoading && closes.length === 0 && <EmptyState icon={Calculator} title={t("cashClose.history.emptyTitle")} description={t("cashClose.history.emptyDescription")} className="border-0" />}
+              {closes.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="border-b bg-muted/50 text-left text-muted-foreground">
+                      <tr>
+                        <th className="px-4 py-3">{t("cashClose.history.when")}</th>
+                        <th className="px-4 py-3">{t("cashClose.history.by")}</th>
+                        <th className="px-4 py-3 text-right">{t("cashClose.history.expected")}</th>
+                        <th className="px-4 py-3 text-right">{t("cashClose.history.counted")}</th>
+                        <th className="px-4 py-3">{t("cashClose.history.difference")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {closes.map((row) => (
+                        <tr key={row.id} className={`border-b last:border-0 hover:bg-muted/40 ${OPEN_CLASS}`} {...openProps(() => setDetail(row))}>
+                          <td className="px-4 py-3">{format.dateTime(row.periodEnd)}</td>
+                          <td className="px-4 py-3">{row.closedByName}</td>
+                          <td className="px-4 py-3 text-right">{formatPeso(row.expected)}</td>
+                          <td className="px-4 py-3 text-right">{formatPeso(row.counted)}</td>
+                          <td className="px-4 py-3">
+                            <CashDifferenceBadge difference={row.difference} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+      </div>
 
       <ConfirmDialog
         open={confirmOpen}

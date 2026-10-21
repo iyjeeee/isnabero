@@ -17,7 +17,7 @@ export const setup = {
   },
   review: {
     none: "None — only the always-on features will show.",
-    later: "You can change any of this later from Business Setup in the sidebar.",
+    later: "You can change any of this later from Settings → Business Setup.",
   },
   saved: "Business setup saved",
   finish: "Finish setup",

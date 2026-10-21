@@ -19,18 +19,23 @@ test.describe("sidebar and navigation", () => {
     await expect(bar.getByRole("button", { name: "Sign out" })).toBeVisible();
     await expect(bar.getByRole("link", { name: "Business Setup" })).toHaveCount(0);
     await bar.getByRole("button", { name: "Settings" }).click();
-    await expect(page.getByRole("dialog").getByRole("link", { name: /Business Setup/ })).toBeVisible();
+    await expect(page.getByRole("dialog").getByRole("button", { name: /Business Setup/ })).toBeVisible();
   });
 
-  test("keeps cards compact: content never stretches past the max width on a wide screen", async ({ page }) => {
+  test("fills the width on a wide screen: no dead gutters, and the top bar lines up with the sidebar header", async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1000 });
     await page.goto("/app");
-    const card = page.getByText("Today's bookings", { exact: true }).locator("xpath=ancestor::div[contains(@class,'rounded-lg')][1]");
-    await expect(card).toBeVisible();
-    expect((await card.boundingBox())!.width).toBeLessThan(700);
-    await page.goto("/app/payments");
-    const header = page.getByRole("heading", { level: 1, name: "Payment Records" }).locator("xpath=ancestor::div[contains(@class,'rounded-xl')][1]");
-    expect((await header.boundingBox())!.width).toBeLessThanOrEqual(1152);
+    const header = page.getByRole("heading", { level: 1, name: "Dashboard" }).locator("xpath=ancestor::div[contains(@class,'rounded-xl')][1]");
+    const box = (await header.boundingBox())!;
+    expect(box.width).toBeGreaterThan(1400); // 1920 - 256 sidebar - 2 x 32 padding
+    expect(box.x + box.width).toBeGreaterThan(1850);
+    const bar = (await page.locator("header").boundingBox())!;
+    const side = (await sidebar(page).locator("xpath=preceding-sibling::div[1]").boundingBox())!;
+    expect(bar.height).toBe(side.height);
+    // Today's bookings and Stock alerts share a row instead of two full-width bars
+    const bookings = (await page.getByText("Today's bookings", { exact: true }).boundingBox())!;
+    const stock = (await page.getByText("Stock alerts", { exact: true }).boundingBox())!;
+    expect(Math.abs(bookings.y - stock.y)).toBeLessThan(4);
   });
 
   test("never shows a sidebar scrollbar, even on a short window, and the list still scrolls", async ({ page }) => {
@@ -65,8 +70,7 @@ test.describe("sidebar and navigation", () => {
     ["/app/expenses", /Expenses/],
     ["/app/reports", /Reports/],
     ["/app/audit", /Audit Log/],
-    ["/app/setup", /Setup|Business/],
-  ];
+      ];
   for (const [path, heading] of pages) {
     test(`${path} loads without errors`, async ({ page }) => {
       await page.goto(path);

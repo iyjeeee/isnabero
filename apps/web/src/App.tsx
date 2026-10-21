@@ -5,7 +5,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { PageFallback } from "@/components/PageFallback";
 import { RouteGuard } from "@/components/RouteGuard";
-import { SetupGate } from "@/components/SetupGate";
+import { SetupRedirect } from "@/components/setup/SetupRedirect";
 import { OfflineCacheGuard } from "@/components/OfflineCacheGuard";
 import { UiLabelsBridge } from "@/providers/UiLabelsBridge";
 
@@ -26,7 +26,6 @@ const ExpensesPage = lazy(() => import("@/pages/ExpensesPage"));
 const InventoryPage = lazy(() => import("@/pages/InventoryPage"));
 const SchedulePage = lazy(() => import("@/pages/SchedulePage"));
 const AuditLogPage = lazy(() => import("@/pages/AuditLogPage"));
-const SetupPage = lazy(() => import("@/pages/SetupPage"));
 
 export default function App() {
   return (
@@ -39,30 +38,21 @@ export default function App() {
           <Route path="/set-password" element={<SetPasswordPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/app" element={<AppLayout />}>
-              {/* setup sits outside SetupGate so the first-run redirect can't loop */}
-              <Route
-                path="setup"
-                element={
-                  <RouteGuard permission="business.configure">
-                    <SetupPage />
-                  </RouteGuard>
-                }
-              />
-              <Route element={<SetupGate />}>
-                <Route index element={<DashboardPage />} />
-                <Route path="payments" element={<PaymentsPage />} />
-                <Route path="cash-close" element={<CashClosePage />} />
-                <Route path="employees" element={<EmployeesPage />} />
-                <Route path="reports" element={<ReportsPage />} />
-                <Route path="audit" element={<RouteGuard permission="audit.view"><AuditLogPage /></RouteGuard>} />
-                <Route path="catalog" element={<RouteGuard moduleKey="catalog"><CatalogPage /></RouteGuard>} />
-                <Route path="pos" element={<RouteGuard moduleKey="pos"><PosPage /></RouteGuard>} />
-                <Route path="customers" element={<RouteGuard moduleKey="booking"><CustomersPage /></RouteGuard>} />
-                <Route path="booking" element={<RouteGuard moduleKey="booking"><BookingPage /></RouteGuard>} />
-                <Route path="inventory" element={<RouteGuard moduleKey="inventory"><InventoryPage /></RouteGuard>} />
-                <Route path="schedule" element={<RouteGuard moduleKey="scheduling"><SchedulePage /></RouteGuard>} />
-                <Route path="expenses" element={<RouteGuard moduleKey="expenses"><ExpensesPage /></RouteGuard>} />
-              </Route>
+              {/* Business Setup is a modal now; the old page address opens it over the dashboard */}
+              <Route path="setup" element={<SetupRedirect />} />
+              <Route index element={<DashboardPage />} />
+              <Route path="payments" element={<PaymentsPage />} />
+              <Route path="cash-close" element={<CashClosePage />} />
+              <Route path="employees" element={<EmployeesPage />} />
+              <Route path="reports" element={<ReportsPage />} />
+              <Route path="audit" element={<RouteGuard permission="audit.view"><AuditLogPage /></RouteGuard>} />
+              <Route path="catalog" element={<RouteGuard moduleKey="catalog"><CatalogPage /></RouteGuard>} />
+              <Route path="pos" element={<RouteGuard moduleKey="pos"><PosPage /></RouteGuard>} />
+              <Route path="customers" element={<RouteGuard moduleKey="booking"><CustomersPage /></RouteGuard>} />
+              <Route path="booking" element={<RouteGuard moduleKey="booking"><BookingPage /></RouteGuard>} />
+              <Route path="inventory" element={<RouteGuard moduleKey="inventory"><InventoryPage /></RouteGuard>} />
+              <Route path="schedule" element={<RouteGuard moduleKey="scheduling"><SchedulePage /></RouteGuard>} />
+              <Route path="expenses" element={<RouteGuard moduleKey="expenses"><ExpensesPage /></RouteGuard>} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/app" replace />} />

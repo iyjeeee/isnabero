@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Store, ChevronsLeft, ChevronsRight, X } from "lucide-react";
 import { cn } from "@isnabero/ui";
-import { getDataSource } from "@isnabero/db";
 import { getModuleDefinition } from "@/lib/module-registry";
 import { NAV_GROUPS, type NavEntry } from "@/lib/nav-config";
 import { useBusinessModules } from "@/hooks/use-business-modules";
@@ -85,7 +84,6 @@ export function Sidebar() {
     return { key: module.path, label: t(`modules.${module.key}.label`), path: module.path, icon: module.icon };
   };
   const groups = NAV_GROUPS.map((group) => ({ ...group, items: group.entries.map(resolveEntry).filter((item) => item !== null) })).filter((group) => group.items.length > 0);
-  const isDemo = getDataSource() !== "supabase";
 
   return (
     <>
@@ -102,7 +100,7 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          "flex flex-col bg-sidebar text-sidebar-foreground transition-[transform,width] duration-200",
+          "flex flex-col border-r border-white/10 bg-sidebar text-sidebar-foreground transition-[transform,width] duration-200",
           // Mobile: fixed off-canvas drawer, slides in/out
           "fixed inset-y-0 left-0 z-50 w-72",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
@@ -111,19 +109,15 @@ export function Sidebar() {
           effectiveCollapsed ? "md:w-16" : "md:w-64",
         )}
       >
-        <div className={cn("flex items-center gap-3 border-b border-sidebar-border px-4 py-5", effectiveCollapsed && "justify-center px-2")}>
+        {/* h-16 matches the TopBar so the two header rows (and their bottom lines) line up across the screen */}
+        <div className={cn("flex h-16 shrink-0 items-center gap-3 border-b border-white/10 px-4", effectiveCollapsed && "justify-center px-2")}>
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-card">
             <Store className="h-4 w-4" />
           </div>
           {!effectiveCollapsed && (
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-sidebar-muted">Isnabero</p>
-              <p className="truncate font-display text-sm font-semibold">{businessName ?? t("nav.selectBusiness")}</p>
-              {isDemo && (
-                <span title={t("nav.demoModeHint")} className="mt-0.5 inline-block rounded bg-warning px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-warning-foreground">
-                  {t("nav.demoMode")}
-                </span>
-              )}
+              <p className="text-[11px] font-medium uppercase leading-none tracking-wide text-sidebar-muted">Isnabero</p>
+              <p className="mt-1 truncate font-display text-sm font-semibold leading-none">{businessName ?? t("nav.selectBusiness")}</p>
             </div>
           )}
           {/* Close button — mobile drawer only */}

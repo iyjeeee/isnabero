@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
-import { Badge, Button, Card, CardContent, Input, Label } from "@isnabero/ui";
+import { Badge, Button, Input, Label } from "@isnabero/ui";
 import { useT } from "@/i18n";
 import { MODULE_REGISTRY, type ModuleKey } from "@/lib/module-registry";
 import { BUSINESS_NAME_MAX, normalizeBusinessName, type BusinessView } from "@/lib/repositories/repository";
@@ -13,13 +12,13 @@ import { ModuleToggleList } from "@/components/setup/ModuleToggleList";
 interface SetupWizardProps {
   business: BusinessView;
   enabledModules: ModuleKey[];
+  onDone: () => void; // called after a successful save (the modal closes)
 }
 
 // SetupWizard: 3 steps (name -> modules -> review). Starts from the business's current values, so re-running it
 // later edits the existing setup instead of starting from scratch.
-export function SetupWizard({ business, enabledModules }: SetupWizardProps) {
+export function SetupWizard({ business, enabledModules, onDone }: SetupWizardProps) {
   const { t } = useT();
-  const navigate = useNavigate();
   const save = useSaveBusinessSetup(business.id);
   const [step, setStep] = useState(0);
   const [name, setName] = useState(business.name);
@@ -49,7 +48,7 @@ export function SetupWizard({ business, enabledModules }: SetupWizardProps) {
       {
         onSuccess: () => {
           toast.success(t("setup.saved"));
-          navigate("/app");
+          onDone();
         },
       },
     );
@@ -58,59 +57,57 @@ export function SetupWizard({ business, enabledModules }: SetupWizardProps) {
   const selectedDefinitions = MODULE_REGISTRY.filter((module) => modules.includes(module.key));
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <Card>
-        <CardContent className="space-y-5 p-5">
-          <SetupSteps steps={steps} current={step} />
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="space-y-5">
+        <SetupSteps steps={steps} current={step} />
 
-          {step === 0 && (
-            <div className="space-y-1.5">
-              <Label htmlFor="setup-name">{t("setup.business.name")}</Label>
-              <Input
-                id="setup-name"
-                value={name}
-                maxLength={BUSINESS_NAME_MAX}
-                autoFocus
-                onChange={(event) => setName(event.target.value)}
-                aria-invalid={Boolean(nameError)}
-              />
-              {nameError ? <p className="text-xs text-destructive">{nameError}</p> : <p className="text-xs text-muted-foreground">{t("setup.business.nameHint")}</p>}
-            </div>
-          )}
+        {step === 0 && (
+          <div className="space-y-1.5">
+            <Label htmlFor="setup-name">{t("setup.business.name")}</Label>
+            <Input
+              id="setup-name"
+              value={name}
+              maxLength={BUSINESS_NAME_MAX}
+              autoFocus
+              onChange={(event) => setName(event.target.value)}
+              aria-invalid={Boolean(nameError)}
+            />
+            {nameError ? <p className="text-xs text-destructive">{nameError}</p> : <p className="text-xs text-muted-foreground">{t("setup.business.nameHint")}</p>}
+          </div>
+        )}
 
-          {step === 1 && (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">{t("setup.modules.hint")}</p>
-              <ModuleToggleList selected={modules} onChange={setModules} />
-            </div>
-          )}
+        {step === 1 && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">{t("setup.modules.hint")}</p>
+            <ModuleToggleList selected={modules} onChange={setModules} />
+          </div>
+        )}
 
-          {step === 2 && (
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">{t("setup.business.name")}</p>
-                <p className="font-display text-lg font-semibold">{name}</p>
-              </div>
-              <div>
-                <p className="mb-2 text-sm text-muted-foreground">{t("setup.steps.modules")}</p>
-                {selectedDefinitions.length === 0 ? (
-                  <p className="text-sm">{t("setup.review.none")}</p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {selectedDefinitions.map((module) => (
-                      <Badge key={module.key} variant="success" className="gap-1.5">
-                        <CheckCircle2 className="h-3 w-3" />
-                        {t(`modules.${module.key}.label`)}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">{t("setup.review.later")}</p>
+        {step === 2 && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground">{t("setup.business.name")}</p>
+              <p className="font-display text-lg font-semibold">{name}</p>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <div>
+              <p className="mb-2 text-sm text-muted-foreground">{t("setup.steps.modules")}</p>
+              {selectedDefinitions.length === 0 ? (
+                <p className="text-sm">{t("setup.review.none")}</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {selectedDefinitions.map((module) => (
+                    <Badge key={module.key} variant="success" className="gap-1.5">
+                      <CheckCircle2 className="h-3 w-3" />
+                      {t(`modules.${module.key}.label`)}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">{t("setup.review.later")}</p>
+          </div>
+        )}
+      </div>
 
       <div className="flex items-center justify-between">
         <Button type="button" variant="outline" disabled={step === 0 || save.isPending} onClick={() => setStep(step - 1)}>

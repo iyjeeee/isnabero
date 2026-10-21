@@ -36,8 +36,8 @@ test.describe("language and theme (settings modal)", () => {
   test("Business Setup opens from the modal and closes it", async ({ page }) => {
     await page.goto("/app");
     await page.getByRole("button", { name: "Settings" }).click();
-    await page.getByRole("dialog").getByRole("link", { name: /Business Setup/ }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Business Setup" })).toBeVisible();
-    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.getByRole("dialog").getByRole("button", { name: /Business Setup/ }).click();
+    await expect(page.getByRole("dialog", { name: "Business Setup" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
   });
 });

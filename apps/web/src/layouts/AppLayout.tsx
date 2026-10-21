@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { BusinessSetupDialog } from "@/components/setup/BusinessSetupDialog";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PageFallback } from "@/components/PageFallback";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -32,8 +33,8 @@ export function AppLayout() {
         <UpdateBanner />
 
         <div className="flex-1 overflow-y-auto">
-          {/* max-w-6xl: content stays a readable, compact width on big screens instead of stretching edge to edge */}
-          <div className="mx-auto w-full max-w-6xl animate-fade-in px-4 py-5 sm:px-6 sm:py-6">
+          {/* full width: wide screens get more columns (auto-fill grids), not a narrow centered strip with dead space either side */}
+          <div className="w-full animate-fade-in px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
             <ErrorBoundary resetKey={pathname}>
               {/* Suspense here (not only in App.tsx) so the sidebar stays mounted while a lazy page chunk loads */}
               {offlineUnavailable && <OfflineUnavailable />}
@@ -47,6 +48,7 @@ export function AppLayout() {
           </div>
         </div>
       </main>
+      <BusinessSetupDialog />
     </div>
   );
 }

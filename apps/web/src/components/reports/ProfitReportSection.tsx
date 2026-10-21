@@ -60,7 +60,7 @@ export function ProfitReportSection({ businessId }: { businessId: string }) {
               {data.expensesByCategory.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t("reports.profit.noExpenses")}</p>
               ) : (
-                <ul className="space-y-2">
+                <ul className="grid gap-x-8 gap-y-3 lg:grid-cols-2">
                   {data.expensesByCategory.map((slice) => (
                     <li key={slice.label} className="space-y-1">
                       <div className="flex justify-between text-sm">

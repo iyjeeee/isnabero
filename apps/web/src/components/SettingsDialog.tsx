@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { ChevronRight, Languages, Moon, Settings, Sun } from "lucide-react";
 import { cn, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@isnabero/ui";
 import { SETTINGS_ENTRY } from "@/lib/nav-config";
 import { useCan } from "@/hooks/use-permission";
 import { useThemeStore } from "@/stores/theme-store";
 import { useLanguageStore } from "@/stores/language-store";
+import { useSetupDialogStore } from "@/stores/setup-dialog-store";
 import { LANGUAGES, useT } from "@/i18n";
 
 // Choice: one option of a segmented control, marked with aria-pressed so state isn't shown by color alone
@@ -45,6 +45,7 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
   const theme = useThemeStore((state) => state.theme);
   const setTheme = useThemeStore((state) => state.setTheme);
   const can = useCan();
+  const openSetup = useSetupDialogStore((state) => state.setOpen);
   const SetupIcon = SETTINGS_ENTRY.icon;
 
   return (
@@ -77,7 +78,7 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
               </Choice>
             </Row>
             {can(SETTINGS_ENTRY.permission) && (
-              <Link to={SETTINGS_ENTRY.path} onClick={() => setOpen(false)} className="group flex items-center gap-3 rounded-lg border p-3 transition-colors hover:border-primary/40 hover:bg-accent/50">
+              <button type="button" onClick={() => { setOpen(false); openSetup(true); }} className="group flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent/50">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <SetupIcon className="h-4 w-4" />
                 </div>
@@ -86,7 +87,7 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
                   <p className="truncate text-xs text-muted-foreground">{t("nav.setupHint")}</p>
                 </div>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-              </Link>
+              </button>
             )}
           </div>
         </DialogContent>

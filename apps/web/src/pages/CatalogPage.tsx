@@ -97,7 +97,7 @@ export default function CatalogPage() {
       )}
 
       {isLoading && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] gap-4">
           {[...Array(3)].map((_, i) => (
             <Card key={i}>
               <CardContent className="space-y-3 p-5">
@@ -123,7 +123,7 @@ export default function CatalogPage() {
         <EmptyState icon={Search} title={t("catalog.page.noMatchesTitle")} description={t("catalog.page.noMatchesDescription")} />
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] gap-4">
         {pageItems.map((offering) => {
           const TypeIcon = TYPE_ICON[offering.type];
           return (

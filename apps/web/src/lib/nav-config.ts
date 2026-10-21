@@ -46,10 +46,9 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-// SETTINGS_ENTRY: configuration, not daily work — pinned at the bottom of the sidebar instead of in the main list
-export const SETTINGS_ENTRY: { labelKey: TranslationKey; path: string; icon: LucideIcon; permission: Permission } = {
+// SETTINGS_ENTRY: configuration, not daily work — opened as a modal from Settings instead of being a page or a sidebar item
+export const SETTINGS_ENTRY: { labelKey: TranslationKey; icon: LucideIcon; permission: Permission } = {
   labelKey: "nav.setup",
-  path: "/app/setup",
   icon: Settings,
   permission: "business.configure",
 };
