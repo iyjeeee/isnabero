@@ -5,7 +5,7 @@ import { useT } from "./use-t";
 // through UTC, so it can't slip to the neighbouring day.
 const toDate = (value: Date | string): Date => (typeof value === "string" ? new Date(`${value.slice(0, 10)}T00:00:00`) : value);
 
-// useFormat: date/time formatting in the language the user picked (month and weekday names follow it)
+// useFormat: date/time formatting in the app locale (en-PH)
 export function useFormat() {
   const { locale } = useT();
   return useMemo(

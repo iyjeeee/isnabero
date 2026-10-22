@@ -787,19 +787,17 @@ deliver a ready-to-extract ZIP with only changed/created files.
   `.dark` class on `<html>`. Works together with the inline script in
   `index.html` (avoids theme-flash on load).
 
-- `src/stores/language-store.ts` — `useLanguageStore` (Zustand): current language (`en` | `fil`). Persists to `localStorage`
-  (`isnabero-language`, guarded), first visit uses `detectLanguage` (Filipino/Tagalog browsers → `fil`, else `en`), sets `<html lang>`.
+- (Removed in Round 39: `src/stores/language-store.ts` — the app is English only; there is no language state or choice.)
 
-**`src/i18n/` — Translations (Round 24)**
-- `languages.ts` (`LANGUAGES`, `detectLanguage`, `localeOf`), `translate.ts` (`translate`, `msg`/`decodeMessage` form-message tokens,
-  `flattenKeys`, types), `dictionaries.ts`, `use-t.ts` (`useT`, `translateNow`), `format.ts` (`useFormat` dates/times by locale),
-  `use-labels.ts` (`useLabels`: translated enum labels — role, method, booking status, stock kind, audit action…), `index.ts`.
-- `locales/en/*.ts` (source of truth) and `locales/fil/*.ts` (typed `Dictionary[...]`, so a missing/extra key fails typecheck),
-  one file per area: common, nav, ui, errors, modules, enums, language, dashboard, payments, reports, employees, setup, auth,
-  catalog, pos, receipt, booking, expenses, schedule, inventory, audit, exports, app.
-- `__tests__/i18n.test.ts` (same keys/placeholders/plural forms in both languages, no accidentally untranslated copy, module and
-  audit-action coverage, translate/msg/detect), `__tests__/hardcoded-text.test.ts` (AST scan of every TSX for untranslated JSX
-  text, text attributes, toasts and literals in JSX expressions).
+**`src/i18n/` — UI text (English only since Round 39; built in Round 24)**
+- `locale.ts` (`LOCALE = "en-PH"`, used by Intl for dates/times), `translate.ts` (`translate(dictionary, key, params)`, `msg`/`decodeMessage`
+  form-message tokens, `flattenKeys`, types derived from the English dictionary), `use-t.ts` (`useT` returns a constant `{ t, tm, locale }`;
+  `translateNow` for code outside React), `format.ts` (`useFormat` dates/times), `use-labels.ts` (`useLabels`: enum labels — role, method,
+  booking status, stock kind, audit action…), `index.ts`. All UI text still goes through `t("area.key")`; there is no second language.
+- `locales/en/*.ts`, one file per area: common, nav, ui, errors, modules, enums, dashboard, payments, reports, employees, setup, auth,
+  catalog, pos, receipt, booking, expenses, schedule, inventory, audit, exports, app, plus others (see the folder).
+- `__tests__/i18n.test.ts` (no empty strings, well-formed placeholders/plurals, module and audit-action coverage, translate/msg),
+  `__tests__/hardcoded-text.test.ts` (AST scan of every TSX for untranslated JSX text, text attributes, toasts and literals in JSX expressions).
 
 **`src/lib/offline/` — Offline read cache (Round 25)**
 - `query-persistence.ts` (save/restore the TanStack Query cache to localStorage `isnabero-offline-cache`, 24 h max age, version-checked,
@@ -889,7 +887,7 @@ deliver a ready-to-extract ZIP with only changed/created files.
   sidebar stays usable.
 - `src/components/PageFallback.tsx` — shared "Loading…" Suspense fallback
   (App.tsx for /login, AppLayout for pages).
-- `src/components/LanguageSwitcher.tsx` — EN/FIL button (sidebar footer, login page); `src/providers/UiLabelsBridge.tsx` feeds translated labels to `packages/ui` (`ui-labels.tsx`: `UiLabelsProvider`/`useUiLabels`, English defaults).
+- (`LanguageSwitcher.tsx` was removed in Round 39.) `src/providers/UiLabelsBridge.tsx` feeds translated labels to `packages/ui` (`ui-labels.tsx`: `UiLabelsProvider`/`useUiLabels`, English defaults).
 - `src/components/ThemeToggle.tsx` (REMOVED in Round 32; theme now chosen in `SettingsDialog.tsx`) — sun/moon icon button, calls
   `useThemeStore`. Lives in the Sidebar footer.
 
@@ -1509,7 +1507,7 @@ skipped), Audit "Shifts" entries, no page overflow at 390px, staff read-only wit
 Known limits: no time-off/availability, no overnight shifts, no shift swaps or publishing/notifications; the Supabase
 repository has not been run against a real Supabase/PostgREST.
 
-### Round 24: Language toggle (English + Filipino)
+### Round 24: Language toggle (English + Filipino) — HISTORY ONLY: Filipino and the toggle were removed in Round 39 (see below)
 Batch 3 item 6 (next: Offline resilience → visuals/design pass → Supabase last).
 **Behaviour:** a language button (EN/FIL) sits next to the theme toggle in the sidebar footer and on the login page. The choice is
 remembered (`isnabero-language`); first visit follows the browser (fil/tl → Filipino, otherwise English). Dates, weekdays and times
@@ -1519,8 +1517,8 @@ against it. Use `const { t, tm } = useT()`; plurals are `"1 item|{count} items"`
 Zod schemas are built at import time, so they use `msg("area.key")` tokens and forms render them with `tm(error.message)`. Stored enum
 values are never changed; display labels come from `useLabels()`. Shared components in `packages/ui` get strings through
 `UiLabelsProvider` (Pagination, QuantityStepper, dialog Close, ConfirmDialog, TrendBadge).
-**Adding a string:** add the key to `locales/en/<area>.ts` and `locales/fil/<area>.ts`, use `t(...)`. The tests fail if the key is
-missing in either language, a `{placeholder}` differs, or JSX contains untranslated English.
+**Adding a string (current rule, English only since Round 39):** add the key to `locales/en/<area>.ts` only, use `t(...)`. (Originally also `locales/fil/<area>.ts`.) The tests fail if the key is
+empty, a `{placeholder}` is malformed, or JSX contains untranslated English.
 **Stays English on purpose:** error messages thrown by the modules/db, audit-log summary text (stored in rows, written by DB
 triggers in Supabase mode), the printed receipt, receipt PDF and CSV/PDF exports (content and file names), data users type
 (item names, notes), brand/acronyms (Isnabero, POS, PDF, CSV, GCash, TIN).
@@ -1773,10 +1771,26 @@ expense-edit-profit, pos-scan, supabase/set-password.
 - DELETED (stale; were removed in Rounds 32-34 but ZIPs cannot carry deletions): `src/components/ThemeToggle.tsx`, `src/components/receipt/ReceiptDetailsCard.tsx`, `src/pages/SetupPage.tsx`. Nothing imported them; they only broke `tsc`.
 - Verified in the sandbox: tsc clean, eslint clean, unit 155 pass (was 152). NOT verified: the retry logic itself (no failing network to exercise) and the new void error against hosted Supabase.
 
-### Round 37: Phone-layout pass — CURRENT
+### Round 37: Phone-layout pass
 - Checked every page at 390px (and POS at 360px) in mock mode with Playwright screenshots: no page scrolls sideways; wide tables/tab strips scroll inside their own container. The Reports payment-method pie renders (the blank pie seen earlier was only the chart animation).
 - `src/pages/PosPage.tsx`: item grid is 2 columns on phones (`minmax(9rem,1fr)`, `sm:` keeps the old `minmax(11rem,1fr)`); item names wrap to 2 lines (`line-clamp-2`) instead of truncating.
 - `src/components/setup/ModuleToggleList.tsx`: the "Needed by ..." badge wraps as a tidy block (`whitespace-normal rounded-lg text-left`) with a small gap under the title row.
 - `e2e/mobile/mobile.spec.ts`: new test "POS shows two items per row on a phone".
 - Left as is (judged fine): one stat card per row on phones (long peso values need the width), horizontally scrolling tab strips (clipped last tab is the scroll hint), table pages scroll inside a container, two-line "SAMPLE DATA" badge in the top bar.
 - Verified in the sandbox: tsc clean, eslint clean, unit 155 pass, Playwright 21 passed (mobile, POS, POS scan, setup, offline sales, language/theme) plus the new mobile test. NOT verified: real phone hardware, dark theme and Filipino text on phone width, hosted mode.
+
+### Round 38: Dark theme + Filipino phone check
+- Checked every page and the Settings / Business Setup / New booking dialogs at 390px in dark theme + Filipino (screenshots plus an off-screen-control scan). No page scrolls sideways; dark contrast looked fine.
+- `packages/ui/src/components/page-header.tsx`: the action area is `max-w-full` and its button row wraps (`[&>div]:flex-wrap`), so long Filipino labels ("Magdagdag ng Empleyado") no longer run off the card. Applies to every page that passes `action`.
+- `src/pages/SchedulePage.tsx`: the Copy last week / Add shift button group is `flex-wrap` ("Kopyahin ang nakaraang linggo" + "Magdagdag ng shift" ran off screen).
+- `e2e/mobile/mobile.spec.ts`: new test "Filipino header and schedule buttons stay on screen".
+- Known, left as is: row action buttons (edit/remove on Employees, receipt/void on Payments) sit in a horizontally scrolling table, so on a phone they need a sideways scroll to reach (same in English). A mobile card layout for those tables is a possible future round.
+- A red border on one stat card in dark screenshots was only the hover state under a simulated pointer, not a bug.
+- Verified in the sandbox: tsc clean (web + ui), eslint clean (web), unit 155 pass, Playwright 27 passed (mobile, schedule, employees, language/theme, booking, expenses, catalog, inventory). NOT verified: real phone hardware, hosted mode, other phone widths in dark/Filipino (only 390px).
+
+### Round 39: Filipino removed — English only — CURRENT
+- The app is English only. Removed: the Filipino dictionary (`src/i18n/locales/fil/`), the language toggle in the Settings modal and on the login / set-password pages (`components/LanguageSwitcher.tsx`), the language state (`stores/language-store.ts`, saved key `isnabero-language`, browser-language detection), `i18n/languages.ts`, `i18n/dictionaries.ts`, and the `language.*` / `nav.language` text. A previously saved Filipino choice in a browser is simply ignored.
+- Kept: the whole `t("area.key")` text system (every screen uses it) — now backed by the English dictionary only (`locales/en`), so all text stays in one place and the hardcoded-text test still guards it. `useT()` returns a constant `{ t, tm, locale }` (no `language` field); `translate(dictionary, key, params)` lost its fallback-dictionary argument; `LOCALE = "en-PH"` (`i18n/locale.ts`) drives Intl dates/times; `<html lang="en">` is static in `index.html`.
+- `SettingsDialog.tsx` now shows Theme (Light/Dark) and the Business Setup link; `nav.settingsHint` = "Appearance and business setup."
+- Tests: `i18n.test.ts` rewritten (no Filipino parity/detection; checks empty strings, placeholders/plurals, module + audit coverage, translate/msg); `shift-form-schema.test.ts` uses the new `translate` signature; `e2e/language-and-theme.spec.ts` (name kept) now checks the Settings modal has theme + Business Setup and NO language choice and `<html lang="en">`; the Filipino mobile test from Round 38 was removed. Earlier rounds above that mention Filipino/`fil` describe history, not the current app.
+- Verified in the sandbox: tsc clean, eslint clean, unit 153 pass (was 155: Filipino parity/detection tests removed, 2 English checks added), Playwright 74 passed + 2 skipped (the live-Supabase specs), screenshot of the Settings modal with a stale saved Filipino choice (loads English). NOT verified: hosted mode in a real browser, a production build (`vite build`) in this round.

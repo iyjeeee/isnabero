@@ -13,7 +13,7 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-// ErrorFallback: functional child so the text follows the language (class components can't use hooks)
+// ErrorFallback: functional child so it can use the useT hook (class components can't use hooks)
 function ErrorFallback({ error, onRetry }: { error: Error; onRetry: () => void }) {
   const { t } = useT();
   return (

@@ -21,7 +21,7 @@ export default function BookingPage() {
   const { t } = useT();
   const labels = useLabels();
   const f = useFormat();
-  // formatBookingTime: "9:30 AM" for today, "Tue, Oct 6 · 9:30 AM" for later days (in the chosen language)
+  // formatBookingTime: "9:30 AM" for today, "Tue, Oct 6 · 9:30 AM" for later days
   const formatBookingTime = (value: Date | string): string => {
     const date = new Date(value);
     const time = f.time(date);

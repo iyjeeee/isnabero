@@ -1,7 +1,6 @@
 import type { en } from "./locales/en";
 
-// Dictionary shape: nested objects whose leaves are strings. English is the source of truth; every other language is
-// typed against it, so a missing or extra key is a compile error.
+// Dictionary shape: nested objects whose leaves are strings, derived from the English dictionary (the only one).
 export type DeepStrings<T> = { [K in keyof T]: T[K] extends string ? string : DeepStrings<T[K]> };
 export type Dictionary = DeepStrings<typeof en>;
 
@@ -21,10 +20,10 @@ const lookup = (dictionary: unknown, key: string): string | undefined => {
   return typeof node === "string" ? node : undefined;
 };
 
-// translate: looks the key up (falling back to English, then to the key itself so a gap is visible, never blank) and fills
+// translate: looks the key up (falling back to the key itself so a gap is visible, never blank) and fills
 // {placeholders}. A value like "1 item|{count} items" is a plural: the first form is used when params.count is 1.
-export function translate(dictionary: Dictionary, fallback: Dictionary, key: TranslationKey, params?: TranslationParams): string {
-  let text = lookup(dictionary, key) ?? lookup(fallback, key) ?? key;
+export function translate(dictionary: Dictionary, key: TranslationKey, params?: TranslationParams): string {
+  let text = lookup(dictionary, key) ?? key;
   if (text.includes("|")) {
     const [one, other = one] = text.split("|") as [string, string?];
     text = params?.count === 1 ? one : other;
@@ -32,7 +31,7 @@ export function translate(dictionary: Dictionary, fallback: Dictionary, key: Tra
   return params ? text.replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match)) : text;
 }
 
-// Form validators (zod) are built once at import time, before the language is known. They carry a *message token*
+// Form validators (zod) are built once at import time, before the text is looked up. They carry a *message token*
 // instead of text, and the form turns the token into text when it renders the error.
 const TOKEN = "i18n:";
 

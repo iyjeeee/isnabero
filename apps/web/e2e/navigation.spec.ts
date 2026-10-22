@@ -13,7 +13,7 @@ test.describe("sidebar and navigation", () => {
     await expect(nav.getByText("Modules", { exact: true })).toHaveCount(0);
     // settings live in the top bar, not the sidebar
     await expect(nav.getByRole("link", { name: "Business Setup" })).toHaveCount(0);
-    // the top bar shows just Settings and Sign out; language, theme and Business Setup sit in the settings modal
+    // the top bar shows just Settings and Sign out; theme and Business Setup sit in the settings modal
     const bar = page.locator("header");
     await expect(bar.getByRole("button", { name: "Settings" })).toBeVisible();
     await expect(bar.getByRole("button", { name: "Sign out" })).toBeVisible();

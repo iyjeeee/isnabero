@@ -16,7 +16,7 @@ import { ShiftModal, type ShiftEditorState } from "@/components/schedule/ShiftMo
 import { computeWeekStats } from "@/components/schedule/schedule-stats";
 import { useFormat, useT } from "@/i18n";
 
-// Export titles are document content, so they stay English whatever the app language is
+// Export titles are document content
 const exportDay = (ymd: string) => new Date(`${ymd}T00:00:00`).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
 
 export default function SchedulePage() {
@@ -94,7 +94,7 @@ export default function SchedulePage() {
           </h2>
         </div>
         {canManage && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={handleCopy} disabled={copyWeek.isPending}>
               <Copy className="h-4 w-4" />
               {copyWeek.isPending ? t("schedule.copy.copying") : t("schedule.copy.button")}

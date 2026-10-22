@@ -8,7 +8,7 @@ const TOAST_FNS = new Set(["success", "error", "info", "warning", "message"]);
 // Files whose English is intentional (printed receipt document, exports, tests)
 const SKIP = [/__tests__/, /\.test\./, /^i18n\//, /receipt\/ReceiptSheet/];
 // Strings that are not translatable prose
-const ALLOWED = new Set(["Isnabero", "POS", "PDF", "CSV", "GCash", "TIN", "EN", "FIL", "OK"]);
+const ALLOWED = new Set(["Isnabero", "POS", "PDF", "CSV", "GCash", "TIN", "OK"]);
 
 const isProse = (text: string) => {
   const value = text.trim();

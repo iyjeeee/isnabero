@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { ChevronRight, Languages, Moon, Settings, Sun } from "lucide-react";
+import { ChevronRight, Moon, Settings, Sun } from "lucide-react";
 import { cn, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@isnabero/ui";
 import { SETTINGS_ENTRY } from "@/lib/nav-config";
 import { useCan } from "@/hooks/use-permission";
 import { useThemeStore } from "@/stores/theme-store";
-import { useLanguageStore } from "@/stores/language-store";
 import { useSetupDialogStore } from "@/stores/setup-dialog-store";
-import { LANGUAGES, useT } from "@/i18n";
+import { useT } from "@/i18n";
 
 // Choice: one option of a segmented control, marked with aria-pressed so state isn't shown by color alone
 function Choice({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -37,11 +36,10 @@ function Row({ icon: Icon, label, children }: { icon: React.ComponentType<{ clas
   );
 }
 
-// SettingsDialog: the top-bar settings button and the modal it opens — language, theme and a link to Business Setup
+// SettingsDialog: the top-bar settings button and the modal it opens — theme and a link to Business Setup
 export function SettingsDialog({ triggerClassName }: { triggerClassName?: string }) {
   const [open, setOpen] = useState(false);
-  const { t, language } = useT();
-  const setLanguage = useLanguageStore((state) => state.setLanguage);
+  const { t } = useT();
   const theme = useThemeStore((state) => state.theme);
   const setTheme = useThemeStore((state) => state.setTheme);
   const can = useCan();
@@ -60,13 +58,6 @@ export function SettingsDialog({ triggerClassName }: { triggerClassName?: string
             <DialogDescription>{t("nav.settingsHint")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-5">
-            <Row icon={Languages} label={t("nav.language")}>
-              {LANGUAGES.map((item) => (
-                <Choice key={item.code} active={item.code === language} onClick={() => setLanguage(item.code)}>
-                  {item.label}
-                </Choice>
-              ))}
-            </Row>
             <Row icon={theme === "dark" ? Moon : Sun} label={t("nav.theme")}>
               <Choice active={theme === "light"} onClick={() => setTheme("light")}>
                 <Sun className="h-4 w-4" />

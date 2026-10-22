@@ -4,7 +4,6 @@ import { ui } from "./ui";
 import { errors } from "./errors";
 import { modules } from "./modules";
 import { enums } from "./enums";
-import { language } from "./language";
 import { dashboard } from "./dashboard";
 import { payments } from "./payments";
 import { reports } from "./reports";
@@ -36,7 +35,6 @@ export const en = {
   errors,
   modules,
   enums,
-  language,
   dashboard,
   payments,
   reports,

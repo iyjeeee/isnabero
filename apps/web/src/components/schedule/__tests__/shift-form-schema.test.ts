@@ -7,7 +7,7 @@ const valid = { employeeId: "e1", shiftDate: "2026-10-12", startTime: "09:00", e
 // messages carry i18n tokens; resolve them to English text
 const english = (message: string) => {
   const decoded = decodeMessage(message);
-  return decoded ? translate(en as Dictionary, en as Dictionary, decoded.key, decoded.params) : message;
+  return decoded ? translate(en as Dictionary, decoded.key, decoded.params) : message;
 };
 const messages = (values: object) => {
   const result = shiftFormSchema.safeParse(values);

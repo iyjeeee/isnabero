@@ -5,7 +5,6 @@ import { Button, Card, CardContent, Input, Label } from "@isnabero/ui";
 import { supabase } from "@/lib/supabase";
 import { getDataSource } from "@isnabero/db";
 import { useT } from "@/i18n";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export default function LoginPage() {
   const { t } = useT();
@@ -38,9 +37,6 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-background p-6">
-      <div className="absolute right-4 top-4">
-        <LanguageSwitcher className="gap-1 px-2 text-muted-foreground hover:bg-accent hover:text-foreground" />
-      </div>
       <Card className="w-full max-w-sm">
         <CardContent className="space-y-6 p-6">
           <div className="flex flex-col items-center gap-2 text-center">
