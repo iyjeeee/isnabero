@@ -20,6 +20,14 @@ test.describe("mobile layout", () => {
     await expect(page.locator("html")).toHaveClass(/dark/);
   });
 
+  test("POS shows two items per row on a phone", async ({ page }) => {
+    await page.goto("/app/pos");
+    const first = await page.getByRole("button", { name: /Bundle B/ }).boundingBox();
+    const second = await page.getByRole("button", { name: /Extra 5 Prints/ }).boundingBox();
+    expect(Math.abs(first!.y - second!.y)).toBeLessThan(2); // same row
+    expect(second!.x).toBeGreaterThan(first!.x + first!.width - 1); // side by side
+  });
+
   for (const path of ["/app", "/app/pos", "/app/payments", "/app/inventory", "/app/booking", "/app/catalog", "/app/employees"]) {
     test(`${path} has no horizontal page scroll`, async ({ page }) => {
       await page.goto(path);

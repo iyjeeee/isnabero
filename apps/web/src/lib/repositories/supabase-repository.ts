@@ -18,6 +18,7 @@ import type {
   CashCloseView,
   CloseCashInput,
 } from "./repository";
+import { translateNow } from "@/i18n";
 import { fetchAllRows } from "./paginate";
 import { MODULE_REGISTRY, normalizeModules, type ModuleKey } from "@/lib/module-registry";
 
@@ -171,12 +172,15 @@ export function createSupabaseCoreRepository(supabase: SupabaseClient): CoreRepo
     },
 
     async voidPaymentRecord(businessId, recordId): Promise<void> {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("payment_records")
         .update({ voided_at: new Date().toISOString() })
         .eq("id", recordId)
-        .eq("business_id", businessId);
+        .eq("business_id", businessId)
+        .select("id");
       if (error) throw error;
+      if (!data?.length) throw new Error(translateNow("errors.cannotVoid")); // RLS filters a forbidden row to 0 updates instead of an error
+
     },
 
     async listEmployees(businessId): Promise<EmployeeView[]> {

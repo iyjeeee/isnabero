@@ -126,7 +126,7 @@ export default function PosPage() {
           )}
 
           {isLoading && (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-3">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
               {[...Array(6)].map((_, i) => (
                 <Skeleton key={i} className="h-20 rounded-lg" />
               ))}
@@ -137,7 +137,7 @@ export default function PosPage() {
             <EmptyState icon={ShoppingCart} title={t("pos.page.nothingTitle")} description={t("pos.page.nothingDescription")} />
           )}
 
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
             {availableOfferings.map((offering) => {
               const TypeIcon = TYPE_ICON[offering.type];
               const stock = stockByOffering.get(offering.id);
@@ -154,7 +154,7 @@ export default function PosPage() {
                     <TypeIcon className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate font-medium leading-tight">{offering.name}</p>
+                    <p className="line-clamp-2 break-words font-medium leading-tight">{offering.name}</p>
                     <p className="mt-0.5 text-sm font-semibold text-primary">{formatPeso(offering.price)}</p>
                   </div>
                   {stock && left !== null && (

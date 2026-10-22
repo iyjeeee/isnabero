@@ -9,6 +9,7 @@
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
+    "test:integration": "vitest run -c vitest.integration.config.ts",
     "preview": "vite preview",
     "e2e": "playwright test",
     "e2e:live": "E2E_LIVE=1 playwright test --project=supabase"

@@ -6,4 +6,5 @@ export const errors: Dictionary["errors"] = {
   pageHint: "Gumagana pa ang ibang bahagi ng app. Subukan muli, o bumalik sa dashboard.",
   notFound: "Hindi namin ito makita.",
   noAccess: "Wala kang access sa pahinang ito.",
+  cannotVoid: "Wala kang pahintulot na i-void ang record na ito, o wala na ito.",
 };

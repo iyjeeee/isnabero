@@ -27,9 +27,9 @@ export function ModuleToggleList({ selected, onChange }: ModuleToggleListProps) 
               <module.icon className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="mb-1 flex flex-wrap items-center gap-2">
                 <p className="font-medium">{t(`modules.${module.key}.label`)}</p>
-                {locked && <Badge variant="secondary">{t("setup.modules.neededBy", { modules: dependents.map((item) => t(`modules.${item.key}.label`)).join(", ") })}</Badge>}
+                {locked && <Badge variant="secondary" className="whitespace-normal rounded-lg text-left">{t("setup.modules.neededBy", { modules: dependents.map((item) => t(`modules.${item.key}.label`)).join(", ") })}</Badge>}
               </div>
               <p className="text-sm text-muted-foreground">{t(`modules.${module.key}.description`)}</p>
             </div>

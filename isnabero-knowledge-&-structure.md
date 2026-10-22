@@ -1750,9 +1750,33 @@ expense-edit-profit, pos-scan, supabase/set-password.
 - Tests: `setup.spec.ts` (modal, `/app/setup` redirect), `navigation.spec.ts` (full width, header heights equal, bookings/stock share a row), `staff-role.spec.ts`, `language-and-theme.spec.ts`.
   First-run auto-open was checked by hand with the mock business temporarily set to not-set-up (not an automated test).
 
-### Round 34: Receipt details as the last Business Setup step — CURRENT
+### Round 34: Receipt details as the last Business Setup step
 - `components/setup/SetupWizard.tsx` now has 4 steps: Business, Modules, Review, **Receipt details**. The last step's button ("Finish setup") validates the receipt fields
   (`validateReceiptDetails`), saves name + modules (`useSaveBusinessSetup`), then saves the receipt details (`useSaveReceiptDetails`) only if they changed, then toasts and closes.
   Invalid receipt fields keep the modal on step 4. `components/receipt/ReceiptDetailsForm.tsx` is now a controlled fields-only component (`value`, `errors`, `onChange`) with no
   save button; `BusinessSetupDialog.tsx` no longer renders it under the wizard. i18n: `setup.steps.receipt` added; `receipt.details.title/submit/saved` removed; setup descriptions updated.
 - Tests: `e2e/setup.spec.ts` (receipt fields absent on steps 1-3, invalid TIN keeps step 4 open, values persist next time); `navigation.spec.ts` bookings/stock row check now polls (was flaky).
+
+### Round 35: Automated database integration tests
+- New `apps/web/integration/` (vitest, `*.int.ts`, run with `pnpm --filter @isnabero/web test:integration`, config `apps/web/vitest.integration.config.ts`, sequential files; plain `pnpm test` ignores them). They build the app's real `createSupabase*Repository(client)` objects with supabase-js clients and hit a real Supabase/PostgREST — nothing mocked.
+  - `harness.ts` (`getContext()`, `repos(client)`, `tag()`; logs in with INT_EMAIL/INT_PASSWORD, or mints JWTs from INT_JWT_SECRET + INT_*_ID for local stacks), `load-env.ts` (reads `.env.integration` / `.env.local`), `README.md` (setup).
+  - Suites: `catalog` (barcode uniqueness, bundles, delete-in-use), `sales` (inventory, checkout, idempotency, backdating, stock limits, dashboard, void restores stock), `expenses-cash` (validation, void, cash close math and next period), `booking-scheduling` (overlaps, status lifecycle, shifts, copy week; random far-future dates per run so reruns are safe), `people-security` (employees + last owner, membership, receipt/setup save, audit log is append-only, signed-out sees nothing, other business blocked, staff blocked from owner actions — the last two run only when outsider/staff logins are supplied).
+- `supabase/e2e-test-business.sql` creates the isolated "E2E Test Business" the tests write to (records tagged `[E2E]`; sold/voided records remain as history by design). `.gitignore` adds `.env.integration`; `tsconfig.json` includes `integration`; `supabase/HOSTED-SETUP.md` has a new section.
+- Verified: 28/28 pass (twice in a row) against a local Postgres 16 + PostgREST 12.2.3 with all migrations 0000–0017; tsc + eslint clean; unit 152 pass. Later run by the user against the HOSTED project: 28/28 pass (one earlier run had a single network `fetch failed`, fixed by the Round 36 retry).
+- Finding: `voidPaymentRecord` on a record the user's role may not void silently updates 0 rows (RLS) instead of throwing; the UI hides the button for staff, data stays safe.
+
+### Round 36: Hosted test run green, void error, harness retry, stale-file cleanup
+- Hosted integration run: 28/28 pass against the user's Supabase (needs `apps/web/.env.integration` with the REAL `INT_EMAIL`/`INT_PASSWORD`; the placeholder `you@example.com` gives "Invalid login credentials"; `e2e-test-business.sql` must use the same email).
+- `integration/harness.ts`: every client now uses `retryingFetch` (up to 3 attempts, 400ms/800ms backoff, only for a dropped connection `TypeError`; HTTP errors are never retried). The minted-JWT clients keep it too.
+- `src/lib/repositories/supabase-repository.ts` `voidPaymentRecord`: now `.select("id")` and throws `errors.cannotVoid` (en + fil in `i18n/locales/*/errors.ts`) when 0 rows were updated (RLS silently filters a forbidden row). The global mutation toast shows the message. `integration/people-security.int.ts` staff test now expects the rejection. New unit test `src/lib/repositories/__tests__/void-payment-record.test.ts` (3 tests, stub client).
+- `integration/load-env.ts`: BOM regex uses `\uFEFF` (the literal invisible characters failed `no-irregular-whitespace`).
+- DELETED (stale; were removed in Rounds 32-34 but ZIPs cannot carry deletions): `src/components/ThemeToggle.tsx`, `src/components/receipt/ReceiptDetailsCard.tsx`, `src/pages/SetupPage.tsx`. Nothing imported them; they only broke `tsc`.
+- Verified in the sandbox: tsc clean, eslint clean, unit 155 pass (was 152). NOT verified: the retry logic itself (no failing network to exercise) and the new void error against hosted Supabase.
+
+### Round 37: Phone-layout pass — CURRENT
+- Checked every page at 390px (and POS at 360px) in mock mode with Playwright screenshots: no page scrolls sideways; wide tables/tab strips scroll inside their own container. The Reports payment-method pie renders (the blank pie seen earlier was only the chart animation).
+- `src/pages/PosPage.tsx`: item grid is 2 columns on phones (`minmax(9rem,1fr)`, `sm:` keeps the old `minmax(11rem,1fr)`); item names wrap to 2 lines (`line-clamp-2`) instead of truncating.
+- `src/components/setup/ModuleToggleList.tsx`: the "Needed by ..." badge wraps as a tidy block (`whitespace-normal rounded-lg text-left`) with a small gap under the title row.
+- `e2e/mobile/mobile.spec.ts`: new test "POS shows two items per row on a phone".
+- Left as is (judged fine): one stat card per row on phones (long peso values need the width), horizontally scrolling tab strips (clipped last tab is the scroll hint), table pages scroll inside a container, two-line "SAMPLE DATA" badge in the top bar.
+- Verified in the sandbox: tsc clean, eslint clean, unit 155 pass, Playwright 21 passed (mobile, POS, POS scan, setup, offline sales, language/theme) plus the new mobile test. NOT verified: real phone hardware, dark theme and Filipino text on phone width, hosted mode.

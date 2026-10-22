@@ -3,6 +3,7 @@ dist
 .turbo
 .env
 .env.local
+.env.integration
 supabase/.branches
 supabase/.temp
 *.log

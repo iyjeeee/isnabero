@@ -31,3 +31,13 @@ Automated check: with the app set to Supabase mode, `E2E_LIVE=1 E2E_EMAIL=<you> 
    The service-role key is provided to the function automatically on hosted projects; never put it in the browser env. Optional secret:
    `supabase secrets set SITE_URL=https://your-app-address` (otherwise the browser's own address is used).
 3. In the app, **Employees → Invite employee**. The person gets an email, opens the link, chooses a password on the "Set your password" page and lands in the app.
+
+## Automated database tests (no manual clicking)
+
+`apps/web/integration/` holds tests that run the app's real data code against your hosted project: catalog, POS (stock, idempotency, backdating), voiding, expenses, cash close, booking rules, shifts, employees/last-owner rule, audit log, plus signed-out, other-business and staff-permission checks.
+
+1. Run `supabase/e2e-test-business.sql` in the SQL editor (set your email at the top). It makes a separate "E2E Test Business"; your real data is not touched.
+2. Create `apps/web/.env.integration` (git-ignored) with `INT_SUPABASE_URL`, `INT_SUPABASE_ANON_KEY`, `INT_EMAIL`, `INT_PASSWORD` (optional staff / outsider logins enable the permission and isolation tests).
+3. `pnpm --filter @isnabero/web test:integration`
+
+Details: `apps/web/integration/README.md`.
