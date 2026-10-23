@@ -124,7 +124,7 @@ export default function EmployeesPage() {
           )}
 
           {!isLoading && pageItems.length > 0 && (
-            <table className="w-full text-sm">
+            <table className="stack-table w-full text-sm">
               <thead className="border-b bg-muted/50 text-left text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3">{t("common.name")}</th>
@@ -136,16 +136,16 @@ export default function EmployeesPage() {
               <tbody>
                 {pageItems.map((employee) => (
                   <tr key={employee.id} {...openProps(() => setDetailId(employee.id))} title={t("details.open", { name: employee.fullName })} className={cn("border-b transition-colors last:border-0 hover:bg-accent/50", OPEN_CLASS)}>
-                    <td className="px-4 py-3 font-medium">
+                    <td data-label={t("common.name")} className="px-4 py-3 font-medium">
                       {employee.fullName}
                       {employee.id === currentEmployee?.id && <Badge variant="outline" className="ml-2">{t("details.you")}</Badge>}
                     </td>
-                    <td className="px-4 py-3">
+                    <td data-label={t("employees.table.role")} className="px-4 py-3">
                       <Badge variant={ROLE_BADGE_VARIANT[employee.role as keyof typeof ROLE_BADGE_VARIANT] ?? "secondary"} className="capitalize">
                         {labels.role(employee.role)}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3">{format.date(employee.createdAt)}</td>
+                    <td data-label={t("employees.table.added")} className="px-4 py-3">{format.date(employee.createdAt)}</td>
                     {canManage && (
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">

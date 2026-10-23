@@ -28,6 +28,20 @@ test.describe("mobile layout", () => {
     expect(second!.x).toBeGreaterThan(first!.x + first!.width - 1); // side by side
   });
 
+  // Tables with row actions become cards on a phone: the action buttons sit inside the viewport, no sideways scroll needed
+  for (const [path, button] of [["/app/employees", /Edit/], ["/app/payments", /Void/], ["/app/expenses", /Edit|Void/], ["/app/inventory", /Adjust/]] as const) {
+    test(`${path} rows are cards with reachable action buttons`, async ({ page }) => {
+      await page.goto(path);
+      const firstRow = page.locator("table.stack-table tbody tr").first();
+      await expect(firstRow).toBeVisible();
+      expect(await firstRow.evaluate((el) => getComputedStyle(el).display)).toBe("block");
+      const action = firstRow.getByRole("button", { name: button }).first();
+      await expect(action).toBeVisible();
+      const box = await action.boundingBox();
+      expect(box!.x + box!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+    });
+  }
+
   for (const path of ["/app", "/app/pos", "/app/payments", "/app/inventory", "/app/booking", "/app/catalog", "/app/employees"]) {
     test(`${path} has no horizontal page scroll`, async ({ page }) => {
       await page.goto(path);

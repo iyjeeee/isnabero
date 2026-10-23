@@ -106,7 +106,7 @@ export default function InventoryPage() {
           {!isLoading && levels.length > 0 && filtered.length === 0 && <EmptyState icon={Search} title={t("inventory.empty.noMatchesTitle")} description={t("inventory.empty.noMatchesDescription")} className="border-0" />}
           {!isLoading && items.pageItems.length > 0 && (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="stack-table w-full text-sm">
                 <thead className="border-b bg-muted/50 text-left text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3">{t("inventory.table.item")}</th>
@@ -119,15 +119,15 @@ export default function InventoryPage() {
                 <tbody>
                   {items.pageItems.map((level) => (
                     <tr key={level.offeringId} {...openProps(() => setItemDetailId(level.offeringId))} title={t("details.open", { name: level.offeringName })} className={cn("border-b transition-colors last:border-0 hover:bg-accent/50", OPEN_CLASS)}>
-                      <td className="px-4 py-3">
+                      <td data-label={t("inventory.table.item")} className="px-4 py-3">
                         <p className="font-medium">{level.offeringName}</p>
                         <p className="text-xs text-muted-foreground">{labels.offeringType(level.offeringType)}</p>
                       </td>
-                      <td className="px-4 py-3">
+                      <td data-label={t("common.status")} className="px-4 py-3">
                         <StockBadge level={level} />
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums">{level.quantity}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{level.lowStockThreshold > 0 ? level.lowStockThreshold : "—"}</td>
+                      <td data-label={t("inventory.table.inStock")} className="px-4 py-3 text-right tabular-nums">{level.quantity}</td>
+                      <td data-label={t("inventory.table.warnAt")} className="px-4 py-3 text-right tabular-nums text-muted-foreground">{level.lowStockThreshold > 0 ? level.lowStockThreshold : "—"}</td>
                       {canManage && (
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-2">

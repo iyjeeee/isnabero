@@ -126,7 +126,7 @@ export default function PaymentsPage() {
           )}
 
           {!isLoading && pageItems.length > 0 && (
-            <table className="w-full text-sm">
+            <table className="stack-table w-full text-sm">
               <thead className="border-b bg-muted/50 text-left text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3">{t("common.date")}</th>
@@ -141,9 +141,9 @@ export default function PaymentsPage() {
               <tbody>
                 {pageItems.map((record) => (
                   <tr key={record.id} {...openProps(() => setDetailId(record.id))} title={t("details.open", { name: format.dateTime(record.createdAt) })} className={cn("border-b transition-colors last:border-0 hover:bg-accent/50", OPEN_CLASS, record.voidedAt && "opacity-50")}>
-                    <td className="whitespace-nowrap px-4 py-3">{format.dateTime(record.createdAt)}</td>
-                    <td className="px-4 py-3">{sourceLabel(record.sourceModule)}</td>
-                    <td className="max-w-[16rem] px-4 py-3">
+                    <td data-label={t("common.date")} className="whitespace-nowrap px-4 py-3">{format.dateTime(record.createdAt)}</td>
+                    <td data-label={t("payments.table.source")} className="px-4 py-3">{sourceLabel(record.sourceModule)}</td>
+                    <td data-label={t("payments.table.details")} className="max-w-[16rem] px-4 py-3">
                       <p className="truncate font-medium">{record.summary ?? "—"}</p>
                       {(record.customerName || record.receiptNumber) && (
                         <p className="truncate text-xs text-muted-foreground">
@@ -151,13 +151,13 @@ export default function PaymentsPage() {
                         </p>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td data-label={t("payments.table.method")} className="px-4 py-3">
                       <Badge variant={METHOD_BADGE_VARIANT[record.method as keyof typeof METHOD_BADGE_VARIANT] ?? "secondary"}>
                         {labels.method(record.method)}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3">{record.referenceCode ?? "—"}</td>
-                    <td className="px-4 py-3 text-right font-medium">
+                    <td data-label={t("payments.table.reference")} className="px-4 py-3">{record.referenceCode ?? "—"}</td>
+                    <td data-label={t("payments.table.amount")} className="px-4 py-3 text-right font-medium">
                       {formatPeso(record.amount)}
                       {record.voidedAt && (
                         <Badge variant="destructive" className="ml-2">

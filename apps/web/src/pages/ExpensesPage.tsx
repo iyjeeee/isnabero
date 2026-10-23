@@ -131,7 +131,7 @@ export default function ExpensesPage() {
 
           {!isLoading && pageItems.length > 0 && (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="stack-table w-full text-sm">
                 <thead className="border-b bg-muted/50 text-left text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3">{t("expenses.table.date")}</th>
@@ -146,17 +146,17 @@ export default function ExpensesPage() {
                 <tbody>
                   {pageItems.map((expense) => (
                     <tr key={expense.id} {...openProps(() => setDetailId(expense.id))} title={t("details.open", { name: expense.description })} className={cn("border-b transition-colors last:border-0 hover:bg-accent/50", OPEN_CLASS, expense.voidedAt && "opacity-50")}>
-                      <td className="whitespace-nowrap px-4 py-3">{f.date(expense.expenseDate)}</td>
-                      <td className="px-4 py-3">
+                      <td data-label={t("expenses.table.date")} className="whitespace-nowrap px-4 py-3">{f.date(expense.expenseDate)}</td>
+                      <td data-label={t("expenses.table.category")} className="px-4 py-3">
                         <Badge variant={CATEGORY_BADGE_VARIANT[expense.category]}>{labels.expenseCategory(expense.category)}</Badge>
                       </td>
-                      <td className="px-4 py-3">
+                      <td data-label={t("expenses.table.description")} className="px-4 py-3">
                         <p className="font-medium">{expense.description}</p>
                         {expense.notes && <p className="text-xs text-muted-foreground">{expense.notes}</p>}
                       </td>
-                      <td className="px-4 py-3">{labels.method(expense.method)}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{employeeName(expense.recordedBy) ?? "—"}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right font-medium">
+                      <td data-label={t("expenses.table.method")} className="px-4 py-3">{labels.method(expense.method)}</td>
+                      <td data-label={t("expenses.table.recordedBy")} className="px-4 py-3 text-muted-foreground">{employeeName(expense.recordedBy) ?? "—"}</td>
+                      <td data-label={t("expenses.table.amount")} className="whitespace-nowrap px-4 py-3 text-right font-medium">
                         {peso(expense.amount)}
                         {expense.voidedAt && (
                           <Badge variant="destructive" className="ml-2">
