@@ -14,6 +14,12 @@ export const nav = {
   setup: "Business Setup",
   theme: "Theme",
   signOut: "Sign out",
+  signOutConfirm: {
+    title: "Sign out of Isnabero?",
+    description: "You'll need your email and password to get back in.",
+    pending: "1 sale is still waiting to sync on this device.|{count} sales are still waiting to sync on this device.",
+    pendingHint: "They send once someone signs in here again, so stay connected for a moment first if you can.",
+  },
   signOutMock: "You're in demo mode, so there is no login to sign out of. To use your Supabase project, set VITE_DATA_SOURCE=supabase in apps/web/.env.local and restart the dev server.",
   collapse: "Collapse",
   collapseSidebar: "Collapse sidebar",

@@ -152,6 +152,106 @@
   }
 }
 
+/* auth panel: faint grid behind the module tiles; a tile with data-on="true" ends in the lit state and animates in from the unlit one (its end state is the static style, so reduced motion simply shows it lit) */
+.auth-panel {
+  background-image:
+    linear-gradient(hsl(var(--sidebar-foreground) / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--sidebar-foreground) / 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+/* auth form side: dot grid backdrop and a receipt-style sheet (maroon top edge, torn bottom edge); drop-shadow on the wrapper so the torn edge casts a shadow too */
+.auth-surface {
+  background-image: radial-gradient(hsl(var(--foreground) / 0.1) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.auth-sheet-wrap {
+  position: relative;
+  isolation: isolate;
+  filter: drop-shadow(0 1px 2px hsl(var(--foreground) / 0.1)) drop-shadow(0 18px 24px hsl(var(--foreground) / 0.1));
+}
+.auth-sheet-wrap::before,
+.auth-sheet-wrap::after { /* two sheets peeking out behind the form, like a pad of receipts */
+  content: "";
+  position: absolute;
+  inset: 6px 10px 0;
+  z-index: -1;
+  background-color: hsl(var(--card));
+  border-top: 4px solid hsl(var(--primary) / 0.45);
+  border-radius: 0.5rem 0.5rem 0 0;
+  transform: rotate(-2.2deg);
+  transform-origin: bottom left;
+  opacity: 0.8;
+}
+.auth-sheet-wrap::after {
+  inset: 12px 6px 0;
+  border-top-color: hsl(var(--primary) / 0.25);
+  transform: rotate(1.8deg);
+  transform-origin: bottom right;
+  opacity: 0.65;
+}
+.auth-sheet {
+  position: relative;
+  background-color: hsl(var(--card));
+  border-top: 4px solid hsl(var(--primary));
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+.auth-sheet::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% - 1px);
+  height: 10px;
+  background: conic-gradient(from -45deg at bottom, transparent, hsl(var(--card)) 1deg 90deg, transparent 91deg) 50% 0 / 20px 100%;
+}
+.auth-tile {
+  color: hsl(var(--sidebar-foreground) / 0.55);
+  border-color: hsl(var(--sidebar-foreground) / 0.18);
+}
+.auth-tile[data-on="true"] {
+  color: hsl(var(--sidebar-background));
+  background-color: hsl(var(--sidebar-foreground));
+  border-color: hsl(var(--sidebar-foreground));
+  animation: auth-tile-on 500ms var(--d, 0ms) ease-out backwards;
+}
+.auth-switch {
+  border-color: currentColor;
+}
+.auth-tile[data-on="true"] .auth-switch {
+  background-color: currentColor;
+  animation: auth-switch-on 500ms var(--d, 0ms) ease-out backwards;
+}
+.auth-tile[data-on="true"] .auth-knob {
+  background-color: hsl(var(--sidebar-foreground));
+  transform: translateX(0.75rem);
+  animation: auth-knob-on 500ms var(--d, 0ms) ease-out backwards;
+}
+@keyframes auth-tile-on {
+  from {
+    color: hsl(var(--sidebar-foreground) / 0.55);
+    background-color: transparent;
+    border-color: hsl(var(--sidebar-foreground) / 0.18);
+  }
+}
+@keyframes auth-switch-on {
+  from {
+    background-color: transparent;
+  }
+}
+@keyframes auth-knob-on {
+  from {
+    background-color: currentColor;
+    transform: translateX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-tile[data-on="true"],
+  .auth-tile[data-on="true"] .auth-switch,
+  .auth-tile[data-on="true"] .auth-knob {
+    animation: none;
+  }
+}
+
 /* Receipt printing: the receipt is rendered in a hidden copy under <body>; when printing, everything else is hidden. */
 .receipt-print-root {
   display: none;

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { KeyRound } from "lucide-react";
-import { Button, Card, CardContent, Input, Label } from "@isnabero/ui";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { Button, Input, Label } from "@isnabero/ui";
+import { AuthShell } from "@/components/auth/AuthShell";
 import { supabase } from "@/lib/supabase";
 import { getDataSource } from "@isnabero/db";
 import { useT } from "@/i18n";
@@ -52,46 +53,45 @@ export default function SetPasswordPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-sm">
-        <CardContent className="space-y-6 p-6">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-card">
-              <KeyRound className="h-5 w-5" />
-            </div>
-            <h1 className="font-display text-xl font-semibold">{t("setPassword.title")}</h1>
-            {state === "ready" && <p className="text-sm text-muted-foreground">{t("setPassword.description")}</p>}
+    <AuthShell>
+      <div className="space-y-1.5">
+        <h1 className="font-display text-3xl font-semibold tracking-tight">{t("setPassword.title")}</h1>
+        {state === "ready" && <p className="text-sm text-muted-foreground">{t("setPassword.description")}</p>}
+      </div>
+
+      {state === "checking" && <p className="mt-8 text-sm text-muted-foreground">{t("common.loading")}</p>}
+
+      {state === "expired" && (
+        <div className="mt-8 space-y-3 text-sm">
+          <p>{t("setPassword.expired")}</p>
+          <Link to="/login" className="font-medium text-primary hover:underline">
+            {t("setPassword.toLogin")}
+          </Link>
+        </div>
+      )}
+
+      {state === "ready" && (
+        <form onSubmit={submit} className="mt-8 space-y-5">
+          <div className="space-y-1.5">
+            <Label htmlFor="new-password">{t("setPassword.password")}</Label>
+            <Input id="new-password" type="password" autoComplete="new-password" required minLength={MIN_PASSWORD} value={password} onChange={(event) => setPassword(event.target.value)} className="h-11" />
           </div>
-
-          {state === "checking" && <p className="text-center text-sm text-muted-foreground">{t("common.loading")}</p>}
-
-          {state === "expired" && (
-            <div className="space-y-3 text-center text-sm">
-              <p>{t("setPassword.expired")}</p>
-              <Link to="/login" className="font-medium text-primary hover:underline">
-                {t("setPassword.toLogin")}
-              </Link>
-            </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="confirm-password">{t("setPassword.confirm")}</Label>
+            <Input id="confirm-password" type="password" autoComplete="new-password" required value={confirm} onChange={(event) => setConfirm(event.target.value)} className="h-11" />
+          </div>
+          {error && (
+            <p role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </p>
           )}
-
-          {state === "ready" && (
-            <form onSubmit={submit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="new-password">{t("setPassword.password")}</Label>
-                <Input id="new-password" type="password" autoComplete="new-password" required minLength={MIN_PASSWORD} value={password} onChange={(event) => setPassword(event.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="confirm-password">{t("setPassword.confirm")}</Label>
-                <Input id="confirm-password" type="password" autoComplete="new-password" required value={confirm} onChange={(event) => setConfirm(event.target.value)} />
-              </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" className="w-full" disabled={saving}>
-                {saving ? t("common.saving") : t("setPassword.save")}
-              </Button>
-            </form>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+          <Button type="submit" size="lg" className="w-full" disabled={saving}>
+            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {saving ? t("common.saving") : t("setPassword.save")}
+          </Button>
+        </form>
+      )}
+    </AuthShell>
   );
 }

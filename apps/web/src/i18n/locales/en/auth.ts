@@ -1,5 +1,19 @@
 export const auth = {
-  tagline: "Sign in to your business",
+  title: "Welcome back",
+  tagline: "Sign in to your business.",
+  showPassword: "Show password",
+  hidePassword: "Hide password",
+  needAccess: "New here? Ask your business owner to send you an invite.",
+  facts: {
+    offline: { title: "Keeps selling without a connection", description: "Sales rung up offline are saved on the device and sent when you're back online." },
+    roles: { title: "Access by role", description: "Owners, admins and staff each see only what their role allows." },
+    audit: { title: "Every change on record", description: "Voids, edits and cash closes are logged in the audit trail." },
+  },
+  panel: {
+    title: "Switch on what your business needs.",
+    description: "Sales, bookings, stock and staff share one set of records, so every screen stays in step.",
+    footer: "Built for small shops, studios and restaurants.",
+  },
   email: "Email",
   password: "Password",
   signIn: "Sign in",

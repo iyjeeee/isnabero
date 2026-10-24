@@ -11,7 +11,7 @@ test.describe("live Supabase", () => {
   test("signs in, lands in the business, visits every page, signs out", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("Email").fill(email!);
-    await page.getByLabel("Password").fill(password!);
+    await page.getByLabel("Password", { exact: true }).fill(password!);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL(/\/app/);
     await expect(page.getByText("Sample data")).toHaveCount(0); // real data, not the demo badge
@@ -26,6 +26,7 @@ test.describe("live Supabase", () => {
     }
 
     await page.getByRole("button", { name: "Sign out" }).click();
+    await page.getByRole("dialog", { name: "Sign out of Isnabero?" }).getByRole("button", { name: "Sign out" }).click(); // confirm in the modal
     await expect(page).toHaveURL(/\/login/);
     await page.goto("/app");
     await expect(page).toHaveURL(/\/login/); // the session really ended
@@ -34,7 +35,7 @@ test.describe("live Supabase", () => {
   test("a wrong password is refused with a message", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("Email").fill(email!);
-    await page.getByLabel("Password").fill("definitely-not-the-password");
+    await page.getByLabel("Password", { exact: true }).fill("definitely-not-the-password");
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL(/\/login/);
     await expect(page.getByRole("alert").or(page.getByText(/invalid|incorrect|wrong/i))).toBeVisible();
