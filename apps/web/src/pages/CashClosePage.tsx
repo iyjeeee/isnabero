@@ -138,7 +138,7 @@ export default function CashClosePage() {
               {!closesLoading && closes.length === 0 && <EmptyState icon={Calculator} title={t("cashClose.history.emptyTitle")} description={t("cashClose.history.emptyDescription")} className="border-0" />}
               {closes.length > 0 && (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="stack-table w-full text-sm">
                     <thead className="border-b bg-muted/50 text-left text-muted-foreground">
                       <tr>
                         <th className="px-4 py-3">{t("cashClose.history.when")}</th>
@@ -151,11 +151,11 @@ export default function CashClosePage() {
                     <tbody>
                       {closes.map((row) => (
                         <tr key={row.id} className={`border-b last:border-0 hover:bg-muted/40 ${OPEN_CLASS}`} {...openProps(() => setDetail(row))}>
-                          <td className="px-4 py-3">{format.dateTime(row.periodEnd)}</td>
-                          <td className="px-4 py-3">{row.closedByName}</td>
-                          <td className="px-4 py-3 text-right">{formatPeso(row.expected)}</td>
-                          <td className="px-4 py-3 text-right">{formatPeso(row.counted)}</td>
-                          <td className="px-4 py-3">
+                          <td data-label={t("cashClose.history.when")} className="px-4 py-3">{format.dateTime(row.periodEnd)}</td>
+                          <td data-label={t("cashClose.history.by")} className="px-4 py-3">{row.closedByName}</td>
+                          <td data-label={t("cashClose.history.expected")} className="px-4 py-3 text-right">{formatPeso(row.expected)}</td>
+                          <td data-label={t("cashClose.history.counted")} className="px-4 py-3 text-right">{formatPeso(row.counted)}</td>
+                          <td data-label={t("cashClose.history.difference")} className="px-4 py-3">
                             <CashDifferenceBadge difference={row.difference} />
                           </td>
                         </tr>

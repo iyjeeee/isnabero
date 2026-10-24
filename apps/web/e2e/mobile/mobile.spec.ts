@@ -42,6 +42,35 @@ test.describe("mobile layout", () => {
     });
   }
 
+  // Read-only tables become cards too: every cell carries its label and the page does not scroll sideways
+  for (const path of ["/app/customers"]) {
+    test(`${path} rows are labelled cards`, async ({ page }) => {
+      await page.goto(path);
+      const firstRow = page.locator("table.stack-table tbody tr").first();
+      await expect(firstRow).toBeVisible();
+      expect(await firstRow.evaluate((el) => getComputedStyle(el).display)).toBe("block");
+      expect(await firstRow.locator("td:not([data-label])").count()).toBe(0);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow).toBeLessThanOrEqual(1);
+    });
+  }
+
+  test("/app/audit entries are labelled cards", async ({ page }) => {
+    await page.goto("/app/expenses"); // record an expense so the audit log has an entry (a reload would reset the mock data, so navigate in-app)
+    await page.getByRole("button", { name: "Add expense" }).click();
+    const form = page.getByRole("dialog", { name: "Add expense" });
+    await form.getByLabel("Description").fill("Phone audit check");
+    await form.getByLabel("Amount (₱)").fill("10");
+    await form.getByRole("button", { name: "Save expense" }).click();
+    await expect(page.getByText("Expense recorded")).toBeVisible();
+    await page.getByRole("button", { name: "Open menu" }).click();
+    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Audit Log" }).click();
+    const firstRow = page.locator("table.stack-table tbody tr").first();
+    await expect(firstRow).toBeVisible();
+    await expect.poll(() => firstRow.evaluate((el) => getComputedStyle(el).display)).toBe("block"); // poll: the list can re-render right after navigation
+    await expect(firstRow.locator("td:not([data-label])")).toHaveCount(0);
+  });
+
   for (const path of ["/app", "/app/pos", "/app/payments", "/app/inventory", "/app/booking", "/app/catalog", "/app/employees"]) {
     test(`${path} has no horizontal page scroll`, async ({ page }) => {
       await page.goto(path);

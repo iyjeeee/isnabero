@@ -114,7 +114,7 @@ export default function AuditLogPage() {
           {!isLoading && entries.length > 0 && filtered.length === 0 && <EmptyState icon={Search} title={t("audit.empty.noMatchesTitle")} description={t("audit.empty.noMatchesDescription")} className="border-0" />}
           {!isLoading && pageItems.length > 0 && (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="stack-table w-full text-sm">
                 <thead className="border-b bg-muted/50 text-left text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3">{t("audit.table.when")}</th>
@@ -126,12 +126,12 @@ export default function AuditLogPage() {
                 <tbody>
                   {pageItems.map((entry) => (
                     <tr key={entry.id} {...openProps(() => setDetailId(entry.id))} title={t("details.open", { name: labels.auditAction(entry.action) })} className={cn("border-b transition-colors last:border-0 hover:bg-accent/50", OPEN_CLASS)}>
-                      <td className="whitespace-nowrap px-4 py-3">{format.dateTime(entry.createdAt)}</td>
-                      <td className="px-4 py-3">{entry.actorName}</td>
-                      <td className="px-4 py-3">
+                      <td data-label={t("audit.table.when")} className="whitespace-nowrap px-4 py-3">{format.dateTime(entry.createdAt)}</td>
+                      <td data-label={t("audit.table.who")} className="px-4 py-3">{entry.actorName}</td>
+                      <td data-label={t("audit.table.action")} className="px-4 py-3">
                         <Badge variant={ENTITY_BADGE_VARIANT[entry.entityType as AuditEntity] ?? "secondary"}>{labels.auditAction(entry.action)}</Badge>
                       </td>
-                      <td className="max-w-md px-4 py-3"><p className="line-clamp-2">{entry.summary}</p></td>
+                      <td data-label={t("audit.table.details")} className="max-w-md px-4 py-3"><p className="line-clamp-2">{entry.summary}</p></td>
                     </tr>
                   ))}
                 </tbody>

@@ -163,7 +163,7 @@ export default function InventoryPage() {
           {!movementsLoading && movements.length === 0 && <EmptyState icon={History} title={t("inventory.history.emptyTitle")} description={t("inventory.history.emptyDescription")} className="border-0" />}
           {!movementsLoading && history.pageItems.length > 0 && (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="stack-table w-full text-sm">
                 <thead className="border-b bg-muted/50 text-left text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3">{t("inventory.history.when")}</th>
@@ -177,14 +177,14 @@ export default function InventoryPage() {
                 <tbody>
                   {history.pageItems.map((movement) => (
                     <tr key={movement.id} {...openProps(() => setMovementDetailId(movement.id))} title={t("details.open", { name: movement.offeringName })} className={cn("border-b last:border-0 hover:bg-accent/50", OPEN_CLASS)}>
-                      <td className="whitespace-nowrap px-4 py-3">{format.dateTime(movement.createdAt)}</td>
-                      <td className="px-4 py-3">{movement.offeringName}</td>
-                      <td className="px-4 py-3">
+                      <td data-label={t("inventory.history.when")} className="whitespace-nowrap px-4 py-3">{format.dateTime(movement.createdAt)}</td>
+                      <td data-label={t("inventory.history.item")} className="px-4 py-3">{movement.offeringName}</td>
+                      <td data-label={t("inventory.history.type")} className="px-4 py-3">
                         <Badge variant={movement.kind === "sale" ? "info" : "secondary"}>{labels.stockKind(movement.kind)}</Badge>
                       </td>
-                      <td className={cn("px-4 py-3 text-right font-medium tabular-nums", movement.delta > 0 ? "text-success" : "text-destructive")}>{formatDelta(movement.delta)}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{movement.note ?? "—"}</td>
-                      <td className="px-4 py-3">{movement.recordedByName ?? t("inventory.history.system")}</td>
+                      <td data-label={t("inventory.history.change")} className={cn("px-4 py-3 text-right font-medium tabular-nums", movement.delta > 0 ? "text-success" : "text-destructive")}>{formatDelta(movement.delta)}</td>
+                      <td data-label={t("inventory.history.reason")} className="px-4 py-3 text-muted-foreground">{movement.note ?? "—"}</td>
+                      <td data-label={t("inventory.history.by")} className="px-4 py-3">{movement.recordedByName ?? t("inventory.history.system")}</td>
                     </tr>
                   ))}
                 </tbody>

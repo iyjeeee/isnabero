@@ -60,7 +60,7 @@ export default function CustomersPage() {
           {!isLoading && customers.length > 0 && filtered.length === 0 && <EmptyState icon={Search} title={t("customers.noMatchesTitle")} description={t("customers.noMatchesDescription")} className="border-0" />}
           {pageItems.length > 0 && (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="stack-table w-full text-sm">
                 <thead className="border-b bg-muted/50 text-left text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3">{t("customers.table.name")}</th>
@@ -74,12 +74,12 @@ export default function CustomersPage() {
                 <tbody>
                   {pageItems.map((customer) => (
                     <tr key={customer.key} className={`border-b last:border-0 hover:bg-muted/40 ${OPEN_CLASS}`} {...openProps(() => setSelected(customer))}>
-                      <td className="px-4 py-3 font-medium">{customer.name}</td>
-                      <td className="px-4 py-3">{customer.contact ?? dash}</td>
-                      <td className="px-4 py-3 text-right">{customer.bookings.length}</td>
-                      <td className="px-4 py-3 text-right">{formatPeso(customer.spent)}</td>
-                      <td className="px-4 py-3">{customer.lastVisit ? format.date(customer.lastVisit) : dash}</td>
-                      <td className="px-4 py-3">{customer.next ? format.date(customer.next) : dash}</td>
+                      <td data-label={t("customers.table.name")} className="px-4 py-3 font-medium">{customer.name}</td>
+                      <td data-label={t("customers.table.contact")} className="px-4 py-3">{customer.contact ?? dash}</td>
+                      <td data-label={t("customers.table.bookings")} className="px-4 py-3 text-right">{customer.bookings.length}</td>
+                      <td data-label={t("customers.table.spent")} className="px-4 py-3 text-right">{formatPeso(customer.spent)}</td>
+                      <td data-label={t("customers.table.last")} className="px-4 py-3">{customer.lastVisit ? format.date(customer.lastVisit) : dash}</td>
+                      <td data-label={t("customers.table.next")} className="px-4 py-3">{customer.next ? format.date(customer.next) : dash}</td>
                     </tr>
                   ))}
                 </tbody>
