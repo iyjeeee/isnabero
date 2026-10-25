@@ -6,6 +6,6 @@ export const setPassword = {
   save: "Save and continue",
   tooShort: "Use at least {min} characters.",
   mismatch: "The two passwords don't match.",
-  expired: "This invite link has expired or was already used. Ask your owner to send a new invite.",
+  expired: "This link has expired or was already used. Request a new reset link, or ask your owner to send a new invite.",
   toLogin: "Go to sign in",
 };

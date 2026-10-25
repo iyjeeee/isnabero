@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PERMISSIONS, hasPermission, type Permission } from "../permissions";
+import { PERMISSIONS, assignableRoles, canManageEmployee, hasPermission, type Permission } from "../permissions";
 
 const ALL = Object.keys(PERMISSIONS) as Permission[];
 
@@ -30,3 +30,22 @@ describe("hasPermission", () => {
     expect([...roles].every((role) => role === "owner" || role === "admin" || role === "staff")).toBe(true);
   });
 });
+
+describe("owner role protection", () => {
+  it("only an owner can hand out the owner role", () => {
+    expect(assignableRoles("owner")).toEqual(["staff", "admin", "owner"]);
+    expect(assignableRoles("admin")).toEqual(["staff", "admin"]);
+    expect(assignableRoles("staff")).toEqual([]);
+    expect(assignableRoles(null)).toEqual([]);
+  });
+
+  it("an admin can manage admins and staff but not owners; an owner can manage everyone", () => {
+    expect(canManageEmployee("admin", "staff")).toBe(true);
+    expect(canManageEmployee("admin", "admin")).toBe(true);
+    expect(canManageEmployee("admin", "owner")).toBe(false);
+    expect(canManageEmployee("owner", "owner")).toBe(true);
+    expect(canManageEmployee("staff", "staff")).toBe(false);
+    expect(canManageEmployee(undefined, "staff")).toBe(false);
+  });
+});
+

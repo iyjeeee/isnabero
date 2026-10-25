@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import { Button, Input, Label } from "@isnabero/ui";
 import { supabase } from "@/lib/supabase";
@@ -53,7 +53,12 @@ export default function LoginPage() {
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="password">{t("auth.password")}</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password">{t("auth.password")}</Label>
+            <Link to="/forgot-password" className="text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              {t("auth.forgot.link")}
+            </Link>
+          </div>
           <div className="relative">
             <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input id="password" type={showPassword ? "text" : "password"} autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} className="h-11 pl-9 pr-11" />

@@ -59,12 +59,14 @@ Deno.serve(async (req: Request) => {
     if (callerError || !caller.user) return reply(401, { error: "Not signed in" });
     const { data: callerRow } = await supabaseAdmin
       .from("employees")
-      .select("id")
+      .select("id, role")
       .eq("business_id", businessId)
       .eq("user_id", caller.user.id)
       .in("role", ["owner", "admin"])
       .maybeSingle();
     if (!callerRow) return reply(403, { error: "Only an owner or admin can invite employees" });
+    // the service role below skips the database's owner guard (migration 0018), so the same rule is checked here
+    if (role === "owner" && callerRow.role !== "owner") return reply(403, { error: "Only an owner can invite another owner." });
 
     const siteUrl = (Deno.env.get("SITE_URL") || req.headers.get("origin") || "").replace(/\/$/, "");
     const { data: invited, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, siteUrl ? { redirectTo: `${siteUrl}/set-password` } : undefined);

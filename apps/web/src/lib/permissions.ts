@@ -17,6 +17,19 @@ export const PERMISSIONS = {
 
 export type Permission = keyof typeof PERMISSIONS;
 
+// assignableRoles: the roles this person may give to an employee. Only an owner can hand out the owner role
+// (the database enforces it too: supabase/migrations/0018_owner_role_guard.sql).
+export function assignableRoles(actorRole: string | null | undefined): Role[] {
+  if (actorRole === "owner") return ["staff", "admin", "owner"];
+  if (actorRole === "admin") return ["staff", "admin"];
+  return [];
+}
+
+// canManageEmployee: may this person edit or remove an employee who holds `targetRole`? Admins can't touch owners.
+export function canManageEmployee(actorRole: string | null | undefined, targetRole: string): boolean {
+  return hasPermission(actorRole, "employees.manage") && (targetRole !== "owner" || actorRole === "owner");
+}
+
 // hasPermission: false for a missing or unknown role (e.g. employee row not resolved yet)
 export function hasPermission(role: string | null | undefined, permission: Permission): boolean {
   if (!role) return false;

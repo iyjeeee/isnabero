@@ -15,6 +15,7 @@ const LoginPage = lazy(() => import("@/pages/LoginPage"));
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
 const PaymentsPage = lazy(() => import("@/pages/PaymentsPage"));
 const SetPasswordPage = lazy(() => import("@/pages/SetPasswordPage"));
+const ForgotPasswordPage = lazy(() => import("@/pages/ForgotPasswordPage"));
 const CustomersPage = lazy(() => import("@/pages/CustomersPage"));
 const CashClosePage = lazy(() => import("@/pages/CashClosePage"));
 const EmployeesPage = lazy(() => import("@/pages/EmployeesPage"));
@@ -36,6 +37,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/set-password" element={<SetPasswordPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/app" element={<AppLayout />}>
               {/* Business Setup is a modal now; the old page address opens it over the dashboard */}

@@ -4,6 +4,17 @@ export const auth = {
   showPassword: "Show password",
   hidePassword: "Hide password",
   needAccess: "New here? Ask your business owner to send you an invite.",
+  forgot: {
+    link: "Forgot password?",
+    title: "Reset your password",
+    description: "Enter your email and we'll send you a link to choose a new password.",
+    submit: "Send reset link",
+    sending: "Sending…",
+    sentTitle: "Check your email",
+    sentDescription: "If {email} has an account, a link to choose a new password is on its way. It can take a minute to arrive.",
+    tryAgain: "Use a different email",
+    back: "Back to sign in",
+  },
   facts: {
     offline: { title: "Keeps selling without a connection", description: "Sales rung up offline are saved on the device and sent when you're back online." },
     roles: { title: "Access by role", description: "Owners, admins and staff each see only what their role allows." },

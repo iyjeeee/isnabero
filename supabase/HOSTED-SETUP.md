@@ -6,7 +6,7 @@ chat, source files or ZIPs — they only go in `apps/web/.env.local`, which is g
 1. **Create the project** at supabase.com (note the database password you choose). Under *Project Settings → API* copy the
    **Project URL** and the **anon public key**.
 2. **Back up first** if the project already holds data (*Database → Backups*).
-3. **Apply the migrations in order**, `0000` to `0017`, from `supabase/migrations/`. Either:
+3. **Apply the migrations in order**, `0000` to `0018`, from `supabase/migrations/`. Either:
    - SQL editor: open each file, paste, run — in numeric order, one at a time; or
    - CLI: `supabase login`, `supabase link --project-ref <ref>`, `supabase db push` (asks for the database password).
    Each file must finish without errors before you run the next. (They were tested in this order on a fresh Postgres 16.)

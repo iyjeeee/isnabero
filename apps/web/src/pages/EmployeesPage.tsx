@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useBusinessStore } from "@/stores/business-store";
 import { getCoreRepository } from "@/lib/repositories/get-repository";
 import { usePermission } from "@/hooks/use-permission";
+import { canManageEmployee } from "@/lib/permissions";
 import { useAuth } from "@/providers/AuthProvider";
 import { usePagination } from "@/hooks/use-pagination";
 import { useFormat, useLabels, useT } from "@/i18n";
@@ -149,8 +150,9 @@ export default function EmployeesPage() {
                     {canManage && (
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
-                          <EditEmployeeModal businessId={businessId} employee={employee} />
-                          {employee.id !== currentEmployee?.id && (
+                          {/* admins can't edit or remove an owner (the database refuses it too) */}
+                          {canManageEmployee(currentEmployee?.role, employee.role) && <EditEmployeeModal businessId={businessId} employee={employee} />}
+                          {employee.id !== currentEmployee?.id && canManageEmployee(currentEmployee?.role, employee.role) && (
                             <DeleteEmployeeButton businessId={businessId} employeeId={employee.id} employeeName={employee.fullName} />
                           )}
                         </div>

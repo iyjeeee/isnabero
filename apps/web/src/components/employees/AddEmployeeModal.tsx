@@ -18,6 +18,8 @@ import {
 } from "@isnabero/ui";
 import { getDataSource } from "@isnabero/db";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/providers/AuthProvider";
+import { assignableRoles } from "@/lib/permissions";
 import { msg, useLabels, useT } from "@/i18n";
 import { inviteErrorMessage } from "@/lib/invite-error";
 import { useCreateEmployee } from "@/hooks/use-create-employee";
@@ -40,6 +42,8 @@ interface AddEmployeeModalProps {
 export function AddEmployeeModal({ businessId }: AddEmployeeModalProps) {
   const { t, tm } = useT();
   const labels = useLabels();
+  const { employee: currentEmployee } = useAuth();
+  const roleOptions = assignableRoles(currentEmployee?.role); // only an owner can add another owner
   const [open, setOpen] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
   const createEmployee = useCreateEmployee(businessId);
@@ -126,9 +130,9 @@ export function AddEmployeeModal({ businessId }: AddEmployeeModalProps) {
           <div className="space-y-1.5">
             <Label htmlFor="role">{t("employees.form.role")}</Label>
             <Select id="role" {...form.register("role")}>
-              <option value="staff">{labels.role("staff")}</option>
-              <option value="admin">{labels.role("admin")}</option>
-              <option value="owner">{labels.role("owner")}</option>
+              {roleOptions.map((role) => (
+                <option key={role} value={role}>{labels.role(role)}</option>
+              ))}
             </Select>
           </div>
 

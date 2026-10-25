@@ -18,6 +18,8 @@ import {
   ActionIconButton,
 } from "@isnabero/ui";
 import { msg, useLabels, useT } from "@/i18n";
+import { useAuth } from "@/providers/AuthProvider";
+import { assignableRoles } from "@/lib/permissions";
 import { useUpdateEmployee } from "@/hooks/use-update-employee";
 import type { EmployeeView } from "@/lib/repositories/repository";
 
@@ -36,6 +38,8 @@ interface EditEmployeeModalProps {
 export function EditEmployeeModal({ businessId, employee }: EditEmployeeModalProps) {
   const { t, tm } = useT();
   const labels = useLabels();
+  const { employee: currentEmployee } = useAuth();
+  const roleOptions = assignableRoles(currentEmployee?.role); // an admin can't hand out the owner role
   const [open, setOpen] = useState(false);
   const updateEmployee = useUpdateEmployee(businessId);
 
@@ -77,9 +81,9 @@ export function EditEmployeeModal({ businessId, employee }: EditEmployeeModalPro
           <div className="space-y-1.5">
             <Label htmlFor="edit-role">{t("employees.form.role")}</Label>
             <Select id="edit-role" {...form.register("role")}>
-              <option value="staff">{labels.role("staff")}</option>
-              <option value="admin">{labels.role("admin")}</option>
-              <option value="owner">{labels.role("owner")}</option>
+              {roleOptions.map((role) => (
+                <option key={role} value={role}>{labels.role(role)}</option>
+              ))}
             </Select>
           </div>
 
