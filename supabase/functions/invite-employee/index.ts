@@ -23,10 +23,13 @@ interface InviteEmployeeRequest {
   role: "owner" | "admin" | "staff";
 }
 
-// CORS: the browser sends a preflight (OPTIONS) before invoking a function, so every reply — errors included — must carry these
-const corsHeaders = {
+// CORS: the browser sends a preflight (OPTIONS) before invoking a function, so every reply — errors included — must carry these.
+// Allow-Headers echoes what the preflight asks for: newer supabase-js versions send extra headers (e.g. x-retry-count) and a
+// fixed list would make the browser block the call with "Failed to send a request to the Edge Function".
+const DEFAULT_ALLOWED_HEADERS = "authorization, x-client-info, apikey, content-type, x-retry-count";
+let corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": DEFAULT_ALLOWED_HEADERS,
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -36,6 +39,7 @@ const ROLES = ["owner", "admin", "staff"];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 Deno.serve(async (req: Request) => {
+  corsHeaders = { ...corsHeaders, "Access-Control-Allow-Headers": req.headers.get("access-control-request-headers") || DEFAULT_ALLOWED_HEADERS };
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return reply(405, { error: "Method not allowed" });
 

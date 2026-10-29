@@ -50,9 +50,6 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.59.16
         version: 5.101.4(react@18.3.1)
-      '@tanstack/react-table':
-        specifier: ^8.20.5
-        version: 8.21.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       jspdf:
         specifier: ^4.2.1
         version: 4.2.1
@@ -219,9 +216,6 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.59.16
         version: 5.101.4(react@18.3.1)
-      drizzle-orm:
-        specifier: ^0.36.1
-        version: 0.36.4(@types/react@18.3.31)(postgres@3.4.9)(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -244,9 +238,6 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.59.16
         version: 5.101.4(react@18.3.1)
-      drizzle-orm:
-        specifier: ^0.36.1
-        version: 0.36.4(@types/react@18.3.31)(postgres@3.4.9)(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -300,9 +291,6 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.59.16
         version: 5.101.4(react@18.3.1)
-      drizzle-orm:
-        specifier: ^0.36.1
-        version: 0.36.4(@types/react@18.3.31)(postgres@3.4.9)(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -1310,17 +1298,6 @@ packages:
     resolution: {integrity: sha512-yRg2pfOCxIs4ZJW3XYYHU/WgtD04FHSnfHlpRT7h7pR77hwkdRG4wxbKe4aq6P0RvXUTBSQpQeadS1SUYUe+KA==}
     peerDependencies:
       react: ^18 || ^19
-
-  '@tanstack/react-table@8.21.3':
-    resolution: {integrity: sha512-5nNMTSETP4ykGegmVkhjcS8tTLW6Vl4axfEGQN3v0zdHYbK4UfoqfPChclTrJ4EoK9QynqAu9oUf8VEmrpZ5Ww==}
-    engines: {node: '>=12'}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@tanstack/table-core@8.21.3':
-    resolution: {integrity: sha512-ldZXEhOBb8Is7xLs01fR3YEc3DERiz5silj8tnGkFZytt1abEvl/GhUmCE0PMLaMPTa3Jk4HbKmRlHmu+gCftg==}
-    engines: {node: '>=12'}
 
   '@turbo/darwin-64@2.10.6':
     resolution: {integrity: sha512-S+yIyZkmjYBQbIM7sTqMAwnLeMjSK60Q9grUDPbTWvkRjbsn5k1Rt5sPvTX80M4PnlYQBwLiYsjlu6tHsuIqQQ==}
@@ -3497,14 +3474,6 @@ snapshots:
     dependencies:
       '@tanstack/query-core': 5.101.4
       react: 18.3.1
-
-  '@tanstack/react-table@8.21.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@tanstack/table-core': 8.21.3
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-
-  '@tanstack/table-core@8.21.3': {}
 
   '@turbo/darwin-64@2.10.6':
     optional: true

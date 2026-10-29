@@ -26,12 +26,6 @@ export const test = base.extend<{ problems: string[] }>({
 
 export { expect };
 
-// openPage: go to an in-app path and wait for the page heading (each page renders one h1)
-export async function openPage(page: Page, path: string, heading: RegExp | string) {
-  await page.goto(path);
-  await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
-}
-
 // sidebar: the main navigation landmark
 export const sidebar = (page: Page) => page.getByRole("navigation", { name: "Main navigation" });
 

@@ -32,6 +32,17 @@ Automated check: with the app set to Supabase mode, `E2E_LIVE=1 E2E_EMAIL=<you> 
    `supabase secrets set SITE_URL=https://your-app-address` (otherwise the browser's own address is used).
 3. In the app, **Employees → Invite employee**. The person gets an email, opens the link, chooses a password on the "Set your password" page and lands in the app.
 
+### If an invite fails
+
+- **"The invite service didn't answer" / "Failed to send a request to the Edge Function"**: the browser got no usable reply. Check, in order:
+  1. `supabase functions list` shows `invite-employee` as ACTIVE for the project you linked (`supabase link --project-ref <ref>`). If not, run `supabase functions deploy invite-employee` again (redeploy after every change to the function).
+  2. `VITE_SUPABASE_URL` in `apps/web/.env.local` is that same project (restart the dev server after changing it).
+  3. Open `<VITE_SUPABASE_URL>/functions/v1/invite-employee` in a browser: `{"code":"NOT_FOUND"...}` means it is not deployed; a JSON "Method not allowed" or "Not signed in" reply means it is running.
+  4. Supabase dashboard → Edge Functions → invite-employee → Logs shows each call and any crash.
+- **"Only an owner or admin can invite employees" / "Only an owner can invite another owner."**: the signed-in account is not allowed to invite that role.
+- **"Someone with that email already has an account."**: that email is already a login; add them another way or use a different email.
+- **The email never arrives**: Supabase's built-in sender is limited to a few emails per hour; set up your own SMTP under Authentication → Emails → SMTP Settings for real use.
+
 ## Automated database tests (no manual clicking)
 
 `apps/web/integration/` holds tests that run the app's real data code against your hosted project: catalog, POS (stock, idempotency, backdating), voiding, expenses, cash close, booking rules, shifts, employees/last-owner rule, audit log, plus signed-out, other-business and staff-permission checks.

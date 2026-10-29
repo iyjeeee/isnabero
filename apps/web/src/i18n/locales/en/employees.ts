@@ -25,6 +25,7 @@ export const employees = {
     pendingInvite: "Sending invite…",
     added: "{name} added to the team",
     invited: "Invited {name} — they'll get an email to set their password",
+    inviteUnreachable: "The invite service didn't answer. Check that the invite-employee function is deployed to this Supabase project and that you're online, then try again.",
     inviteFailed: "Couldn't invite {name}: {error}",
   },
   edit: {

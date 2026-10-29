@@ -17,5 +17,4 @@ export const customers = {
     firstSeen: "First booking",
     history: "Booking history",
   },
-  exportHint: "All customers shown, with their totals.",
 };

@@ -10,3 +10,4 @@ supabase/.temp
 .DS_Store
 e2e-report
 e2e-results
+*.tsbuildinfo
